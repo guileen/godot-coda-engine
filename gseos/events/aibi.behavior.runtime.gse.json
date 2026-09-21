@@ -1,0 +1,80 @@
+{
+  "asset_type": "EventAsset",
+  "schema_version": 1,
+  "event_id": "aibi.behavior.runtime",
+  "display_name": "AIBI 离线行为反例",
+  "args": [],
+  "root": [],
+  "behavior_runtime": {
+    "behavior_type": "state_machine",
+    "schema_version": 1,
+    "behavior_id": "aibi.companion",
+    "initial_state": "idle",
+    "states": [
+      { "state_id": "idle" },
+      { "state_id": "listening" },
+      { "state_id": "thinking" },
+      { "state_id": "speaking" },
+      { "state_id": "sleepy" },
+      { "state_id": "sleeping" },
+      { "state_id": "curious" },
+      { "state_id": "angry" }
+    ],
+    "events": [
+      { "event_id": "interrupt", "priority": 100 },
+      { "event_id": "wake_word", "priority": 80 },
+      { "event_id": "touch_head", "priority": 70 },
+      { "event_id": "poked_5x", "priority": 70 },
+      { "event_id": "speech_end", "priority": 60 },
+      { "event_id": "llm_response", "priority": 60 },
+      { "event_id": "tts_done", "priority": 40, "completion_effect_id": "speech" },
+      { "event_id": "boredom_high", "priority": 10 },
+      { "event_id": "energy_low", "priority": 10 },
+      { "event_id": "energy_empty", "priority": 20 },
+      { "event_id": "silence_timeout", "priority": 30 },
+      { "event_id": "timeout", "priority": 30 },
+      { "event_id": "settled", "priority": 30 }
+    ],
+    "blackboard": [
+      { "field_id": "happiness", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5, "writable_by_events": ["touch_head", "llm_response"] },
+      { "field_id": "energy", "type": "number", "minimum": 0, "maximum": 1, "default": 1, "writable_by_events": ["energy_low", "energy_empty", "llm_response"] },
+      { "field_id": "boredom", "type": "number", "minimum": 0, "maximum": 1, "default": 0, "writable_by_events": ["touch_head", "boredom_high", "llm_response"] },
+      { "field_id": "affection", "type": "number", "minimum": 0, "maximum": 1, "default": 0.3, "writable_by_events": ["touch_head", "llm_response"] },
+      { "field_id": "last_interaction_at", "type": "number", "minimum": 0, "default": 0, "writable_by_events": ["wake_word", "touch_head", "speech_end", "llm_response"] }
+    ],
+    "effects": [
+      { "effect_id": "listen_pose", "capability": "body.plan_action@1", "args": { "action": "listen" }, "cancellable": false, "owner_state": "listening" },
+      { "effect_id": "think_face", "capability": "face.set_expression@1", "args": { "expression": "thinking" }, "cancellable": false, "owner_state": "thinking" },
+      { "effect_id": "speech", "capability": "audio.play_speech@1", "args": { "clip": "planned" }, "cancellable": true, "owner_state": "speaking", "convergence_effect_id": "speech_safe_stop" },
+      { "effect_id": "speak_pose", "capability": "body.plan_action@1", "args": { "action": "speak" }, "cancellable": false, "owner_state": "speaking" },
+      { "effect_id": "speech_safe_stop", "capability": "audio.stop_speech@1", "cancellable": false, "owner_state": "speaking" },
+      { "effect_id": "touch_bounce", "capability": "body.plan_action@1", "args": { "action": "bounce", "duration_ms": 300 }, "cancellable": false, "owner_state": "idle" },
+      { "effect_id": "curious_tilt", "capability": "body.plan_action@1", "args": { "action": "tilt" }, "cancellable": false, "owner_state": "curious" },
+      { "effect_id": "angry_tilt", "capability": "body.plan_action@1", "args": { "action": "tilt" }, "cancellable": false, "owner_state": "angry" },
+      { "effect_id": "sleepy_rest", "capability": "body.plan_action@1", "args": { "action": "rest" }, "cancellable": false, "owner_state": "sleepy" },
+      { "effect_id": "sleeping_rest", "capability": "body.plan_action@1", "args": { "action": "rest" }, "cancellable": false, "owner_state": "sleeping" }
+    ],
+    "rules": [
+      { "rule_id": "idle_wake", "from_state": "idle", "event_id": "wake_word", "to_state": "listening", "effects": ["listen_pose"], "blackboard_writes": { "last_interaction_at": 1 } },
+      { "rule_id": "idle_touch", "from_state": "idle", "event_id": "touch_head", "to_state": "idle", "effects": ["touch_bounce"], "blackboard_writes": { "happiness": 0.6, "boredom": 0, "affection": 0.35, "last_interaction_at": 1 } },
+      { "rule_id": "idle_bored", "from_state": "idle", "event_id": "boredom_high", "to_state": "curious", "effects": ["curious_tilt"], "blackboard_writes": { "boredom": 0.85 } },
+      { "rule_id": "idle_energy_low", "from_state": "idle", "event_id": "energy_low", "to_state": "sleepy", "effects": ["sleepy_rest"], "blackboard_writes": { "energy": 0.1 } },
+      { "rule_id": "idle_energy_empty", "from_state": "idle", "event_id": "energy_empty", "to_state": "sleeping", "effects": ["sleeping_rest"], "blackboard_writes": { "energy": 0 } },
+      { "rule_id": "idle_poked", "from_state": "idle", "event_id": "poked_5x", "to_state": "angry", "effects": ["angry_tilt"], "blackboard_writes": {} },
+      { "rule_id": "listen_speech_end", "from_state": "listening", "event_id": "speech_end", "to_state": "thinking", "effects": ["think_face"], "blackboard_writes": { "last_interaction_at": 2 } },
+      { "rule_id": "listen_silence", "from_state": "listening", "event_id": "silence_timeout", "to_state": "idle", "effects": [], "blackboard_writes": {} },
+      { "rule_id": "think_response", "from_state": "thinking", "event_id": "llm_response", "to_state": "speaking", "effects": ["speech", "speak_pose"], "blackboard_writes": { "happiness": 0.65, "energy": 0.98, "boredom": 0, "affection": 0.33, "last_interaction_at": 3 } },
+      { "rule_id": "think_timeout", "from_state": "thinking", "event_id": "timeout", "to_state": "idle", "effects": [], "blackboard_writes": {} },
+      { "rule_id": "think_interrupt", "from_state": "thinking", "event_id": "interrupt", "to_state": "listening", "effects": ["listen_pose"], "blackboard_writes": {} },
+      { "rule_id": "speak_done", "from_state": "speaking", "event_id": "tts_done", "to_state": "idle", "effects": [], "blackboard_writes": {} },
+      { "rule_id": "speak_interrupt", "from_state": "speaking", "event_id": "interrupt", "to_state": "listening", "effects": ["listen_pose"], "blackboard_writes": {} },
+      { "rule_id": "sleepy_wake", "from_state": "sleepy", "event_id": "wake_word", "to_state": "listening", "effects": ["listen_pose"], "blackboard_writes": { "last_interaction_at": 4 } },
+      { "rule_id": "sleepy_empty", "from_state": "sleepy", "event_id": "energy_empty", "to_state": "sleeping", "effects": ["sleeping_rest"], "blackboard_writes": { "energy": 0 } },
+      { "rule_id": "sleeping_wake", "from_state": "sleeping", "event_id": "wake_word", "to_state": "idle", "effects": [], "blackboard_writes": { "last_interaction_at": 5 } },
+      { "rule_id": "sleeping_touch", "from_state": "sleeping", "event_id": "touch_head", "to_state": "idle", "effects": ["touch_bounce"], "blackboard_writes": { "happiness": 0.6, "boredom": 0, "affection": 0.35, "last_interaction_at": 5 } },
+      { "rule_id": "curious_settled", "from_state": "curious", "event_id": "settled", "to_state": "idle", "effects": [], "blackboard_writes": {} },
+      { "rule_id": "curious_touch", "from_state": "curious", "event_id": "touch_head", "to_state": "idle", "effects": ["touch_bounce"], "blackboard_writes": { "happiness": 0.6, "boredom": 0, "affection": 0.35, "last_interaction_at": 6 } },
+      { "rule_id": "angry_settled", "from_state": "angry", "event_id": "settled", "to_state": "idle", "effects": [], "blackboard_writes": {} }
+    ]
+  }
+}

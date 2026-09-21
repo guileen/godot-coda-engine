@@ -73,5 +73,6 @@ Most users can start from this README. The deeper references are available when 
 - [First gameplay flow](docs/en/first-game-flow.md) / [写出第一个游戏流程](docs/zh-CN/first-game-flow.md)
 - [Language reference](docs/en/language.md) / [CODA 语法小抄](docs/zh-CN/language.md)
 - [Technical documentation](docs/en/README.md) / [中文技术文档](docs/zh-CN/README.md)
+- [AIBI Behavior Runtime](docs/aibi-behavior-runtime-proposal.md)（C0 已实现：EventAsset、Node/Godot 运行时与 AIBI 接入）
 
 For contributors and release verification, run `npm test`, `npm run check`, and `npm run test:all`. CODA code is MIT-licensed; documentation and website copy are CC BY 4.0. See [brand policy](TRADEMARKS.md) for the optional Made with CODA badge.

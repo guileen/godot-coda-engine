@@ -15,6 +15,7 @@ Start with the language and a familiar gameplay situation, not implementation te
 | Scope and troubleshooting / 范围与排障 | [English](en/scope-and-troubleshooting.md) | [中文](zh-CN/scope-and-troubleshooting.md) |
 | Public facts and evidence / 公开事实与证据 | [English](en/public-facts.md) | [中文](zh-CN/public-facts.md) |
 | Release policy / 发布策略 | [English](en/release-policy.md) | [中文](zh-CN/release-policy.md) |
+| AIBI Behavior Runtime proposal / AIBI 行为运行时提案 | — | [提案](aibi-behavior-runtime-proposal.md) |
 
 Shared interface strings and the rules for adding locales live in [`i18n/`](../i18n/README.md). The root-level GitHub policy files are bilingual entry points to the same public project.
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { EventRegistry, RunContext, RunStatus, WaitRegistration, applySemanticPatch, assetFingerprint, bindEventAsset, buildSemanticProjectionMap, createSchemaRegistry, createSemanticPatch, formatGse, generateGdscript, lexGse, lowerToExecutionPlan, migrateEventAsset, parseCst, parseExpressionText, parseGse, resolveAlias, resolveSourceRef, roundTripEventAsset, stableStringify, summarizeUserObservationReport, validateAliasRegistry, validateCapabilityManifest, validateEventAsset, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateUserObservationReport, verifyManagedArtifact } from "../src/index.js";
+import { BehaviorRuntime, EventRegistry, RunContext, RunStatus, WaitRegistration, applySemanticPatch, assetFingerprint, bindEventAsset, buildSemanticProjectionMap, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, formatGse, generateGdscript, lexGse, lowerToExecutionPlan, migrateEventAsset, parseCst, parseExpressionText, parseGse, resolveAlias, resolveSourceRef, roundTripEventAsset, stableStringify, summarizeUserObservationReport, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateUserObservationReport, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
@@ -11,7 +11,10 @@ const manifest = JSON.parse(await readFile(resolve(root, "contracts/gseos/capabi
 const aliasRegistry = JSON.parse(await readFile(resolve(root, "gseos/fixtures/ui.reward.apply.alias-registry.json"), "utf8"));
 const semanticMapFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/ui.reward.apply.semantic-map.json"), "utf8"));
 const goldenSourceMap = JSON.parse(await readFile(resolve(root, "tests/golden/ui.reward.apply.source-map.json"), "utf8"));
+const behaviorAsset = JSON.parse(await readFile(resolve(root, "gseos/events/aibi.behavior.runtime.gse.json"), "utf8"));
+const behaviorManifest = JSON.parse(await readFile(resolve(root, "contracts/gseos/aibi-behavior-capabilities.json"), "utf8"));
 const registry = createSchemaRegistry(manifest);
+const behaviorRegistry = createSchemaRegistry(behaviorManifest);
 
 test("EventAsset 保留未知字段并稳定排序", () => {
   const extended = { ...asset, z_unknown: { b: 2, a: 1 }, a_unknown: true };
@@ -188,4 +191,51 @@ test("用户观察记录只接受脱敏结构，并保留 G-P3-U 通过门槛", 
   assert.deepEqual(summarizeUserObservationReport(report).gate, "G-P3-U_PENDING");
   const withPii = { ...report, observations: [{ participant_id: "u-001", role_profile: "godot", consent: { recorded: true, recording_allowed: false }, tasks: {}, hint_count: 0, outcome: "blocked", name: "should-not-be-recorded" }] };
   assert.ok(validateUserObservationReport(withPii).diagnostics.some((item) => item.code === "USER_OBSERVATION_PII_FIELD"));
+});
+
+test("C0 行为定义嵌入 EventAsset，拒绝第二逻辑源、未声明能力与非法 Blackboard 写入", () => {
+  assert.equal(validateBehaviorRuntime(behaviorAsset, behaviorRegistry).ok, true);
+  const compiled = compileBehaviorRuntime(behaviorAsset, behaviorRegistry);
+  assert.equal(compiled.receipt.ok, true);
+  assert.equal(compiled.plan.event_asset_id, "aibi.behavior.runtime");
+  assert.equal(compiled.plan.behavior.behavior_id, "aibi.companion");
+  const noExtension = { ...behaviorAsset }; delete noExtension.behavior_runtime;
+  assert.ok(validateBehaviorRuntime(noExtension, behaviorRegistry).diagnostics.some((item) => item.code === "BEHAVIOR_EXTENSION_REQUIRED"));
+  const parallelAsset = { ...behaviorAsset, asset_type: "BehaviorAsset" };
+  assert.ok(validateBehaviorRuntime(parallelAsset, behaviorRegistry).diagnostics.some((item) => item.code === "INVALID_ASSET_TYPE"));
+  const unknownCapability = structuredClone(behaviorAsset); unknownCapability.behavior_runtime.effects[0].capability = "audio.raw_servo@1";
+  assert.equal(compileBehaviorRuntime(unknownCapability, behaviorRegistry).plan, null);
+  const illegalWrite = structuredClone(behaviorAsset); illegalWrite.behavior_runtime.rules.find((item) => item.rule_id === "speak_done").blackboard_writes = { energy: 101 };
+  const invalid = compileBehaviorRuntime(illegalWrite, behaviorRegistry);
+  assert.equal(invalid.plan, null);
+  assert.ok(invalid.receipt.diagnostics.some((item) => item.code === "BLACKBOARD_WRITE_FORBIDDEN" || item.code === "BLACKBOARD_WRITE_OUT_OF_RANGE"));
+});
+
+test("G-C0：正常链路、说话打断、迟到 tts_done 与冲突事件均确定且可回放", () => {
+  const plan = compileBehaviorRuntime(behaviorAsset, behaviorRegistry).plan;
+  const normal = new BehaviorRuntime(plan);
+  for (const event_id of ["wake_word", "speech_end", "llm_response", "tts_done"]) { normal.enqueue(event_id); normal.drain(); }
+  const normalTrace = normal.trace();
+  assert.equal(normalTrace.final_state, "idle");
+  assert.ok(normalTrace.entries.some((entry) => entry.kind === "EffectCompleted" && entry.effect_id === "speech"));
+  assert.equal(validateBehaviorRuntimeTrace(normalTrace).ok, true);
+
+  const interrupted = new BehaviorRuntime(plan);
+  for (const event_id of ["wake_word", "speech_end", "llm_response", "interrupt", "tts_done"]) { interrupted.enqueue(event_id); interrupted.drain(); }
+  const interruptedTrace = interrupted.trace();
+  assert.equal(interruptedTrace.final_state, "listening");
+  assert.equal(interruptedTrace.entries.filter((entry) => entry.kind === "EffectCancelled" && entry.effect_id === "speech").length, 1);
+  assert.equal(interruptedTrace.entries.filter((entry) => entry.kind === "EffectConverged" && entry.cancelled_effect_id === "speech").length, 1);
+  assert.equal(interruptedTrace.entries.filter((entry) => entry.kind === "EventIgnored" && entry.reason === "STALE_COMPLETION").length, 1);
+  assert.equal(interruptedTrace.entries.filter((entry) => entry.kind === "EffectStarted" && entry.effect_id === "speech").length, 1);
+
+  const conflict = new BehaviorRuntime(plan);
+  conflict.enqueue("boredom_high", { sequence: 2 }); conflict.enqueue("wake_word", { sequence: 1 }); conflict.drain();
+  const arbitration = conflict.trace().entries.find((entry) => entry.kind === "EventArbitrated");
+  assert.equal(arbitration.event_id, "wake_word");
+  assert.equal(conflict.trace().final_state, "listening");
+
+  const replayA = new BehaviorRuntime(plan); const replayB = new BehaviorRuntime(plan);
+  for (const runtime of [replayA, replayB]) { runtime.enqueue("wake_word", { sequence: 1 }); runtime.enqueue("boredom_high", { sequence: 2 }); runtime.drain(); }
+  assert.equal(stableStringify(replayA.trace()), stableStringify(replayB.trace()));
 });
