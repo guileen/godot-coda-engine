@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/semantic-candidate.schema.json",
+  "title": "GSEOS SemanticCandidate@1",
+  "type": "object",
+  "required": ["candidate_type", "schema_version", "candidate_id", "status", "source", "confidence"],
+  "properties": {
+    "candidate_type": { "const": "SemanticCandidate" },
+    "schema_version": { "const": 1 },
+    "candidate_id": { "type": "string", "minLength": 1 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "base_asset_fingerprint": { "type": "string", "pattern": "^sha256:" },
+    "target_ref": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["proposed", "needs_review", "rejected"] },
+    "source": { "type": "object", "required": ["kind"], "properties": { "kind": { "type": "string", "minLength": 1 }, "reference": { "type": "string" } }, "additionalProperties": false },
+    "confidence": { "type": "object", "required": ["state"], "properties": { "state": { "enum": ["low", "medium", "high"] }, "score": { "type": "number", "minimum": 0, "maximum": 1 } }, "additionalProperties": false },
+    "aliases": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string", "minLength": 1 } } },
+    "descriptions": { "type": "object", "additionalProperties": { "type": "string" } },
+    "group_path": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "patches": { "type": "array", "items": { "type": "object", "required": ["path", "value"], "properties": { "path": { "type": "string", "pattern": "^/" }, "value": {} }, "additionalProperties": false } }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/semantic-projection.schema.json",
+  "title": "GSEOS SemanticProjectionMap@1",
+  "type": "object",
+  "required": ["projection_type", "schema_version", "event_id", "asset_fingerprint", "contract_fingerprint", "alias_registry_version", "nodes"],
+  "properties": {
+    "projection_type": { "const": "SemanticProjectionMap" },
+    "schema_version": { "const": 1 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "asset_fingerprint": { "type": "string", "pattern": "^sha256:" },
+    "contract_fingerprint": { "type": "string", "pattern": "^sha256:" },
+    "alias_registry_version": { "type": "string", "minLength": 1 },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["node_id", "command_id", "semantic_id", "group_path", "labels", "descriptions", "slots", "source"],
+      "properties": {
+        "node_id": { "type": "string", "minLength": 1 },
+        "command_id": { "type": "string", "minLength": 1 },
+        "semantic_id": { "type": "string", "minLength": 1 },
+        "group_path": { "type": "array", "items": { "type": "string" } },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+        "descriptions": { "type": "object", "additionalProperties": { "type": "string" } },
+        "slots": { "type": "array", "items": { "$ref": "#/$defs/mappedSlot" } },
+        "source": { "$ref": "#/$defs/source" }
+      },
+      "additionalProperties": false
+    },
+    "mappedSlot": {
+      "type": "object",
+      "required": ["slot_id", "field_id", "path", "type", "control"],
+      "properties": {
+        "slot_id": { "type": "string", "minLength": 1 },
+        "field_id": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "pattern": "^/" },
+        "type": { "type": "string", "minLength": 1 },
+        "control": { "type": "string", "minLength": 1 },
+        "label": { "type": "object", "additionalProperties": { "type": "string" } },
+        "description": { "type": "object", "additionalProperties": { "type": "string" } },
+        "value": {},
+        "allowed_refs": { "type": "array", "items": { "type": "string" } },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "unit": { "type": "string" },
+        "source": { "$ref": "#/$defs/source" }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["event_id", "node_id"],
+      "properties": {
+        "event_id": { "type": "string" },
+        "node_id": { "type": "string" },
+        "generated_start": { "type": "integer", "minimum": 1 },
+        "generated_end": { "type": "integer", "minimum": 1 },
+        "backend": { "type": "string" },
+        "plan_fingerprint": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

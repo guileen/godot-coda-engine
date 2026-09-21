@@ -1,63 +1,214 @@
 {
-  "map_version": 1,
+  "map_version": 2,
   "event_id": "ui.reward.apply",
-  "plan_fingerprint": "sha256:bbff9c836aa5abe30d8cf2945f6e2b47cf71518de3c6ade7cec8d16289800ad8",
+  "plan_fingerprint": "sha256:33443d65b1eca2c749758712a0a8bbf840bba6556b7da9f965a6b9ae7cccebe8",
   "mappings": [
     {
       "event_id": "ui.reward.apply",
       "node_id": "reward-check",
       "field_id": "condition",
+      "path": "/root/0",
       "backend": "gdscript",
-      "generated_start": 7
+      "generated_start": 7,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "reward-check",
+      "field_id": "condition",
+      "path": "/root/0/params/condition",
+      "backend": "gdscript",
+      "generated_start": 7,
+      "generated_end": 52
     },
     {
       "event_id": "ui.reward.apply",
       "node_id": "read-score",
       "field_id": "target",
+      "path": "/root/0/children/then/0",
       "backend": "gdscript",
-      "generated_start": 9
+      "generated_start": 10,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "read-score",
+      "field_id": "target",
+      "path": "/root/0/children/then/0/params/target",
+      "backend": "gdscript",
+      "generated_start": 10,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "read-score",
+      "field_id": "field",
+      "path": "/root/0/children/then/0/params/field",
+      "backend": "gdscript",
+      "generated_start": 10,
+      "generated_end": 52
     },
     {
       "event_id": "ui.reward.apply",
       "node_id": "calculate-score",
       "field_id": "value",
+      "path": "/root/0/children/then/1",
       "backend": "gdscript",
-      "generated_start": 11
+      "generated_start": 16,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "calculate-score",
+      "field_id": "value",
+      "path": "/root/0/children/then/1/params/value",
+      "backend": "gdscript",
+      "generated_start": 16,
+      "generated_end": 52
     },
     {
       "event_id": "ui.reward.apply",
       "node_id": "animate-score",
       "field_id": "capability",
+      "path": "/root/0/children/then/2",
       "backend": "gdscript",
-      "generated_start": 13
+      "generated_start": 20,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "animate-score",
+      "field_id": "target",
+      "path": "/root/0/children/then/2/params/args/target",
+      "backend": "gdscript",
+      "generated_start": 20,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "animate-score",
+      "field_id": "from",
+      "path": "/root/0/children/then/2/params/args/from",
+      "backend": "gdscript",
+      "generated_start": 20,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "animate-score",
+      "field_id": "to",
+      "path": "/root/0/children/then/2/params/args/to",
+      "backend": "gdscript",
+      "generated_start": 20,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "animate-score",
+      "field_id": "duration",
+      "path": "/root/0/children/then/2/params/args/duration",
+      "backend": "gdscript",
+      "generated_start": 20,
+      "generated_end": 52
     },
     {
       "event_id": "ui.reward.apply",
       "node_id": "remove-old-row",
       "field_id": "capability",
+      "path": "/root/0/children/then/3",
       "backend": "gdscript",
-      "generated_start": 15
+      "generated_start": 30,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "remove-old-row",
+      "field_id": "target",
+      "path": "/root/0/children/then/3/params/args/target",
+      "backend": "gdscript",
+      "generated_start": 30,
+      "generated_end": 52
     },
     {
       "event_id": "ui.reward.apply",
       "node_id": "create-row",
       "field_id": "capability",
+      "path": "/root/0/children/then/4",
       "backend": "gdscript",
-      "generated_start": 17
+      "generated_start": 34,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "create-row",
+      "field_id": "owner",
+      "path": "/root/0/children/then/4/params/args/owner",
+      "backend": "gdscript",
+      "generated_start": 34,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "create-row",
+      "field_id": "value",
+      "path": "/root/0/children/then/4/params/args/value",
+      "backend": "gdscript",
+      "generated_start": 34,
+      "generated_end": 52
     },
     {
       "event_id": "ui.reward.apply",
       "node_id": "set-row-text",
       "field_id": "capability",
+      "path": "/root/0/children/then/5",
       "backend": "gdscript",
-      "generated_start": 19
+      "generated_start": 40,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "set-row-text",
+      "field_id": "target",
+      "path": "/root/0/children/then/5/params/args/target",
+      "backend": "gdscript",
+      "generated_start": 40,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "set-row-text",
+      "field_id": "content",
+      "path": "/root/0/children/then/5/params/args/content",
+      "backend": "gdscript",
+      "generated_start": 40,
+      "generated_end": 52
     },
     {
       "event_id": "ui.reward.apply",
       "node_id": "publish-hit",
       "field_id": "topic",
+      "path": "/root/0/children/then/6",
       "backend": "gdscript",
-      "generated_start": 21
+      "generated_start": 46,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "publish-hit",
+      "field_id": "topic",
+      "path": "/root/0/children/then/6/params/topic",
+      "backend": "gdscript",
+      "generated_start": 46,
+      "generated_end": 52
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "publish-hit",
+      "field_id": "payload",
+      "path": "/root/0/children/then/6/params/payload",
+      "backend": "gdscript",
+      "generated_start": 46,
+      "generated_end": 52
     }
   ]
 }

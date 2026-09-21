@@ -14,6 +14,25 @@ function expression(value) {
 
 function expressionArguments(args) { return Object.fromEntries(Object.entries(args ?? {}).filter(([key]) => key !== "bind").map(([key, value]) => [key, expression(value)])); }
 
+function pointerJoin(parts) { return `/${parts.map((part) => String(part).replaceAll("~", "~0").replaceAll("/", "~1")).join("/")}`; }
+
+function sourceRefsFor(asset, node, nodePath, registry) {
+  const refs = {};
+  const add = (fieldId, relativePath) => { refs[fieldId] = sourceRef(asset.event_id, node.node_id, fieldId, { path: pointerJoin([...nodePath, ...relativePath]) }); };
+  const params = node.params ?? {};
+  if (params.capability) {
+    const [id, versionText] = String(params.capability).split("@");
+    const capability = registry?.capability?.(params.capability);
+    for (const item of capability?.params ?? []) add(item.id, ["params", "args", item.id]);
+  } else if (node.command_id === "read") {
+    add("target", ["params", "target"]); add("field", ["params", "field"]);
+  } else if (node.command_id === "if") add("condition", ["params", "condition"]);
+  else if (node.command_id === "let") add("value", ["params", "value"]);
+  else if (node.command_id === "publish") { add("topic", ["params", "topic"]); add("payload", ["params", "payload"]); }
+  else if (node.command_id === "return") add("value", ["params", "value"]);
+  return refs;
+}
+
 export function checkEventAsset(asset, registry) {
   const diagnostics = [];
   diagnostics.push(...validateEventAsset(asset, { capabilities: [...(registry?.manifest?.capabilities ?? [])] }).diagnostics);
@@ -44,13 +63,14 @@ export function lowerToExecutionPlan(asset, registry) {
   const check = checkEventAsset(asset, registry);
   if (!check.ok) return { plan: null, receipt: check };
   const instructions = [];
-  const walk = (nodes) => {
-    for (const node of nodes ?? []) {
-      const ref = sourceRef(asset.event_id, node.node_id);
+  const walk = (nodes, parentPath = ["root"]) => {
+    for (const [index, node] of (nodes ?? []).entries()) {
+      const nodePath = [...parentPath, String(index)];
+      const ref = sourceRef(asset.event_id, node.node_id, undefined, { path: pointerJoin(nodePath), source_refs: sourceRefsFor(asset, node, nodePath, registry) });
       const params = node.params ?? {};
       if (node.command_id === "if") {
         const branch = { opcode: "Branch", condition: expression(params.condition), source_ref: ref, then: [], else: [] };
-        instructions.push(branch); const before = instructions.length; walk(node.children?.then); branch.then.push(...instructions.splice(before)); const beforeElse = instructions.length; walk(node.children?.else); branch.else.push(...instructions.splice(beforeElse));
+        instructions.push(branch); const before = instructions.length; walk(node.children?.then, [...nodePath, "children", "then"]); branch.then.push(...instructions.splice(before)); const beforeElse = instructions.length; walk(node.children?.else, [...nodePath, "children", "else"]); branch.else.push(...instructions.splice(beforeElse));
       } else if (node.command_id === "let") instructions.push({ opcode: "Bind", name: params.name, value: expression(params.value), source_ref: ref });
       else if (node.command_id === "read") instructions.push({ opcode: "ReadCapability", target: params.capability ?? "read@1", args: expressionArguments(Object.fromEntries(Object.entries(params).filter(([key]) => key !== "bind"))), bind: params.bind, source_ref: ref });
       else if (node.command_id === "do") instructions.push({ opcode: "InvokeSync", target: params.capability, args: expressionArguments(params.args), bind: params.bind ?? params.args?.bind, source_ref: ref });

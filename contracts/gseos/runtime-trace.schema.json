@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/runtime-trace.schema.json",
+  "title": "GSEOS RuntimeTrace@1",
+  "type": "object",
+  "required": ["trace_type", "schema_version", "run_id", "event_id", "steps"],
+  "properties": {
+    "trace_type": { "const": "RuntimeTrace" },
+    "schema_version": { "const": 1 },
+    "run_id": { "type": ["string", "integer"] },
+    "event_id": { "type": "string", "minLength": 1 },
+    "plan_fingerprint": { "type": "string", "pattern": "^sha256:" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step_id", "node_id", "slot", "status"],
+        "properties": {
+          "step_id": { "type": ["string", "integer"] },
+          "node_id": { "type": "string", "minLength": 1 },
+          "slot": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["started", "completed", "failed", "cancelled", "skipped"] },
+          "target_id": { "type": "string" },
+          "value": {},
+          "timestamp": { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

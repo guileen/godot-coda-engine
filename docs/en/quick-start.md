@@ -1,5 +1,7 @@
 # Quick start
 
+Want an intuitive first look at CODA syntax rather than an environment check? Start with [Meet CODA in 5 minutes](5-minutes-coda.md). This page is for developers ready to open the current repository and run Godot checks.
+
 This guide runs the checked-in reward event from a clean checkout. It assumes Node.js 20+ and Godot 4.7.2 are available on `PATH`.
 
 ## 1. Install the repository
@@ -36,7 +38,7 @@ This produces a generated GDScript runner and a JSON source map under `.gseos/ge
 godot --editor --path .
 ```
 
-Enable the `GSEOS Event Editor` plugin if it is not already enabled. The event dock reads assets from `gseos/events/` and rebuilds its preview from the structured asset.
+Enable the `CODA Event Editor` plugin if it is not already enabled. The event dock reads assets from `gseos/events/` and rebuilds its preview from the structured asset.
 
 ## 5. Run the checks
 

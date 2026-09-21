@@ -1,0 +1,98 @@
+{
+  "registry_type": "AliasRegistry",
+  "schema_version": 1,
+  "registry_version": "reward-fixture@1",
+  "default_locale": "zh-CN",
+  "layers": {
+    "official": [
+      {
+        "target_id": "capability:ui.animate_number@1",
+        "kind": "capability",
+        "group_path": ["界面", "动画"],
+        "labels": {"zh-CN": "播放数字动画", "en": "Play Number Animation"},
+        "aliases": {"zh-CN": ["播放数字动画", "数值动画"], "en": ["play number animation", "number animation"]},
+        "descriptions": {"zh-CN": "在指定界面上将数值从起始值播放到结束值。", "en": "Animate a value from a start to an end on a UI target."},
+        "slots": {
+          "target": {"label": {"zh-CN": "目标", "en": "Target"}, "type": "NodeRef", "control": "node_ref"},
+          "from": {"label": {"zh-CN": "起始值", "en": "From"}, "type": "Int", "control": "number"},
+          "to": {"label": {"zh-CN": "结束值", "en": "To"}, "type": "Int", "control": "number"},
+          "duration": {"label": {"zh-CN": "时长", "en": "Duration"}, "type": "Duration", "control": "duration", "min": 0, "max": 60, "unit": "seconds"}
+        }
+      },
+      {
+        "target_id": "capability:ui.remove_node@1",
+        "kind": "capability",
+        "group_path": ["界面"],
+        "labels": {"zh-CN": "删除界面节点", "en": "Remove UI Node"},
+        "aliases": {"zh-CN": ["删除界面节点"], "en": ["remove ui node"]},
+        "descriptions": {"zh-CN": "删除一个已声明的界面节点。", "en": "Remove a declared UI node."},
+        "slots": {"target": {"label": {"zh-CN": "目标", "en": "Target"}, "type": "NodeRef", "control": "node_ref"}}
+      },
+      {
+        "target_id": "capability:ui.create_reward_row@1",
+        "kind": "capability",
+        "group_path": ["界面"],
+        "labels": {"zh-CN": "创建奖励条目", "en": "Create Reward Row"},
+        "aliases": {"zh-CN": ["创建奖励条目"], "en": ["create reward row"]},
+        "descriptions": {"zh-CN": "在目标界面下创建奖励条目。", "en": "Create a reward row under a UI owner."},
+        "slots": {
+          "owner": {"label": {"zh-CN": "所属界面", "en": "Owner"}, "type": "NodeRef", "control": "node_ref"},
+          "value": {"label": {"zh-CN": "数值", "en": "Value"}, "type": "Int", "control": "number"}
+        }
+      },
+      {
+        "target_id": "capability:ui.set_text@1",
+        "kind": "capability",
+        "group_path": ["界面"],
+        "labels": {"zh-CN": "设置文本", "en": "Set Text"},
+        "aliases": {"zh-CN": ["设置文本"], "en": ["set text"]},
+        "descriptions": {"zh-CN": "设置已声明节点的文本内容。", "en": "Set text on a declared node."},
+        "slots": {
+          "target": {"label": {"zh-CN": "目标", "en": "Target"}, "type": "NodeRef", "control": "node_ref"},
+          "content": {"label": {"zh-CN": "内容", "en": "Content"}, "type": "Text", "control": "text"}
+        }
+      },
+      {
+        "target_id": "topic:combat.hit_resolved@1",
+        "kind": "topic",
+        "group_path": ["事件"],
+        "labels": {"zh-CN": "命中结算", "en": "Hit Resolved"},
+        "aliases": {"zh-CN": ["命中结算"], "en": ["hit resolved"]},
+        "descriptions": {"zh-CN": "发布一次版本化的命中结算事件。", "en": "Publish a versioned hit-resolution event."},
+        "slots": {"topic": {"label": {"zh-CN": "主题", "en": "Topic"}, "type": "Topic", "control": "enum"}}
+      },
+      {
+        "target_id": "command:if",
+        "kind": "command",
+        "group_path": ["流程"],
+        "labels": {"zh-CN": "条件", "en": "Condition"},
+        "aliases": {"zh-CN": ["条件"], "en": ["condition"]},
+        "descriptions": {"zh-CN": "只有条件成立时才执行子流程。", "en": "Run the child flow only when the condition is true."},
+        "slots": {"condition": {"label": {"zh-CN": "条件表达式", "en": "Condition"}, "type": "Any", "control": "json"}}
+      },
+      {
+        "target_id": "command:read",
+        "kind": "command",
+        "group_path": ["数据"],
+        "labels": {"zh-CN": "读取字段", "en": "Read Field"},
+        "aliases": {"zh-CN": ["读取字段"], "en": ["read field"]},
+        "descriptions": {"zh-CN": "从已声明的对象读取字段。", "en": "Read a field from a declared object."},
+        "slots": {
+          "target": {"label": {"zh-CN": "目标", "en": "Target"}, "type": "NodeRef", "control": "node_ref"},
+          "field": {"label": {"zh-CN": "字段", "en": "Field"}, "type": "Text", "control": "text"}
+        }
+      },
+      {
+        "target_id": "command:let",
+        "kind": "command",
+        "group_path": ["数据"],
+        "labels": {"zh-CN": "计算并绑定", "en": "Compute and Bind"},
+        "aliases": {"zh-CN": ["计算并绑定"], "en": ["compute and bind"]},
+        "descriptions": {"zh-CN": "计算表达式并绑定一个新的局部值。", "en": "Compute an expression and bind a new local value."},
+        "slots": {"value": {"label": {"zh-CN": "表达式", "en": "Expression"}, "type": "Any", "control": "json"}}
+      }
+    ],
+    "project": [],
+    "personal": []
+  }
+}

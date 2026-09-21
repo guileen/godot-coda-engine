@@ -3,7 +3,7 @@ import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
 const WORDS = new Map([
   ["if", "IF"], ["若", "IF"], ["else", "ELSE"], ["否则", "ELSE"], ["let", "LET"], ["令", "LET"], ["do", "DO"], ["执行", "DO"], ["await", "AWAIT"], ["等待", "AWAIT"], ["read", "READ"], ["读取", "READ"], ["publish", "PUBLISH"], ["发出", "PUBLISH"], ["return", "RETURN"], ["返回", "RETURN"], ["and", "AND"], ["且", "AND"], ["or", "OR"], ["或", "OR"], ["not", "NOT"], ["非", "NOT"], ["true", "TRUE"], ["真", "TRUE"], ["false", "FALSE"], ["假", "FALSE"], ["null", "NULL"], ["无", "NULL"],
 ]);
-const SYMBOLS = [["->", "ARROW"], [">=", "GTE"], ["<=", "LTE"], ["==", "EQ"], ["!=", "NE"], ["&&", "AND"], ["||", "OR"], ["+", "PLUS"], ["-", "MINUS"], ["*", "STAR"], ["/", "SLASH"], ["%", "PERCENT"], [">", "GT"], ["<", "LT"], ["=", "ASSIGN"], ["(", "LPAREN"], [")", "RPAREN"], ["[", "LBRACKET"], ["]", "RBRACKET"], ["{", "LBRACE"], ["}", "RBRACE"], [",", "COMMA"], [":", "COLON"], [".", "DOT"]];
+const SYMBOLS = [["->", "ARROW"], [">=", "GTE"], ["<=", "LTE"], ["==", "EQ"], ["!=", "NE"], ["&&", "AND"], ["||", "OR"], ["+", "PLUS"], ["-", "MINUS"], ["*", "STAR"], ["/", "SLASH"], ["%", "PERCENT"], [">", "GT"], ["<", "LT"], ["=", "ASSIGN"], ["@", "AT"], ["(", "LPAREN"], [")", "RPAREN"], ["[", "LBRACKET"], ["]", "RBRACKET"], ["{", "LBRACE"], ["}", "RBRACE"], [",", "COMMA"], [":", "COLON"], [".", "DOT"]];
 const WORD_OPERATORS = new Map([["大于", "GT"], ["不小于", "GTE"], ["小于", "LT"], ["不大于", "LTE"], ["等于", "EQ"], ["不等于", "NE"], ["加", "PLUS"], ["减", "MINUS"], ["乘", "STAR"], ["除", "SLASH"], ["余", "PERCENT"], ["连接", "CONNECT"]]);
 const EXPRESSION_PRECEDENCE = new Map([["OR", 1], ["AND", 2], ["EQ", 3], ["NE", 3], ["GT", 4], ["GTE", 4], ["LT", 4], ["LTE", 4], ["PLUS", 5], ["MINUS", 5], ["CONNECT", 5], ["STAR", 6], ["SLASH", 6], ["PERCENT", 6]]);
 const OPERATOR_TEXT = new Map([["OR", "or"], ["AND", "and"], ["EQ", "=="], ["NE", "!="], ["GT", ">"], ["GTE", ">="], ["LT", "<"], ["LTE", "<="], ["PLUS", "+"], ["MINUS", "-"], ["CONNECT", "connect"], ["STAR", "*"], ["SLASH", "/"], ["PERCENT", "%"]]);
@@ -62,20 +62,25 @@ export function parseCst(text) {
 
 function expressionFromText(text) { return parseExpressionText(text).expression ?? { ref: String(text).trim() }; }
 
+function parseEventArguments(text) {
+  if (!text?.trim()) return [];
+  return text.split(/[,，]/u).map((item) => item.trim()).filter(Boolean).map((id) => ({ id, name: id, type: "Any" }));
+}
+
 export function parseGse(text) {
   const lexed = lexGse(text); const diagnostics = [...lexed.receipt.diagnostics]; const lines = lexed.source.split("\n"); let moduleId = null; let event = null; const root = []; const stack = [{ indent: -1, nodes: root }];
   for (let index = 0; index < lines.length; index += 1) {
     const raw = lines[index]; const trimmed = raw.trim(); if (!trimmed || trimmed.startsWith("#")) continue; const indent = indentOf(raw);
     const moduleMatch = trimmed.match(/^(?:module|模块)\s+([\w.]+)/u); if (moduleMatch) { moduleId = moduleMatch[1]; continue; }
-    const eventMatch = trimmed.match(/^(?:event|事件)\s+([\w.]+)(?:\s*\[\s*(?:id|标识)\s*[:：]\s*([\w.]+)\s*\])?/u);
-    if (eventMatch) { event = { display_name: eventMatch[1], event_id: eventMatch[2] ?? eventMatch[1], args: [], root }; continue; }
+    const eventMatch = trimmed.match(/^(?:event|事件)\s+([\p{L}\w.]+)(?:\s*[（(]([^）)]*)[）)])?(?:\s*\[\s*(?:id|标识)\s*[:：]\s*([\w.]+)\s*\])?/u);
+    if (eventMatch) { event = { display_name: eventMatch[1], event_id: eventMatch[3] ?? eventMatch[1], args: parseEventArguments(eventMatch[2]), root }; continue; }
     if (!event) { diagnostics.push(gseosDiagnostic("STATEMENT_OUTSIDE_EVENT", "语句必须位于事件中。", { line: index + 1 })); continue; }
     while (stack.length > 1 && indent <= stack.at(-1).indent) stack.pop(); const parent = stack.at(-1).nodes; const nodeId = `imported-${index + 1}`; const span = { start: { line: index + 1, column: indent + 1 }, end: { line: index + 1, column: raw.length + 1 } };
-    const ifMatch = trimmed.match(/^(?:if|若)\s*[（(](.+?)[）)]\s*[:：]?$/u); const letMatch = trimmed.match(/^(?:let|令)\s+([\p{L}_][\p{L}\p{N}_]*)\s*(?:=|为)\s*(.+)$/u); const callMatch = trimmed.match(/^(do|执行|await|等待)\s+([\w.]+)(?:@\d+)?\s*[(（](.*)[)）]/u); const publishMatch = trimmed.match(/^(?:publish|发出)\s+([\w.]+)(?:@\d+)?\s*[(（](.*)[)）]/u); let node = null;
+    const ifMatch = trimmed.match(/^(?:if|若)\s*[（(](.+?)[）)]\s*[:：]?$/u); const letMatch = trimmed.match(/^(?:let|令)\s+([\p{L}_][\p{L}\p{N}_]*)\s*(?:=|为)\s*(.+)$/u); const callMatch = trimmed.match(/^(do|执行|await|等待)\s+([\w.]+)(@\d+)?\s*[(（](.*)[)）]/u); const publishMatch = trimmed.match(/^(?:publish|发出)\s+([\w.]+)(@\d+)?\s*[(（](.*)[)）]/u); let node = null;
     if (ifMatch) { node = { node_id: nodeId, command_id: "if", params: { condition: expressionFromText(ifMatch[1]) }, children: { then: [] }, source_span: span }; parent.push(node); stack.push({ indent, nodes: node.children.then }); continue; }
     if (letMatch) node = { node_id: nodeId, command_id: "let", params: { name: letMatch[1], value: expressionFromText(letMatch[2]) }, source_span: span };
-    else if (callMatch) { const kind = callMatch[1] === "await" || callMatch[1] === "等待" ? "await" : "do"; node = { node_id: nodeId, command_id: kind, params: { capability: callMatch[2], args: parseArguments(callMatch[3]) }, source_span: span }; }
-    else if (publishMatch) node = { node_id: nodeId, command_id: "publish", params: { topic: publishMatch[1], payload: expressionFromText(publishMatch[2]) }, source_span: span };
+    else if (callMatch) { const kind = callMatch[1] === "await" || callMatch[1] === "等待" ? "await" : "do"; node = { node_id: nodeId, command_id: kind, params: { capability: `${callMatch[2]}${callMatch[3] ?? ""}`, args: parseArguments(callMatch[4]) }, source_span: span }; }
+    else if (publishMatch) node = { node_id: nodeId, command_id: "publish", params: { topic: `${publishMatch[1]}${publishMatch[2] ?? ""}`, payload: expressionFromText(publishMatch[3]) }, source_span: span };
     else diagnostics.push(gseosDiagnostic("PARSE_UNSUPPORTED_STATEMENT", `无法解析语句：${trimmed}。`, { line: index + 1 }));
     if (node) parent.push(node);
   }

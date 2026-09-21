@@ -24,9 +24,11 @@ The code generator turns a valid plan into a private runner. Each generated step
 
 Every managed cross-frame wait has one `WaitRegistration` and one completion gate. Completion, failure, cancellation, timeout, owner invalidation, and a late callback compete through that gate, so a run settles once and cleans up once.
 
-## Text surfaces
+## CODA text and EventAsset
 
-Chinese, English, and mixed-language GSE text are import and editing surfaces for the same asset. They use the same lexer, parser, binder, checker, and diagnostic protocol. Text is not a second persistent source of truth, and the current release does not promise long-lived `*.gse` text files.
+Chinese, English, and mixed-language CODA text can be checked and generated from the command line with the same lexer, parser, binder, checker, and diagnostic protocol as the rest of the toolchain. A `.coda` file is a useful source for reviewing a gameplay flow with people or an AI.
+
+The Godot editor's stable project-asset workflow remains the versioned `EventAsset@1` tree saved as `.gse.json`. This release does not yet provide LSP support or a long-lived CODA text editor inside Godot.
 
 ## escape boundary
 

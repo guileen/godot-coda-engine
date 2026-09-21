@@ -4,7 +4,7 @@
 
 The E0 release covers sequence, `if`, local bindings and explicit outputs, constrained `while/each`, synchronous `do`, managed `await`, `call`, `publish`, and constrained `escape`. The reward UI fixture exercises the main end-to-end path.
 
-The release does not cover `spawn/join`, `try/catch/finally`, E1/E2, cross-scene independent runs, background Godot object access, hot-reload recovery, long-lived text sources, LSP, or arbitrary Godot reflection.
+The release does not cover `spawn/join`, `try/catch/finally`, E1/E2, cross-scene independent runs, background Godot object access, hot-reload recovery, LSP or a long-lived CODA text editor inside Godot, or arbitrary Godot reflection.
 
 ## Generated output was rejected
 
@@ -26,7 +26,7 @@ Inspect the capability contract and the owner lifecycle. E0 waits can settle on 
 
 ## The editor does not show an event
 
-Check that the file is a `.gse.json` asset under `gseos/events/`, that the EventAsset validates, and that the `GSEOS Event Editor` plugin is enabled. The dock rebuilds from the asset; its summary text is not a parseable source.
+Check that the file is a `.gse.json` asset under `gseos/events/`, that the EventAsset validates, and that the `CODA Event Editor` plugin is enabled. The dock rebuilds from the asset; its summary text is not a parseable source.
 
 ## Need behavior outside E0
 

@@ -3,10 +3,20 @@ extends RefCounted
 
 var capabilities: GSEOS_CapabilityRegistry
 var events: GSEOS_EventRegistry
+var _next_trace_id := 1
+var last_trace: Dictionary = {}
 
 func _init(capability_registry: GSEOS_CapabilityRegistry, event_registry: GSEOS_EventRegistry) -> void:
 	capabilities = capability_registry
 	events = event_registry
+
+func create_context(args: Dictionary, owner: Node, event_id: String, plan_fingerprint: String) -> GSEOS_RunContext:
+	var context := GSEOS_RunContext.new(args, owner, event_id, plan_fingerprint, _next_trace_id)
+	_next_trace_id += 1
+	return context
+
+func finish_context(context: GSEOS_RunContext) -> void:
+	last_trace = context.runtime_trace()
 
 func read(target: String, args: Dictionary) -> Variant:
 	return capabilities.invoke(target, args)

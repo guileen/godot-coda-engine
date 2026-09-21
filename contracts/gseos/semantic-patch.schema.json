@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/semantic-patch.schema.json",
+  "title": "GSEOS SemanticPatch@1",
+  "type": "object",
+  "required": ["patch_type", "schema_version", "event_id", "base_asset_fingerprint", "contract_fingerprint", "alias_registry_version", "operations"],
+  "properties": {
+    "patch_type": { "const": "SemanticPatch" },
+    "schema_version": { "const": 1 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "base_asset_fingerprint": { "type": "string", "pattern": "^sha256:" },
+    "contract_fingerprint": { "type": "string", "pattern": "^sha256:" },
+    "alias_registry_version": { "type": "string", "minLength": 1 },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["op", "slot_id", "path", "expected", "value", "type"],
+        "properties": {
+          "op": { "const": "replace" },
+          "slot_id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "pattern": "^/" },
+          "expected": {},
+          "value": {},
+          "type": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

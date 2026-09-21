@@ -43,6 +43,11 @@ const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
 setTheme(savedTheme || (systemDark ? 'dark' : 'light'));
 loadMessages().then(() => setTheme(root.dataset.theme));
 
+document.querySelectorAll('[data-language-link]').forEach((link) => link.addEventListener('click', () => {
+  const locale = link.dataset.locale;
+  if (locale === 'en' || locale === 'zh-CN') localStorage.setItem('coda-language', locale);
+}));
+
 themeToggle?.addEventListener('click', () => {
   setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
 });

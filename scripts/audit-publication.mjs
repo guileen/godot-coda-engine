@@ -47,7 +47,7 @@ for (const file of required) {
 }
 
 const tracked = list("git", ["ls-files"]);
-const forbidden = /(^|\/)(tasks\.md|handoff\.md|requirements\.md)$|^workspace\/|^research\/|(^|\/)\.godot\/|(^|\/)\.pages\/|\.import$/;
+const forbidden = /(^|\/)(goal\.md|tasks\.md|handoff\.md|requirements\.md)$|^workspace\/|^research\/|(^|\/)\.godot\/|(^|\/)\.pages\/|\.import$/;
 for (const file of tracked) {
   if (forbidden.test(file)) failures.push(`forbidden tracked publication file: ${file}`);
 }

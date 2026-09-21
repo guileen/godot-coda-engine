@@ -1,104 +1,77 @@
 # Godot CODA Engine
 
-[![CI](https://github.com/guileen/godot-coda-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/guileen/godot-coda-engine/actions/workflows/ci.yml)
+[English](README.md) · [简体中文](README.zh-CN.md) · [CODA AI skill](skills/coda-gameplay-flow/SKILL.md) · [GitHub Pages](https://guileen.github.io/godot-coda-engine/)
 
-**Godot CODA Engine (CODA): a structured game-logic engine for Godot.**
+**CODA is a language for Godot gameplay flow.**
 
-[English documentation](docs/en/README.md) · [中文文档](docs/zh-CN/README.md) · [Language architecture / 语言架构](i18n/README.md) · [Brand assets / 品牌资源](brand/README.md)
+When a player claims a reward, an animation must finish, a UI screen changes, or a dialogue beat waits for a choice, the hard part is often not the individual line of code—it is saying clearly what happens first, what must wait, and what comes next.
 
-Every game event deserves a clear ending.
+Write that order in CODA. It checks the flow and generates GDScript you can inspect. Keep using GDScript for your unique algorithms and direct Godot work.
 
-Godot CODA Engine models gameplay flows as structured events, generates traceable GDScript, and keeps managed waits, cancellation, and ownership explicit. CODA is the short name. It is an authoring and generation layer for Godot—not a replacement for Godot or ordinary GDScript.
+## One small, complete idea
 
-> Godot CODA Engine is the project name selected for this repository; CODA is its short name. The technical implementation is the GSEOS E0 toolchain.
+```coda
+# The player claims a reward. The animation must finish before the next event.
+module ui.reward
+event claim_reward(current_score, reward, score_label, animation_duration) [id: ui.reward.claim]:
+  let new_score = current_score + reward
+  if (reward > 0):
+    await ui.animate_number@1(target: score_label, from: current_score, to: new_score, duration: animation_duration)
+    do ui.set_text@1(target: score_label, content: new_score)
+    publish combat.hit_resolved@1(reward)
+```
 
-## What is here
+In one short flow, CODA makes several important things visible:
 
-- A versioned `EventAsset@1` format with stable event and node IDs.
-- An `EventAsset → ExecutionPlan → GDScript` generation pipeline with source maps and deterministic fingerprints.
-- Versioned capability and topic contracts for the runtime boundary.
-- An E0 runtime with `RunHandle`, `WaitRegistration`, cancellation, timeout, owner invalidation, and late-callback cleanup.
-- English, Chinese, and mixed-language import surfaces for the same structured asset; public prose is organized by locale.
-- A Godot EditorPlugin with an event tree preview and asset transactions.
-- A real reward UI fixture covering read, calculate, await animation, remove/create UI, set text, and publish.
+- **Inputs** — what this game event needs from Godot.
+- **Named values** — `new_score` is clear to both you and an AI.
+- **Conditions** — the reward path only runs when it should.
+- **Cross-frame waits** — the next step cannot race ahead of the animation.
+- **Declared Godot actions** — UI work happens through an explicit capability.
+- **Game events** — the next system receives a deliberate, named signal.
+- **Inspectable output** — CODA generates GDScript plus a source map; it never asks you to blindly trust hidden behavior.
 
-## Five-minute verification
+## Quick start
 
-Requirements:
-
-- Node.js 20 or newer.
-- Godot 4.7.2 for the integration and editor checks. Godot 4.7.2 is the version used for the checked-in evidence.
-
-From the repository root:
+You need Node.js 20+ to check and generate CODA text. Godot 4.7.2 is needed to open and run this repository’s checked-in Godot project.
 
 ```sh
-npm test
-npm run check
-npm run gseos -- manifest
-npm run gseos -- validate gseos/events/ui.reward.apply.gse.json
-npm run gseos -- generate gseos/events/ui.reward.apply.gse.json
-godot --headless --path . --editor --quit
+git clone https://github.com/guileen/godot-coda-engine.git
+cd godot-coda-engine
+npm run coda -- text-check examples/reward-claim.coda
+npm run coda -- text-generate examples/reward-claim.coda
+godot --editor --path .
 ```
 
-The generated runner is written to `.gseos/generated/`. The directory is tool-owned and ignored by Git. A generated file that was edited by hand is rejected rather than silently overwritten.
+Start by changing the reward flow in [`examples/reward-claim.coda`](examples/reward-claim.coda), then run `text-check` again. Generated files appear under `.gseos/generated/`; they are output, not files to edit by hand.
 
-For the full local suite, including Godot headless integration and the runtime export audit, run:
+To work with an AI, give it the [CODA AI skill](skills/coda-gameplay-flow/SKILL.md) and this request:
 
-```sh
-npm run test:all
-```
+> Write a CODA event for my Godot game. First list the event inputs. Make every condition and cross-frame wait explicit. Use only declared capabilities. Keep unusual algorithms and unlisted Godot APIs in GDScript.
 
-After the first commit exists, a fresh checkout can run `npm run verify:clean-clone` to repeat the README command, link, public-surface, and fixture checks from a clean repository state.
+## The language, in brief
 
-## The example
+| CODA form | What it means |
+| --- | --- |
+| `module` | Names a group of related game events. |
+| `event(inputs) [id: ...]` | Declares a triggerable flow and the values it needs. |
+| `let` | Names a value computed by this flow. |
+| `if` | Makes a branch explicit. |
+| `do` | Calls a declared Godot capability that finishes now. |
+| `await` | Calls a declared capability that finishes across frames. |
+| `publish` | Sends a declared event to the next part of the game. |
 
-The checked-in fixture is [`ui.reward.apply.gse.json`](gseos/events/ui.reward.apply.gse.json). Its generated runner contains the following real steps:
+Chinese keywords are also supported: `模块`、`事件`、`标识`、`令`、`若`、`执行`、`等待`、`发出`. The checked-in [`examples/reward-claim.coda`](examples/reward-claim.coda) is a Chinese version of the same reward flow.
 
-```gdscript
-if (ctx.get_value("reward") > 0):
-  ctx.set_value("old_score", await runtime.read("read@1", {"field":"score", "target":ctx.get_value("target_hud")}))
-  ctx.set_value("new_score", (ctx.get_value("old_score") + ctx.get_value("reward")))
-  await runtime.await_capability("ui.animate_number@1", {"from":ctx.get_value("old_score"), "to":ctx.get_value("new_score")})
-  runtime.call_sync("ui.remove_node@1", {"target":ctx.get_value("old_row")})
-  runtime.call_sync("ui.create_reward_row@1", {"owner":ctx.get_value("target_hud"), "value":ctx.get_value("new_score")})
-  runtime.publish("combat.hit_resolved@1", {"damage":ctx.get_value("reward"), "score":ctx.get_value("new_score")})
-```
+CODA is intentionally small today: events, inputs, local values, conditions, synchronous actions, awaited actions, and event publishing. For complex algorithms, arbitrary Godot reflection, or APIs that are not declared for your project, use GDScript. The stable in-project editor workflow also supports structured `.gse.json` event assets.
 
-The generated file is an output, not a second source of truth. The source map points each generated step back to its event node and field.
+## When you need more
 
-## Boundaries
+Most users can start from this README. The deeper references are available when you need them:
 
-The current release scope is E0. It does not include `spawn/join`, `try/catch/finally`, E1/E2, long-lived text source files, LSP, arbitrary Godot reflection, or a runtime interpreter for Chinese/English text or EventAssets. Complex or unsupported logic remains ordinary GDScript or a declared, bounded `escape` node.
+- [5-minute introduction](docs/en/5-minutes-coda.md) / [中文 5 分钟介绍](docs/zh-CN/5-minutes-coda.md)
+- [First gameplay flow](docs/en/first-game-flow.md) / [写出第一个游戏流程](docs/zh-CN/first-game-flow.md)
+- [Language reference](docs/en/language.md) / [CODA 语法小抄](docs/zh-CN/language.md)
+- [Technical documentation](docs/en/README.md) / [中文技术文档](docs/zh-CN/README.md)
 
-See [the English quick start](docs/en/quick-start.md), [English core concepts](docs/en/concepts.md), [English public facts and evidence](docs/en/public-facts.md), and [English scope and troubleshooting](docs/en/scope-and-troubleshooting.md) for the intended workflow, evidence, and failure modes. Chinese readers can use the matching guides in [`docs/zh-CN/`](docs/zh-CN/README.md), including the [中文公开事实与证据](docs/zh-CN/public-facts.md) page.
-
-## 中文入口
-
-Godot CODA Engine（简称 CODA）是面向 Godot 的游戏逻辑引擎：将游戏流程建模为结构化事件，生成可追踪的 GDScript，并明确管理等待、取消和所有权。项目至少支持 English / 简体中文；长文档按语言分别维护在 `docs/en/` 和 `docs/zh-CN/`，官网页面分别位于 `website/en/` 和 `website/zh-CN/`，共享界面文案位于 `i18n/`。
-
-中文用户可从[中文快速开始](docs/zh-CN/quick-start.md)、[中文核心概念](docs/zh-CN/concepts.md)和[中文范围与排障](docs/zh-CN/scope-and-troubleshooting.md)开始。
-
-## Repository layout
-
-- `addons/gseos/` — Godot EditorPlugin and E0 runtime ABI.
-- `contracts/gseos/` — versioned EventAsset, capability, and topic contracts.
-- `gseos/events/` — checked-in authoring assets.
-- `packages/local-core/` — deterministic frontend, planner, code generator, and tests.
-- `tests/` — golden files, integration scripts, and sanitized evidence reports.
-- `docs/en/` and `docs/zh-CN/` — language-specific public technical documentation.
-- `i18n/` — shared interface strings, locale manifest, and translation-extension rules.
-- `brand/` — CODA mark and `Made with CODA` attribution assets.
-- `website/en/` and `website/zh-CN/` — language-specific dependency-free GitHub Pages source.
-- `research/` — design and architecture background.
-
-## Contributing
-
-Start with [CONTRIBUTING.md](CONTRIBUTING.md). New capabilities must first become versioned contracts, and every cross-boundary value must use a stable machine ID. Please keep generated output, editor caches, internal task state, and temporary reports out of commits.
-
-See [CHANGELOG.md](CHANGELOG.md) for the implementation baseline and [the English release policy](docs/en/release-policy.md) or [中文发布策略](docs/zh-CN/release-policy.md) for versioning and publication gates.
-
-The Pages source can be previewed locally with `npx --yes serve .` and opening `/website/`. CODA code is MIT-licensed; documentation and website copy use CC BY 4.0. See [the brand policy](TRADEMARKS.md) for the recommended `Made with CODA` badge. GitHub Pages is the first public website; `coda.ipub.io` is a deferred optional entry.
-
-## Project status
-
-The E0 implementation and its recorded offline, headless, editor, and export checks are complete. The project owner has selected Godot CODA Engine (short name: CODA) for the first release; this repository does not claim trademark clearance or Godot Foundation endorsement.
+For contributors and release verification, run `npm test`, `npm run check`, and `npm run test:all`. CODA code is MIT-licensed; documentation and website copy are CC BY 4.0. See [brand policy](TRADEMARKS.md) for the optional Made with CODA badge.

@@ -14,7 +14,7 @@
     "sourceMap": "source map attached"
   },
   "copy": {
-    "button": "Copy verification commands",
+    "button": "Copy CODA commands",
     "done": "Copied",
     "failed": "Select the commands above to copy them."
   }

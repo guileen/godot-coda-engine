@@ -1,0 +1,439 @@
+{
+  "projection_type": "SemanticProjectionMap",
+  "schema_version": 1,
+  "event_id": "ui.reward.apply",
+  "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9",
+  "contract_fingerprint": "sha256:9111297e18d072e8fb97ce9859d6b337e265755213c7052721d7eba7db359384",
+  "alias_registry_version": "reward-fixture@1",
+  "nodes": [
+    {
+      "node_id": "reward-check",
+      "command_id": "if",
+      "semantic_id": "command:if",
+      "group_path": [
+        "流程"
+      ],
+      "labels": {
+        "zh-CN": "条件",
+        "en": "Condition"
+      },
+      "descriptions": {
+        "zh-CN": "只有条件成立时才执行子流程。",
+        "en": "Run the child flow only when the condition is true."
+      },
+      "slots": [
+        {
+          "slot_id": "reward-check.condition",
+          "field_id": "condition",
+          "path": "/root/0/params/condition",
+          "type": "Any",
+          "control": "json",
+          "value": {
+            "left": {
+              "ref": "reward"
+            },
+            "op": ">",
+            "right": 0
+          },
+          "label": {
+            "zh-CN": "条件表达式",
+            "en": "Condition"
+          }
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "reward-check"
+      }
+    },
+    {
+      "node_id": "read-score",
+      "command_id": "read",
+      "semantic_id": "command:read",
+      "group_path": [
+        "数据"
+      ],
+      "labels": {
+        "zh-CN": "读取字段",
+        "en": "Read Field"
+      },
+      "descriptions": {
+        "zh-CN": "从已声明的对象读取字段。",
+        "en": "Read a field from a declared object."
+      },
+      "slots": [
+        {
+          "slot_id": "read-score.target",
+          "field_id": "target",
+          "path": "/root/0/children/then/0/params/target",
+          "type": "NodeRef",
+          "control": "node_ref",
+          "value": {
+            "ref": "target_hud"
+          },
+          "label": {
+            "zh-CN": "目标",
+            "en": "Target"
+          },
+          "allowed_refs": [
+            "new_row",
+            "old_row",
+            "target_hud"
+          ]
+        },
+        {
+          "slot_id": "read-score.field",
+          "field_id": "field",
+          "path": "/root/0/children/then/0/params/field",
+          "type": "Text",
+          "control": "text",
+          "value": "score",
+          "label": {
+            "zh-CN": "字段",
+            "en": "Field"
+          }
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "read-score"
+      }
+    },
+    {
+      "node_id": "calculate-score",
+      "command_id": "let",
+      "semantic_id": "command:let",
+      "group_path": [
+        "数据"
+      ],
+      "labels": {
+        "zh-CN": "计算并绑定",
+        "en": "Compute and Bind"
+      },
+      "descriptions": {
+        "zh-CN": "计算表达式并绑定一个新的局部值。",
+        "en": "Compute an expression and bind a new local value."
+      },
+      "slots": [
+        {
+          "slot_id": "calculate-score.value",
+          "field_id": "value",
+          "path": "/root/0/children/then/1/params/value",
+          "type": "Any",
+          "control": "json",
+          "value": {
+            "left": {
+              "ref": "old_score"
+            },
+            "op": "+",
+            "right": {
+              "ref": "reward"
+            }
+          },
+          "label": {
+            "zh-CN": "表达式",
+            "en": "Expression"
+          }
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "calculate-score"
+      }
+    },
+    {
+      "node_id": "animate-score",
+      "command_id": "await",
+      "semantic_id": "capability:ui.animate_number@1",
+      "group_path": [
+        "界面",
+        "动画"
+      ],
+      "labels": {
+        "zh-CN": "播放数字动画",
+        "en": "Play Number Animation"
+      },
+      "descriptions": {
+        "zh-CN": "在指定界面上将数值从起始值播放到结束值。",
+        "en": "Animate a value from a start to an end on a UI target."
+      },
+      "slots": [
+        {
+          "slot_id": "animate-score.target",
+          "field_id": "target",
+          "path": "/root/0/children/then/2/params/args/target",
+          "type": "NodeRef",
+          "control": "node_ref",
+          "value": {
+            "ref": "target_hud"
+          },
+          "label": {
+            "zh-CN": "目标",
+            "en": "Target"
+          },
+          "allowed_refs": [
+            "new_row",
+            "old_row",
+            "target_hud"
+          ]
+        },
+        {
+          "slot_id": "animate-score.from",
+          "field_id": "from",
+          "path": "/root/0/children/then/2/params/args/from",
+          "type": "Int",
+          "control": "number",
+          "value": {
+            "ref": "old_score"
+          },
+          "label": {
+            "zh-CN": "起始值",
+            "en": "From"
+          }
+        },
+        {
+          "slot_id": "animate-score.to",
+          "field_id": "to",
+          "path": "/root/0/children/then/2/params/args/to",
+          "type": "Int",
+          "control": "number",
+          "value": {
+            "ref": "new_score"
+          },
+          "label": {
+            "zh-CN": "结束值",
+            "en": "To"
+          }
+        },
+        {
+          "slot_id": "animate-score.duration",
+          "field_id": "duration",
+          "path": "/root/0/children/then/2/params/args/duration",
+          "type": "Duration",
+          "control": "duration",
+          "value": 0.35,
+          "label": {
+            "zh-CN": "时长",
+            "en": "Duration"
+          },
+          "min": 0,
+          "max": 60,
+          "unit": "seconds"
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "animate-score"
+      }
+    },
+    {
+      "node_id": "remove-old-row",
+      "command_id": "do",
+      "semantic_id": "capability:ui.remove_node@1",
+      "group_path": [
+        "界面"
+      ],
+      "labels": {
+        "zh-CN": "删除界面节点",
+        "en": "Remove UI Node"
+      },
+      "descriptions": {
+        "zh-CN": "删除一个已声明的界面节点。",
+        "en": "Remove a declared UI node."
+      },
+      "slots": [
+        {
+          "slot_id": "remove-old-row.target",
+          "field_id": "target",
+          "path": "/root/0/children/then/3/params/args/target",
+          "type": "NodeRef",
+          "control": "node_ref",
+          "value": {
+            "ref": "old_row"
+          },
+          "label": {
+            "zh-CN": "目标",
+            "en": "Target"
+          },
+          "allowed_refs": [
+            "new_row",
+            "old_row",
+            "target_hud"
+          ]
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "remove-old-row"
+      }
+    },
+    {
+      "node_id": "create-row",
+      "command_id": "do",
+      "semantic_id": "capability:ui.create_reward_row@1",
+      "group_path": [
+        "界面"
+      ],
+      "labels": {
+        "zh-CN": "创建奖励条目",
+        "en": "Create Reward Row"
+      },
+      "descriptions": {
+        "zh-CN": "在目标界面下创建奖励条目。",
+        "en": "Create a reward row under a UI owner."
+      },
+      "slots": [
+        {
+          "slot_id": "create-row.owner",
+          "field_id": "owner",
+          "path": "/root/0/children/then/4/params/args/owner",
+          "type": "NodeRef",
+          "control": "node_ref",
+          "value": {
+            "ref": "target_hud"
+          },
+          "label": {
+            "zh-CN": "所属界面",
+            "en": "Owner"
+          },
+          "allowed_refs": [
+            "new_row",
+            "old_row",
+            "target_hud"
+          ]
+        },
+        {
+          "slot_id": "create-row.value",
+          "field_id": "value",
+          "path": "/root/0/children/then/4/params/args/value",
+          "type": "Int",
+          "control": "number",
+          "value": {
+            "ref": "new_score"
+          },
+          "label": {
+            "zh-CN": "数值",
+            "en": "Value"
+          }
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "create-row"
+      }
+    },
+    {
+      "node_id": "set-row-text",
+      "command_id": "do",
+      "semantic_id": "capability:ui.set_text@1",
+      "group_path": [
+        "界面"
+      ],
+      "labels": {
+        "zh-CN": "设置文本",
+        "en": "Set Text"
+      },
+      "descriptions": {
+        "zh-CN": "设置已声明节点的文本内容。",
+        "en": "Set text on a declared node."
+      },
+      "slots": [
+        {
+          "slot_id": "set-row-text.target",
+          "field_id": "target",
+          "path": "/root/0/children/then/5/params/args/target",
+          "type": "NodeRef",
+          "control": "node_ref",
+          "value": {
+            "ref": "new_row"
+          },
+          "label": {
+            "zh-CN": "目标",
+            "en": "Target"
+          },
+          "allowed_refs": [
+            "new_row",
+            "old_row",
+            "target_hud"
+          ]
+        },
+        {
+          "slot_id": "set-row-text.content",
+          "field_id": "content",
+          "path": "/root/0/children/then/5/params/args/content",
+          "type": "Text",
+          "control": "text",
+          "value": {
+            "items": [
+              "+",
+              {
+                "ref": "new_score"
+              }
+            ],
+            "op": "connect"
+          },
+          "label": {
+            "zh-CN": "内容",
+            "en": "Content"
+          }
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "set-row-text"
+      }
+    },
+    {
+      "node_id": "publish-hit",
+      "command_id": "publish",
+      "semantic_id": "topic:combat.hit_resolved@1",
+      "group_path": [
+        "事件"
+      ],
+      "labels": {
+        "zh-CN": "命中结算",
+        "en": "Hit Resolved"
+      },
+      "descriptions": {
+        "zh-CN": "发布一次版本化的命中结算事件。",
+        "en": "Publish a versioned hit-resolution event."
+      },
+      "slots": [
+        {
+          "slot_id": "publish-hit.topic",
+          "field_id": "topic",
+          "path": "/root/0/children/then/6/params/topic",
+          "type": "Topic",
+          "control": "enum",
+          "value": "combat.hit_resolved@1",
+          "label": {
+            "zh-CN": "主题",
+            "en": "Topic"
+          }
+        },
+        {
+          "slot_id": "publish-hit.payload",
+          "field_id": "payload",
+          "path": "/root/0/children/then/6/params/payload",
+          "type": "Any",
+          "control": "json",
+          "value": {
+            "fields": {
+              "damage": {
+                "ref": "reward"
+              },
+              "score": {
+                "ref": "new_score"
+              }
+            },
+            "op": "record"
+          }
+        }
+      ],
+      "source": {
+        "event_id": "ui.reward.apply",
+        "node_id": "publish-hit"
+      }
+    }
+  ]
+}

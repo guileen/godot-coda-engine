@@ -1,0 +1,50 @@
+{
+  "report_version": 1,
+  "stage": "P3-semantic-projection-technical-baseline",
+  "recorded_at": "2026-09-21",
+  "tools": {
+    "node": "22.16.0",
+    "godot": "4.7.2.stable.official.ed1daf0bf"
+  },
+  "fixtures": {
+    "event_asset": {
+      "path": "gseos/events/ui.reward.apply.gse.json",
+      "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9"
+    },
+    "alias_registry": {
+      "path": "gseos/fixtures/ui.reward.apply.alias-registry.json",
+      "registry_version": "reward-fixture@1"
+    },
+    "semantic_projection": {
+      "path": "gseos/fixtures/ui.reward.apply.semantic-map.json",
+      "contract_fingerprint": "sha256:9111297e18d072e8fb97ce9859d6b337e265755213c7052721d7eba7db359384",
+      "node_count": 8
+    },
+    "generated_runner": {
+      "path": ".gseos/generated/ui_reward_apply.gd",
+      "plan_fingerprint": "sha256:33443d65b1eca2c749758712a0a8bbf840bba6556b7da9f965a6b9ae7cccebe8",
+      "source_map": "tests/golden/ui.reward.apply.source-map.json"
+    }
+  },
+  "commands": [
+    { "command": "npm test", "result": "passed", "tests": 11 },
+    { "command": "npm run check", "result": "passed" },
+    { "command": "npm run check:public", "result": "passed" },
+    { "command": "npm run test:godot", "result": "passed", "covers": ["headless runtime", "reward chain", "generated runner trace", "competition cleanup", "asset transaction backup guard", "Event Dock projection preview/commit/rollback"] }
+  ],
+  "acceptance": {
+    "alias_tree_to_flow_reading": "passed",
+    "duration_preview_and_writeback": "passed",
+    "bounded_noderef_selector": "passed",
+    "semantic_asset_generated_diff_preview": "passed",
+    "stale_patch_and_illegal_path_rejection": "passed",
+    "generation_failure_restores_asset_generated_source_and_source_map": "passed",
+    "source_map_slot_location": "passed",
+    "runtime_trace_duration_and_target": "passed"
+  },
+  "non_blocking_environment_diagnostics": [
+    "Godot headless could not create the host user data/log directory in the managed environment.",
+    "Godot reported renderer/ObjectDB cleanup warnings after successful integration exits."
+  ],
+  "external_gate": "G-P3-U remains pending: observe at least 3 target users, with at least 2 completing without maintainer hints."
+}

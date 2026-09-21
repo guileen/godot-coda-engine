@@ -1,5 +1,7 @@
 # 快速开始
 
+想先建立对 CODA 语法的直观印象，而不是立刻跑环境校验？请先阅读[5 分钟认识 CODA](5-minutes-coda.md)。本页面向准备打开当前仓库并运行 Godot 检查的开发者。
+
 本指南会从干净检出运行仓库中提供的奖励事件示例。假设环境中已经安装 Node.js 20+ 和 Godot 4.7.2，并且它们位于 `PATH` 中。
 
 ## 1. 安装仓库
@@ -36,7 +38,7 @@ npm run gseos -- generate gseos/events/ui.reward.apply.gse.json
 godot --editor --path .
 ```
 
-如果尚未启用，请启用 `GSEOS Event Editor` 插件。事件面板从 `gseos/events/` 读取资产，并从结构化资产重新构建预览。
+如果尚未启用，请启用 `CODA Event Editor` 插件。事件面板从 `gseos/events/` 读取资产，并从结构化资产重新构建预览。
 
 ## 5. 运行校验
 

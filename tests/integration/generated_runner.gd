@@ -29,6 +29,19 @@ func _start() -> void:
 		failures.append("generated runner did not execute the complete reward chain")
 	if received.get("score") != 125:
 		failures.append("generated runner publish payload was not received")
+	var trace: Dictionary = runtime.last_trace
+	if trace.get("trace_type", "") != "RuntimeTrace" or trace.get("event_id", "") != "ui.reward.apply" or trace.get("steps", []).is_empty():
+		failures.append("generated runner did not expose a runtime trace")
+	else:
+		var saw_duration := false
+		var saw_target := false
+		for step in trace.steps:
+			if step.get("node_id", "") == "animate-score" and step.get("slot", "") == "duration":
+				saw_duration = true
+			if step.get("node_id", "") == "animate-score" and step.get("slot", "") == "target":
+				saw_target = true
+		if not saw_duration or not saw_target:
+			failures.append("generated runner trace did not retain capability slot locations")
 	if failures.is_empty():
 		print("GSEOS generated runner integration passed")
 	else:

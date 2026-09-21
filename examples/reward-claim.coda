@@ -1,0 +1,8 @@
+# 玩家点下“领取奖励”后：加分、播放数字动画、再继续流程。
+模块 ui.reward
+事件 领取奖励（当前积分，奖励，积分面板，动画时长） [标识：ui.reward.claim]：
+  令 新积分 为 当前积分 加 奖励
+  若（奖励 大于 0）：
+    等待 ui.animate_number@1(target: 积分面板, from: 当前积分, to: 新积分, duration: 动画时长)
+    执行 ui.set_text@1(target: 积分面板, content: 新积分)
+    发出 combat.hit_resolved@1(奖励)

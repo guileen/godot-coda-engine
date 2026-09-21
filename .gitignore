@@ -16,6 +16,7 @@ website/*.import
 brand/*.import
 
 # Workspace-only execution memory; never publish as repository deliverables.
+goal.md
 tasks.md
 handoff.md
 requirements.md

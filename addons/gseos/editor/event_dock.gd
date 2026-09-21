@@ -30,6 +30,12 @@ var _draft_node_id := ""
 var _disk_modified_time := 0
 var _fallback_history: Array[Dictionary] = []
 var _fallback_history_index := -1
+var _projection_map: Dictionary = {}
+var _projection_pending_asset: Dictionary = {}
+var _projection_pending_slot_id := ""
+var _projection_preview_diff := ""
+var _projection_slot_controls: Dictionary = {}
+var _generation_override: Callable = Callable()
 
 const COMMAND_DEFINITIONS := {
 	"if": {"label": "条件 if", "fields": ["condition"]},
@@ -59,6 +65,8 @@ func _ready() -> void:
 	toolbar.add_child(_button("文本导入", _open_text_import))
 	toolbar.add_child(_button("确认草稿", _confirm_draft))
 	toolbar.add_child(_button("取消草稿", _cancel_draft))
+	toolbar.add_child(_button("确认投影写回", _commit_projection_preview))
+	toolbar.add_child(_button("取消投影预览", _cancel_projection_preview))
 	toolbar.add_child(_button("删除节点", _delete_selected_node))
 	toolbar.add_child(_button("复制节点", _copy_selected_node))
 	toolbar.add_child(_button("上移", func(): _move_selected_node(-1)))
@@ -147,6 +155,10 @@ func _on_event_selected(index: int) -> void:
 	_name_edit.text = String(_selected_asset.get("display_name", _selected_asset.get("event_id", "")))
 	_update_disk_modified_time()
 	_selected_node_id = ""
+	_projection_pending_asset = {}
+	_projection_pending_slot_id = ""
+	_projection_preview_diff = ""
+	_refresh_projection_map()
 	_rebuild_tree()
 	_refresh_slot_options()
 
@@ -160,8 +172,11 @@ func _rebuild_tree() -> void:
 
 func _add_node(parent: TreeItem, node: Dictionary) -> void:
 	var item := _tree.create_item(parent)
-	item.set_text(0, "%s · %s" % [node.get("command_id", "?"), node.get("node_id", "?")])
-	item.set_tooltip_text(0, JSON.stringify(node.get("params", {})))
+	var projection_node := _projection_node(String(node.get("node_id", "")))
+	var labels: Dictionary = projection_node.get("labels", {})
+	var display_label := String(labels.get("zh-CN", labels.get("en", node.get("command_id", "?"))))
+	item.set_text(0, "%s · %s" % [display_label, node.get("node_id", "?")])
+	item.set_tooltip_text(0, "%s\n%s" % [projection_node.get("semantic_id", node.get("command_id", "?")), JSON.stringify(node.get("params", {}))])
 	item.set_metadata(0, String(node.get("node_id", "")))
 	for slot in node.get("children", {}).keys():
 		for child in node.children[slot]:
@@ -216,7 +231,9 @@ func _render_inspector() -> void:
 		return
 	var command_id := String(node.get("command_id", ""))
 	var definition: Dictionary = COMMAND_DEFINITIONS.get(command_id, {})
-	_inspector_hint.text = "node_id=%s\ncommand=%s\nparams=%s" % [_selected_node_id, command_id, JSON.stringify(node.get("params", {}))]
+	var projection_node := _projection_node(_selected_node_id)
+	var projection_labels: Dictionary = projection_node.get("labels", {})
+	_inspector_hint.text = "%s\nnode_id=%s\nsemantic_id=%s\nparams=%s" % [projection_labels.get("zh-CN", command_id), _selected_node_id, projection_node.get("semantic_id", command_id), JSON.stringify(node.get("params", {}))]
 	_inspector.add_child(_button("显示 source-map 定位", _show_source_map_location))
 	_inspector.add_child(_button("检查受管生成物", _inspect_managed_artifact))
 	_inspector.add_child(_button("显示诊断上下文", _show_diagnostic_context))
@@ -233,6 +250,7 @@ func _render_inspector() -> void:
 		condition_row.add_child(_button("应用条件", _apply_condition_edit))
 		_inspector.add_child(condition_row)
 	if not node.get("draft", false):
+		_render_projection_slots(projection_node)
 		return
 	var pending: Array = definition.get("fields", [])
 	if pending.is_empty():
@@ -255,6 +273,244 @@ func _render_inspector() -> void:
 		row.add_child(edit)
 		_inspector.add_child(row)
 		_draft_param_controls[field] = edit
+
+func _projection_node(node_id: String) -> Dictionary:
+	for item in _projection_map.get("nodes", []):
+		if String(item.get("node_id", "")) == node_id:
+			return item
+	return {}
+
+func _refresh_projection_map() -> void:
+	_projection_map = {}
+	if _selected_path.is_empty():
+		return
+	var output: Array[String] = []
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var asset_path := ProjectSettings.globalize_path(_selected_path)
+	var alias_path := ProjectSettings.globalize_path("res://gseos/fixtures/ui.reward.apply.alias-registry.json")
+	var exit_code := OS.execute("node", [cli, "project", asset_path, alias_path], output, true)
+	if exit_code != 0 or output.is_empty():
+		_status.text = "语义投影生成失败；保留 EventAsset 原始树。"
+		return
+	var parsed = JSON.parse_string("\n".join(output))
+	if parsed is Dictionary and parsed.get("receipt", {}).get("ok", false):
+		_projection_map = parsed.get("map", {})
+	else:
+		_status.text = "语义投影诊断：%s" % _format_diagnostics(parsed.get("receipt", {}).get("diagnostics", []) if parsed is Dictionary else [])
+
+func _render_projection_slots(projection_node: Dictionary) -> void:
+	_projection_slot_controls.clear()
+	if projection_node.is_empty():
+		return
+	var slots: Array = projection_node.get("slots", [])
+	if slots.is_empty():
+		return
+	var title := Label.new()
+	title.text = "可编辑槽位（先预览，确认后才写回）"
+	_inspector.add_child(title)
+	for slot in slots:
+		var row := HBoxContainer.new()
+		var labels: Dictionary = slot.get("label", {})
+		var label := Label.new()
+		label.text = String(labels.get("zh-CN", slot.get("field_id", "slot")))
+		label.custom_minimum_size.x = 90
+		row.add_child(label)
+		var control: Control
+		if String(slot.get("type", "")) == "NodeRef":
+			var select := OptionButton.new()
+			select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var allowed_refs: Array = slot.get("allowed_refs", [])
+			for allowed_ref in allowed_refs:
+				select.add_item(String(allowed_ref))
+				select.set_item_metadata(select.item_count - 1, String(allowed_ref))
+			var current_ref := String(slot.get("value", {}).get("ref", ""))
+			for option_index in select.item_count:
+				if String(select.get_item_metadata(option_index)) == current_ref:
+					select.select(option_index)
+					break
+			control = select
+		else:
+			var edit := LineEdit.new()
+			edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			edit.text = _projection_value_text(slot.get("value"))
+			control = edit
+		row.add_child(control)
+		row.add_child(_button("预览", Callable(self, "_preview_projection_slot").bind(slot)))
+		_inspector.add_child(row)
+		_projection_slot_controls[String(slot.get("slot_id", ""))] = control
+	if not _projection_preview_diff.is_empty():
+		var diff := RichTextLabel.new()
+		diff.bbcode_enabled = false
+		diff.custom_minimum_size.y = 80
+		diff.text = _projection_preview_diff
+		_inspector.add_child(diff)
+
+func _projection_value_text(value) -> String:
+	if value is Dictionary and value.has("ref"):
+		return String(value.get("ref"))
+	if value is String:
+		return value
+	return JSON.stringify(value)
+
+func _parse_projection_value(slot: Dictionary, text: String) -> Dictionary:
+	var type := String(slot.get("type", "Any"))
+	if type == "NodeRef":
+		var ref := text.strip_edges()
+		if ref.is_empty() or (slot.get("allowed_refs", []) is Array and not slot.get("allowed_refs", []).is_empty() and not slot.get("allowed_refs", []).has(ref)):
+			return {"ok": false, "message": "目标引用不在当前声明的类型兼容范围内。"}
+		return {"ok": true, "value": {"ref": ref}}
+	if type == "Duration" or type == "Float":
+		if not text.is_valid_float():
+			return {"ok": false, "message": "数值槽位必须是数字。"}
+		var number := float(text)
+		if slot.has("min") and number < float(slot.get("min")):
+			return {"ok": false, "message": "数值低于契约下限。"}
+		if slot.has("max") and number > float(slot.get("max")):
+			return {"ok": false, "message": "数值超出契约范围。"}
+		return {"ok": true, "value": number}
+	if type == "Int":
+		if not text.is_valid_int():
+			return {"ok": false, "message": "整数槽位必须是整数。"}
+		return {"ok": true, "value": int(text)}
+	if type == "Text":
+		return {"ok": true, "value": text}
+	var parsed = JSON.parse_string(text)
+	return {"ok": parsed != null or text == "null", "value": parsed}
+
+func _set_json_pointer(root: Dictionary, pointer: String, value) -> bool:
+	if not pointer.begins_with("/"):
+		return false
+	var parts := pointer.trim_prefix("/").split("/")
+	var current: Variant = root
+	for index in parts.size() - 1:
+		var part := String(parts[index]).replace("~1", "/").replace("~0", "~")
+		if current is Dictionary and current.has(part):
+			current = current[part]
+		elif current is Array and part.is_valid_int() and int(part) < current.size():
+			current = current[int(part)]
+		else:
+			return false
+	var last := String(parts[-1]).replace("~1", "/").replace("~0", "~")
+	if current is Dictionary and current.has(last):
+		current[last] = value
+		return true
+	if current is Array and last.is_valid_int() and int(last) < current.size():
+		current[int(last)] = value
+		return true
+	return false
+
+func _preview_generated_diff(asset: Dictionary) -> Dictionary:
+	var stamp := "%s" % Time.get_ticks_usec()
+	var temp_asset := "/tmp/gseos-projection-preview-%s.gse.json" % stamp
+	var temp_generated := "/tmp/gseos-projection-preview-%s.gd" % stamp
+	var file := FileAccess.open(temp_asset, FileAccess.WRITE)
+	if file == null:
+		return {"ok": false, "message": "无法创建临时生成预览文件。"}
+	file.store_string(JSON.stringify(asset, "  ") + "\n")
+	file.close()
+	var output: Array[String] = []
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var exit_code := OS.execute("node", [cli, "generate", temp_asset, temp_generated], output, true)
+	if exit_code != 0:
+		DirAccess.remove_absolute(temp_asset)
+		DirAccess.remove_absolute(temp_generated)
+		return {"ok": false, "message": "GDScript 预生成失败：%s" % " ".join(output)}
+	var next_file := FileAccess.open(temp_generated, FileAccess.READ)
+	var current_file := FileAccess.open(_generated_path(), FileAccess.READ)
+	if next_file == null or current_file == null:
+		DirAccess.remove_absolute(temp_asset)
+		DirAccess.remove_absolute(temp_generated)
+		return {"ok": false, "message": "缺少当前或预计生成的 GDScript，无法展示三层差异。"}
+	var next_lines := next_file.get_as_text().split("\n")
+	var current_lines := current_file.get_as_text().split("\n")
+	next_file.close()
+	current_file.close()
+	var changed_lines: Array[String] = []
+	var count := maxi(current_lines.size(), next_lines.size())
+	for index in count:
+		var before := current_lines[index] if index < current_lines.size() else ""
+		var after := next_lines[index] if index < next_lines.size() else ""
+		if before != after:
+			changed_lines.append("L%d: - %s / + %s" % [index + 1, before.strip_edges(), after.strip_edges()])
+	DirAccess.remove_absolute(temp_asset)
+	DirAccess.remove_absolute(temp_generated)
+	return {"ok": true, "message": "GDScript 预计差异（%d 行）：\n%s" % [changed_lines.size(), "\n".join(changed_lines.slice(0, 8))]}
+
+func _preview_projection_slot(slot: Dictionary) -> void:
+	var slot_id := String(slot.get("slot_id", ""))
+	var control: Control = _projection_slot_controls.get(slot_id)
+	if control == null:
+		return
+	var text := ""
+	if control is OptionButton:
+		var selected := (control as OptionButton).selected
+		if selected >= 0:
+			text = String((control as OptionButton).get_item_metadata(selected))
+	else:
+		text = (control as LineEdit).text
+	var parsed := _parse_projection_value(slot, text)
+	if not parsed.ok:
+		_status.text = "槽位预览失败：%s" % parsed.message
+		return
+	var next := _selected_asset.duplicate(true)
+	if not _set_json_pointer(next, String(slot.get("path", "")), parsed.value):
+		_status.text = "槽位路径不存在；未写入资产。"
+		return
+	var generated_preview := _preview_generated_diff(next)
+	if not generated_preview.ok:
+		_status.text = "槽位预览失败：%s" % generated_preview.message
+		return
+	_projection_pending_asset = next
+	_projection_pending_slot_id = slot_id
+	var source_range := "%s:%s" % [slot.get("source", {}).get("generated_start", "?"), slot.get("source", {}).get("generated_end", "?")]
+	_projection_preview_diff = "语义差异 %s：\n- %s\n+ %s\n\nEventAsset 路径：%s\n预计 GDScript/source-map 范围：%s\n%s\n\n确认前均未写入磁盘。" % [slot_id, _projection_value_text(slot.get("value")), _projection_value_text(parsed.value), slot.get("path", ""), source_range, generated_preview.message]
+	_render_inspector()
+	_status.text = "已预览语义/EventAsset/GDScript 差异；请确认投影写回或取消。"
+
+func _cancel_projection_preview() -> void:
+	_projection_pending_asset = {}
+	_projection_pending_slot_id = ""
+	_projection_preview_diff = ""
+	_rebuild_tree()
+	_status.text = "已取消投影预览；EventAsset 未改变。"
+
+func _commit_projection_preview() -> void:
+	if _projection_pending_asset.is_empty():
+		return
+	if FileAccess.get_modified_time(_selected_path) != _disk_modified_time:
+		_status.text = "投影预览已过期；磁盘资产已变化，请重新加载后再预览。"
+		_cancel_projection_preview()
+		return
+	var before := _selected_asset.duplicate(true)
+	var saved := _store.save_asset(_selected_path, _projection_pending_asset)
+	if not saved.saved:
+		_status.text = _format_diagnostics(saved.receipt.diagnostics)
+		return
+	var generated := _generate_selected_asset()
+	if not generated.ok:
+		_store.save_asset(_selected_path, before)
+		_update_disk_modified_time()
+		_status.text = "生成失败；已恢复原 EventAsset，未留下混合版本。%s" % generated.get("message", "")
+		return
+	_record_fallback_history(_selected_path, before, _projection_pending_asset, "确认语义投影写回")
+	_selected_asset = _projection_pending_asset
+	_update_disk_modified_time()
+	_projection_pending_asset = {}
+	_projection_pending_slot_id = ""
+	_projection_preview_diff = ""
+	_refresh_projection_map()
+	_rebuild_tree()
+	_status.text = "语义投影已校验写回；EventAsset、GDScript 与 source map 已重新生成。"
+
+func _generate_selected_asset() -> Dictionary:
+	if _generation_override.is_valid():
+		var overridden = _generation_override.call(_selected_path)
+		return overridden if overridden is Dictionary else {"ok": bool(overridden)}
+	var output: Array[String] = []
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var asset_path := ProjectSettings.globalize_path(_selected_path)
+	var exit_code := OS.execute("node", [cli, "generate", asset_path], output, true)
+	return {"ok": exit_code == 0, "message": " ".join(output)}
 
 func _generated_path() -> String:
 	return "res://.gseos/generated/%s.gd" % String(_selected_asset.get("event_id", "")).replace(".", "_")
@@ -623,8 +879,12 @@ func _reload_selected_from_disk() -> void:
 	_draft_asset = {}
 	_draft_node_id = ""
 	_selected_node_id = ""
+	_projection_pending_asset = {}
+	_projection_pending_slot_id = ""
+	_projection_preview_diff = ""
 	_name_edit.text = String(_selected_asset.get("display_name", _selected_asset.get("event_id", "")))
 	_update_disk_modified_time()
+	_refresh_projection_map()
 	_rebuild_tree()
 	_refresh_slot_options()
 	_status.text = "已从磁盘重载 %s；树、摘要、选择和诊断已重建。" % _selected_asset.get("event_id", "")

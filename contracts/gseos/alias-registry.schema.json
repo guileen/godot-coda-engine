@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/alias-registry.schema.json",
+  "title": "GSEOS AliasRegistry@1",
+  "type": "object",
+  "required": ["registry_type", "schema_version", "registry_version", "layers"],
+  "properties": {
+    "registry_type": { "const": "AliasRegistry" },
+    "schema_version": { "const": 1 },
+    "registry_version": { "type": "string", "minLength": 1 },
+    "default_locale": { "type": "string", "minLength": 2 },
+    "layers": {
+      "type": "object",
+      "required": ["official", "project", "personal"],
+      "properties": {
+        "official": { "$ref": "#/$defs/entryList" },
+        "project": { "$ref": "#/$defs/entryList" },
+        "personal": { "$ref": "#/$defs/entryList" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "entryList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["target_id", "kind", "group_path", "labels", "aliases", "descriptions", "slots"],
+      "properties": {
+        "target_id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["capability", "topic", "command", "field"] },
+        "group_path": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "labels": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } },
+        "aliases": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string", "minLength": 1 } } },
+        "descriptions": { "type": "object", "additionalProperties": { "type": "string" } },
+        "slots": { "type": "object", "additionalProperties": { "$ref": "#/$defs/slot" } }
+      },
+      "additionalProperties": false
+    },
+    "slot": {
+      "type": "object",
+      "required": ["label", "type", "control"],
+      "properties": {
+        "label": { "type": "object", "additionalProperties": { "type": "string" } },
+        "type": { "type": "string", "minLength": 1 },
+        "control": { "enum": ["number", "duration", "node_ref", "text", "enum", "json"] },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "unit": { "type": "string" },
+        "allowed_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

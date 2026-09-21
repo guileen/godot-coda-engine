@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/user-observation.schema.json",
+  "title": "GSEOS P3 UserObservation@1",
+  "type": "object",
+  "required": ["observation_type", "schema_version", "study_id", "observations"],
+  "properties": {
+    "observation_type": { "const": "P3UserObservation" },
+    "schema_version": { "const": 1 },
+    "study_id": { "type": "string", "pattern": "^p3-[a-z0-9-]+$" },
+    "observations": { "type": "array", "items": { "$ref": "#/$defs/observation" } }
+  },
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "required": ["participant_id", "role_profile", "consent", "tasks", "hint_count", "outcome"],
+      "properties": {
+        "participant_id": { "type": "string", "pattern": "^u-[0-9]{3}$" },
+        "role_profile": { "type": "string", "minLength": 1 },
+        "consent": { "type": "object", "required": ["recorded", "recording_allowed"], "properties": { "recorded": { "const": true }, "recording_allowed": { "type": "boolean" } }, "additionalProperties": false },
+        "tasks": {
+          "type": "object",
+          "required": ["find_alias", "restate_flow", "edit_duration", "preview_diff", "commit_and_run", "locate_runtime"],
+          "properties": {
+            "find_alias": { "$ref": "#/$defs/taskResult" },
+            "restate_flow": { "$ref": "#/$defs/taskResult" },
+            "edit_duration": { "$ref": "#/$defs/taskResult" },
+            "preview_diff": { "$ref": "#/$defs/taskResult" },
+            "commit_and_run": { "$ref": "#/$defs/taskResult" },
+            "locate_runtime": { "$ref": "#/$defs/taskResult" }
+          },
+          "additionalProperties": false
+        },
+        "hint_count": { "type": "integer", "minimum": 0 },
+        "outcome": { "enum": ["pass", "fail", "blocked"] },
+        "quote_summaries": { "type": "array", "items": { "type": "string" } },
+        "blockers": { "type": "array", "items": { "$ref": "#/$defs/blocker" } }
+      },
+      "additionalProperties": false
+    },
+    "taskResult": {
+      "type": "object",
+      "required": ["result", "hint_free"],
+      "properties": { "result": { "enum": ["pass", "fail", "blocked"] }, "hint_free": { "type": "boolean" } },
+      "additionalProperties": false
+    },
+    "blocker": {
+      "type": "object",
+      "required": ["stage", "summary"],
+      "properties": { "stage": { "enum": ["alias_tree", "flow_reading", "control", "preview", "transaction", "runtime", "location"] }, "summary": { "type": "string", "minLength": 1 } },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

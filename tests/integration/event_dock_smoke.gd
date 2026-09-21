@@ -111,6 +111,41 @@ func _start() -> void:
 	var reward_backup: Dictionary = STORE.new().load_asset("res://gseos/events/ui.reward.apply.gse.json").asset
 	dock._selected_path = "res://gseos/events/ui.reward.apply.gse.json"
 	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
+	dock._selected_node_id = "animate-score"
+	dock._rebuild_tree()
+	var duration_slot: Dictionary = {}
+	for candidate in dock._projection_node("animate-score").get("slots", []):
+		if candidate.get("slot_id", "") == "animate-score.duration":
+			duration_slot = candidate
+	if duration_slot.is_empty():
+		failures.append("Event Dock did not expose the duration projection slot")
+	else:
+		if not (dock._projection_slot_controls["animate-score.target"] is OptionButton) or (dock._projection_slot_controls["animate-score.target"] as OptionButton).item_count != 3:
+			failures.append("Event Dock did not expose a bounded NodeRef selector")
+		(dock._projection_slot_controls["animate-score.duration"] as LineEdit).text = "0.5"
+		dock._preview_projection_slot(duration_slot)
+		if dock._selected_asset.root[0].children.then[2].params.args.duration != 0.35 or dock._projection_pending_asset.root[0].children.then[2].params.args.duration != 0.5:
+			failures.append("Event Dock projection preview wrote before confirmation or missed the pending value")
+		var before_failure_generated := FileAccess.get_file_as_string(generated_path)
+		var before_failure_source_map := FileAccess.get_file_as_string(generated_path + ".map.json")
+		dock._generation_override = func(_path): return {"ok": false, "message": "injected generation failure"}
+		dock._commit_projection_preview()
+		if dock._selected_asset.root[0].children.then[2].params.args.duration != 0.35 or STORE.new().load_asset(dock._selected_path).asset.root[0].children.then[2].params.args.duration != 0.35 or FileAccess.get_file_as_string(generated_path) != before_failure_generated or FileAccess.get_file_as_string(generated_path + ".map.json") != before_failure_source_map or not dock._status.text.contains("未留下混合版本"):
+			failures.append("Event Dock generation failure did not restore the single known-good version")
+		dock._generation_override = Callable()
+		dock._reload_selected_from_disk()
+		dock._selected_node_id = "animate-score"
+		dock._rebuild_tree()
+		duration_slot = dock._projection_node("animate-score").get("slots", [])[3]
+		(dock._projection_slot_controls["animate-score.duration"] as LineEdit).text = "0.5"
+		dock._preview_projection_slot(duration_slot)
+		dock._commit_projection_preview()
+		if dock._selected_asset.root[0].children.then[2].params.args.duration != 0.5:
+			failures.append("Event Dock projection confirmation did not write back the slot")
+	STORE.new().save_asset("res://gseos/events/ui.reward.apply.gse.json", reward_backup)
+	var restore_output: Array[String] = []
+	OS.execute("node", [ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js"), "generate", ProjectSettings.globalize_path("res://gseos/events/ui.reward.apply.gse.json")], restore_output, true)
+	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
 	dock._selected_node_id = "reward-check"
 	dock._rebuild_tree()
 	dock._condition_edit.text = "{\"op\":\">\",\"left\":{\"ref\":\"reward\"},\"right\":10}"

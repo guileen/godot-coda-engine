@@ -20,6 +20,13 @@ func _start() -> void:
 	var loaded := store.load_asset(test_path)
 	if not loaded.receipt.ok or not loaded.asset.get("test_unknown", {}).get("nested", false):
 		failures.append("reload did not preserve unknown fields")
+	var backup_marker := FileAccess.open(test_path + ".bak", FileAccess.WRITE)
+	backup_marker.store_string("incomplete replacement")
+	backup_marker.close()
+	var blocked_by_backup := store.save_asset(test_path, original)
+	if blocked_by_backup.saved or store.load_asset(test_path).asset.get("event_id", "") != original.get("event_id", ""):
+		failures.append("incomplete backup marker did not block a potentially mixed-version save")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".bak"))
 
 	var invalid := original.duplicate(true)
 	invalid["event_id"] = "INVALID ID"

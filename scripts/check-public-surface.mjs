@@ -20,6 +20,7 @@ async function read(relativePath) {
 
 const required = [
   "README.md",
+  "README.zh-CN.md",
   "LICENSE",
   "LICENSE-DOCS.md",
   "TRADEMARKS.md",
@@ -44,8 +45,19 @@ const required = [
   "website/og-card.svg",
   "docs/README.md",
   "docs/en/README.md",
+  "docs/en/5-minutes-coda.md",
+  "docs/en/first-game-flow.md",
+  "docs/en/language.md",
+  "docs/en/feedback.md",
   "docs/en/public-facts.md",
   "docs/zh-CN/README.md",
+  "docs/zh-CN/5-minutes-coda.md",
+  "docs/zh-CN/first-game-flow.md",
+  "docs/zh-CN/language.md",
+  "docs/zh-CN/feedback.md",
+  "examples/reward-claim.coda",
+  ".github/ISSUE_TEMPLATE/feedback.md",
+  "skills/coda-gameplay-flow/SKILL.md",
   "docs/zh-CN/public-facts.md",
   "i18n/README.md",
   "i18n/manifest.json",
@@ -75,6 +87,7 @@ const localizedDocs = [
 ];
 const publicFiles = [
   "README.md",
+  "README.zh-CN.md",
   "LICENSE",
   "LICENSE-DOCS.md",
   "TRADEMARKS.md",
@@ -89,6 +102,17 @@ const publicFiles = [
   "docs/README.md",
   "docs/en/README.md",
   "docs/zh-CN/README.md",
+  "docs/en/5-minutes-coda.md",
+  "docs/en/first-game-flow.md",
+  "docs/en/language.md",
+  "docs/en/feedback.md",
+  "docs/zh-CN/5-minutes-coda.md",
+  "docs/zh-CN/first-game-flow.md",
+  "docs/zh-CN/language.md",
+  "docs/zh-CN/feedback.md",
+  "examples/reward-claim.coda",
+  ".github/ISSUE_TEMPLATE/feedback.md",
+  "skills/coda-gameplay-flow/SKILL.md",
   "website/index.html",
   "website/assets/styles.css",
   "website/assets/app.js",
@@ -117,6 +141,9 @@ const website = await Promise.all(["website/en/index.html", "website/zh-CN/index
 const websiteCombined = website.join("\n");
 for (const marker of ["og:image", "twitter:card", "meta name=\"description\"", "data-theme-toggle", "data-copy", "prefers-reduced-motion", "../../i18n/"]) {
   if (!(landing + websiteCombined).includes(marker)) warnings.push(`public surface marker not found: ${marker}`);
+}
+for (const marker of ["feedback.html", "issues/new?template=feedback.md", "Product feedback"]) {
+  if (!(landing + websiteCombined + combined).includes(marker)) failures.push(`feedback channel marker not found: ${marker}`);
 }
 
 for (const name of localizedDocs) {
