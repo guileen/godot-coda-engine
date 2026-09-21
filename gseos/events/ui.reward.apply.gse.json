@@ -1,0 +1,168 @@
+{
+  "args": [
+    {
+      "id": "reward",
+      "name": "奖励",
+      "type": "Int"
+    },
+    {
+      "id": "target_hud",
+      "name": "目标界面",
+      "type": "NodeRef"
+    },
+    {
+      "id": "old_row",
+      "name": "旧奖励条目",
+      "type": "NodeRef"
+    }
+  ],
+  "asset_type": "EventAsset",
+  "display_name": "应用奖励",
+  "event_id": "ui.reward.apply",
+  "owner": {
+    "arg": "target_hud",
+    "kind": "argument"
+  },
+  "recovery": "E0",
+  "reentry": "reject",
+  "root": [
+    {
+      "children": {
+        "then": [
+          {
+            "children": {},
+            "command_id": "read",
+            "node_id": "read-score",
+            "params": {
+              "bind": "old_score",
+              "field": "score",
+              "target": {
+                "ref": "target_hud"
+              }
+            }
+          },
+          {
+            "children": {},
+            "command_id": "let",
+            "node_id": "calculate-score",
+            "params": {
+              "name": "new_score",
+              "value": {
+                "left": {
+                  "ref": "old_score"
+                },
+                "op": "+",
+                "right": {
+                  "ref": "reward"
+                }
+              }
+            }
+          },
+          {
+            "children": {},
+            "command_id": "await",
+            "node_id": "animate-score",
+            "params": {
+              "args": {
+                "duration": 0.35,
+                "from": {
+                  "ref": "old_score"
+                },
+                "target": {
+                  "ref": "target_hud"
+                },
+                "to": {
+                  "ref": "new_score"
+                }
+              },
+              "capability": "ui.animate_number@1"
+            }
+          },
+          {
+            "children": {},
+            "command_id": "do",
+            "node_id": "remove-old-row",
+            "params": {
+              "args": {
+                "target": {
+                  "ref": "old_row"
+                }
+              },
+              "capability": "ui.remove_node@1"
+            }
+          },
+          {
+            "children": {},
+            "command_id": "do",
+            "node_id": "create-row",
+            "params": {
+              "args": {
+                "bind": "new_row",
+                "owner": {
+                  "ref": "target_hud"
+                },
+                "value": {
+                  "ref": "new_score"
+                }
+              },
+              "capability": "ui.create_reward_row@1"
+            }
+          },
+          {
+            "children": {},
+            "command_id": "do",
+            "node_id": "set-row-text",
+            "params": {
+              "args": {
+                "content": {
+                  "items": [
+                    "+",
+                    {
+                      "ref": "new_score"
+                    }
+                  ],
+                  "op": "connect"
+                },
+                "target": {
+                  "ref": "new_row"
+                }
+              },
+              "capability": "ui.set_text@1"
+            }
+          },
+          {
+            "children": {},
+            "command_id": "publish",
+            "node_id": "publish-hit",
+            "params": {
+              "payload": {
+                "fields": {
+                  "damage": {
+                    "ref": "reward"
+                  },
+                  "score": {
+                    "ref": "new_score"
+                  }
+                },
+                "op": "record"
+              },
+              "topic": "combat.hit_resolved@1"
+            }
+          }
+        ]
+      },
+      "command_id": "if",
+      "node_id": "reward-check",
+      "params": {
+        "condition": {
+          "left": {
+            "ref": "reward"
+          },
+          "op": ">",
+          "right": 0.0
+        }
+      }
+    }
+  ],
+  "schema_version": 1.0
+}

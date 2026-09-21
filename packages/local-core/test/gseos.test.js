@@ -1,0 +1,94 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { EventRegistry, RunContext, RunStatus, WaitRegistration, assetFingerprint, bindEventAsset, createSchemaRegistry, formatGse, generateGdscript, lexGse, lowerToExecutionPlan, migrateEventAsset, parseCst, parseExpressionText, parseGse, resolveSourceRef, roundTripEventAsset, stableStringify, validateCapabilityManifest, validateEventAsset, verifyManagedArtifact } from "../src/index.js";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
+const manifest = JSON.parse(await readFile(resolve(root, "contracts/gseos/capabilities.json"), "utf8"));
+const goldenSourceMap = JSON.parse(await readFile(resolve(root, "tests/golden/ui.reward.apply.source-map.json"), "utf8"));
+const registry = createSchemaRegistry(manifest);
+
+test("EventAsset 保留未知字段并稳定排序", () => {
+  const extended = { ...asset, z_unknown: { b: 2, a: 1 }, a_unknown: true };
+  assert.equal(validateEventAsset(extended, { capabilities: manifest.capabilities }).ok, true);
+  assert.equal(stableStringify({ b: 1, a: 2 }), '{"a":2,"b":1}');
+  assert.equal(assetFingerprint(extended), assetFingerprint({ a_unknown: true, ...asset, z_unknown: { a: 1, b: 2 } }));
+});
+
+test("能力清单、引用、能力版本和首发范围有统一诊断", () => {
+  assert.equal(validateCapabilityManifest(manifest).ok, true);
+  assert.equal(bindEventAsset(asset, registry).receipt.ok, true);
+  const invalid = { ...asset, root: [{ ...asset.root[0], children: { then: [{ node_id: "bad", command_id: "await", params: { capability: "ui.unknown@9" } }] } }] };
+  const plan = lowerToExecutionPlan(invalid, registry);
+  assert.equal(plan.plan, null);
+  assert.ok(plan.receipt.diagnostics.some((item) => item.code === "CAPABILITY_VERSION_MISMATCH"));
+  const unsupported = { ...asset, root: [{ node_id: "spawned", command_id: "spawn", params: {} }] };
+  assert.equal(lowerToExecutionPlan(unsupported, registry).plan, null);
+  const badReference = { ...asset, root: [{ node_id: "bad-ref", command_id: "let", params: { name: "x", value: { ref: "missing" } } }] };
+  assert.ok(lowerToExecutionPlan(badReference, registry).receipt.diagnostics.some((item) => item.code === "UNRESOLVED_REFERENCE"));
+  const wrongLifecycle = { ...asset, root: [{ node_id: "bad-await", command_id: "await", params: { capability: "ui.remove_node@1", args: {} } }] };
+  assert.ok(lowerToExecutionPlan(wrongLifecycle, registry).receipt.diagnostics.some((item) => item.code === "INVALID_LIFECYCLE"));
+  const unsafeRegistry = createSchemaRegistry({ manifest_type: "GSEOSCapabilityManifest", schema_version: 1, capabilities: [{ id: "unsafe", version: 1, awaitable: true, cancellation: "none", result: "Void" }] });
+  assert.equal(unsafeRegistry.checkCapability("unsafe@1", { awaitable: true }).ok, false);
+});
+
+test("双语 lexer/parser 归一为同一结构并保留可诊断 source span", () => {
+  const english = `module ui.reward\nevent ui.reward.apply:\n  if (reward > 0):\n    let new_score = old_score + reward\n`;
+  const chinese = `模块 ui.reward\n事件 ui.reward.apply：\n  若（奖励 大于 0）：\n    令 新分数 为 旧分数 加 奖励\n`;
+  assert.equal(lexGse("\uFEFF" + chinese).receipt.ok, true);
+  const left = parseGse(english);
+  const right = parseGse(chinese);
+  assert.equal(left.receipt.ok, true);
+  assert.equal(right.receipt.ok, true);
+  assert.equal(left.asset.root[0].command_id, right.asset.root[0].command_id);
+  assert.equal(left.asset.root[0].params.condition.op, right.asset.root[0].params.condition.op);
+  assert.equal(parseGse("event bad:\n\tawait x()").receipt.ok, false);
+  assert.equal(parseExpressionText("a + b * c").expression.op, "+");
+  assert.equal(parseExpressionText("a + b * c").expression.right.op, "*");
+  assert.equal(parseCst("# comment\n\nif (a):\n  let b = 1").children[0].kind, "comment");
+  assert.equal(formatGse(right.asset, "zh").startsWith("事件"), true);
+  const englishFormatted = formatGse(left.asset, "en");
+  assert.equal(formatGse(englishFormatted, "en"), englishFormatted);
+});
+
+test("迁移失败保留原始数据，往返和来源 span 不丢失", () => {
+  const unsupported = JSON.stringify({ schema_version: 99, event_id: "bad", raw: { keep: true } });
+  const migrated = roundTripEventAsset(unsupported);
+  assert.equal(migrated.asset, null);
+  assert.equal(migrated.json, unsupported);
+  assert.equal(migrateEventAsset({ schema_version: 0, event_id: "demo", root: [] }).receipt.ok, true);
+  assert.ok(parseGse("event demo:\n  let value = 1").asset.root[0].source_span.start.line === 2);
+});
+
+test("ExecutionPlan 与 GDScript 生成是确定的，并拒绝受管工件漂移", () => {
+  const lowered = lowerToExecutionPlan(asset, registry);
+  assert.equal(lowered.receipt.ok, true);
+  const generated = generateGdscript(lowered.plan);
+  assert.match(generated.source, /GENERATED BY GSEOS/);
+  assert.ok(generated.source_map.mappings.length >= 6);
+  assert.equal(lowered.plan.instructions[0].then[4].bind, "new_row");
+  assert.equal(resolveSourceRef(generated.source_map, 7).event_id, "ui.reward.apply");
+  assert.deepEqual(generated.source_map, goldenSourceMap);
+  assert.equal(verifyManagedArtifact(generated.source, { event_id: lowered.plan.event_id, plan_fingerprint: generated.source_map.plan_fingerprint }).ok, true);
+  assert.equal(verifyManagedArtifact(generated.source.replace("ui.reward.apply", "ui.changed"), { event_id: lowered.plan.event_id, plan_fingerprint: generated.source_map.plan_fingerprint }).ok, false);
+});
+
+test("WaitRegistration 竞争只产生一个终态，EventRegistry 同步返回 RunHandle", async () => {
+  const wait = new WaitRegistration();
+  assert.equal(wait.finish({ status: "completed" }), true);
+  assert.equal(wait.cancel(), false);
+  assert.deepEqual(await wait.wait(), { status: "completed" });
+  const events = new EventRegistry();
+  events.register("demo", async () => "ok");
+  const handle = events.start("demo", {}, null);
+  assert.ok(handle.run_id > 0);
+  const result = await new Promise((resolve) => handle.onComplete(resolve));
+  assert.equal(result.status, RunStatus.COMPLETED);
+  assert.equal(handle.status, RunStatus.COMPLETED);
+  const context = new RunContext({}, { valid: true });
+  context.cancel("owner_destroyed");
+  assert.equal(context.cancelled, true);
+});

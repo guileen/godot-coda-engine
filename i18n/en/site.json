@@ -1,0 +1,21 @@
+{
+  "theme": {
+    "dark": "Switch to dark theme",
+    "light": "Switch to light theme"
+  },
+  "menu": {
+    "open": "Menu",
+    "close": "Close"
+  },
+  "code": {
+    "managedOutput": "managed output",
+    "managedWait": "managed wait",
+    "versionedTopic": "versioned topic",
+    "sourceMap": "source map attached"
+  },
+  "copy": {
+    "button": "Copy verification commands",
+    "done": "Copied",
+    "failed": "Select the commands above to copy them."
+  }
+}

@@ -1,0 +1,28 @@
+name: gseos-core
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gseos-core-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gseos-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm test
+      - run: npm run check
+      - run: npm run check:public
+      - run: npm run gseos -- manifest
+      - run: npm run gseos -- validate gseos/events/ui.reward.apply.gse.json
+      - run: npm run gseos -- generate gseos/events/ui.reward.apply.gse.json

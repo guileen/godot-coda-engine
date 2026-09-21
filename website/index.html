@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Godot CODA Engine (CODA) — a bilingual game-logic engine for Godot / 面向 Godot 的中英双语游戏逻辑引擎。">
+    <meta name="robots" content="index, follow">
+    <title>Godot CODA Engine — Choose a language / 选择语言</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body class="grain">
+    <main class="page language-gateway">
+      <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Godot CODA Engine · GSEOS E0</p>
+      <h1>Choose a language<br><span>选择语言</span></h1>
+      <p class="hero-lede">A game-logic engine for Godot.<br>面向 Godot 的游戏逻辑引擎。</p>
+      <div class="hero-actions">
+        <a class="button button--primary" href="en/index.html">English</a>
+        <a class="button button--outline" href="zh-CN/index.html">简体中文</a>
+      </div>
+      <p class="hero-note">More locales can be added under <code>i18n/</code>, <code>docs/</code>, and <code>website/</code>.</p>
+    </main>
+    <script>
+      const saved = localStorage.getItem('coda-language');
+      const browser = navigator.language?.toLowerCase() || '';
+      if (!saved) localStorage.setItem('coda-language', browser.startsWith('zh') ? 'zh-CN' : 'en');
+    </script>
+  </body>
+</html>

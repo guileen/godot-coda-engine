@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">CODA — A game-logic engine for Godot</title>
+  <desc id="desc">Structured events, traceable GDScript, and explicit lifecycle boundaries.</desc>
+  <rect width="1200" height="630" fill="#fcfaf6"/>
+  <path d="M0 548H1200" stroke="#d7d0c7"/>
+  <g fill="none" stroke="#bc291b" stroke-width="10">
+    <circle cx="98" cy="92" r="18"/><circle cx="132" cy="58" r="18"/><circle cx="166" cy="92" r="18"/>
+  </g>
+  <text x="210" y="108" fill="#201712" font-family="Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="-2">CODA</text>
+  <text x="98" y="274" fill="#201712" font-family="Georgia, serif" font-size="76">Every game event</text>
+  <text x="98" y="360" fill="#201712" font-family="Georgia, serif" font-size="76">deserves a clear ending.</text>
+  <text x="98" y="458" fill="#615952" font-family="Arial, sans-serif" font-size="28">Structured events · Traceable GDScript · E0 lifecycle semantics</text>
+  <text x="98" y="590" fill="#a50f11" font-family="monospace" font-size="20">godot-coda-engine</text>
+</svg>

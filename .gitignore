@@ -1,0 +1,25 @@
+.DS_Store
+.godot/
+.import/
+*.tmp
+*.log
+.env
+.env.*
+!.env.example
+packages/local-core/coverage/
+node_modules/
+.gseos/generated/
+.gseos/generated.manifest.json
+gseos/generated/
+.pages/
+website/*.import
+brand/*.import
+
+# Workspace-only execution memory; never publish as repository deliverables.
+tasks.md
+handoff.md
+requirements.md
+workspace/
+
+# Internal design drafts; localized public documentation lives under docs/<locale>/.
+research/

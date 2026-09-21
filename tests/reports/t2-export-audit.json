@@ -1,0 +1,28 @@
+{
+  "report_version": 1,
+  "stage": "T2.3-export-boundary",
+  "recorded_at": "2026-09-21",
+  "command": "npm run export:pack",
+  "godot": "4.7.2-stable official ed1daf0bf",
+  "target_platform": "Linux/X11 pack",
+  "preset": "GSEOS Runtime Pack",
+  "pack": "<temporary-output>/gseos-runtime.zip",
+  "entry_count": 36,
+  "runtime_entrypoint": "addons/gseos/runtime/main.tscn",
+  "runtime_startup": "passed via Godot 4.7.2 headless --path <unpacked-pack> --quit",
+  "host_native_startup": {
+    "command": "npm run export:native:macos",
+    "bundle": "<temporary-output>/GSEOSRuntime.app",
+    "executable": "<temporary-output>/GSEOSRuntime.app/Contents/MacOS/CODA Runtime",
+    "arguments": ["--headless", "--quit"],
+    "result": "passed"
+  },
+  "result": "passed",
+  "runtime_boundary": ["generated runner", "E0 runtime", "declared capability adapters"],
+  "declared_capabilities": ["read@1", "ui.animate_number@1", "ui.remove_node@1", "ui.create_reward_row@1", "ui.set_text@1"],
+  "required_entries_present": true,
+  "forbidden_entries": [],
+  "forbidden_runtime_symbols": [],
+  "editor_and_frontend_excluded": true,
+  "legacy_dictionary_excluded": true
+}

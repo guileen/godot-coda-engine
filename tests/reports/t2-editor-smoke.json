@@ -1,0 +1,31 @@
+{
+  "report_version": 1,
+  "stage": "T2.2-editor-surface-acceptance",
+  "recorded_at": "2026-09-21",
+  "godot": "4.7.2-stable official ed1daf0bf",
+  "command": "godot --headless --path . --script res://tests/integration/event_dock_smoke.gd",
+  "result": "passed",
+  "covered": [
+    "EventAsset discovery and tree rebuild",
+    "valid command and root/children slot selection with invalid-slot rejection",
+    "draft parameters remain in memory until confirmation",
+    "draft cancellation leaves persisted asset unchanged",
+    "draft confirmation is a single asset transaction",
+    "fallback undo/redo, node move, copy, delete, and composite-condition edit",
+    "save/reopen and external reload rebuild the tree and status",
+    "English, Chinese, and failed mixed-surface text import preview/commit transaction",
+    "source-map event/node/field/backend-to-generated-line lookup",
+    "managed generated-artifact takeover detection and restore path"
+  ],
+  "native_editor_launch": {
+    "godot": "4.7.2-stable official ed1daf0bf",
+    "dock_visible": true,
+    "screenshot": "<temporary-output>/gseos-godot-editor-final.png",
+    "interaction_note": "The isolated native editor was launched and driven by PID-targeted macOS input; the repeatable harness completed with persisted asset checks."
+  },
+  "native_gui_command": "npm run test:godot:gui",
+  "native_gui_result": "passed",
+  "native_gui_actions": ["create", "select", "rename", "text_preview", "failed_import_protection", "draft_condition_commit", "delete"],
+  "manual_gui_evidence": true,
+  "manual_gui_note": "Native GUI evidence is repeatable through scripts/gseos-native-gui-acceptance.sh; screenshots captured during the run are temporary local outputs and are not repository artifacts."
+}

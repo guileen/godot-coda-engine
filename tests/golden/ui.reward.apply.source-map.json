@@ -1,0 +1,63 @@
+{
+  "map_version": 1,
+  "event_id": "ui.reward.apply",
+  "plan_fingerprint": "sha256:bbff9c836aa5abe30d8cf2945f6e2b47cf71518de3c6ade7cec8d16289800ad8",
+  "mappings": [
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "reward-check",
+      "field_id": "condition",
+      "backend": "gdscript",
+      "generated_start": 7
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "read-score",
+      "field_id": "target",
+      "backend": "gdscript",
+      "generated_start": 9
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "calculate-score",
+      "field_id": "value",
+      "backend": "gdscript",
+      "generated_start": 11
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "animate-score",
+      "field_id": "capability",
+      "backend": "gdscript",
+      "generated_start": 13
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "remove-old-row",
+      "field_id": "capability",
+      "backend": "gdscript",
+      "generated_start": 15
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "create-row",
+      "field_id": "capability",
+      "backend": "gdscript",
+      "generated_start": 17
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "set-row-text",
+      "field_id": "capability",
+      "backend": "gdscript",
+      "generated_start": 19
+    },
+    {
+      "event_id": "ui.reward.apply",
+      "node_id": "publish-hit",
+      "field_id": "topic",
+      "backend": "gdscript",
+      "generated_start": 21
+    }
+  ]
+}

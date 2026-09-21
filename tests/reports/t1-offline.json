@@ -1,0 +1,20 @@
+{
+  "report_version": 1,
+  "stage": "T1",
+  "recorded_at": "2026-09-21",
+  "node": "22.16.0",
+  "godot": "4.7.2.stable.official.ed1daf0bf",
+  "commands": [
+    "npm test",
+    "npm run check",
+    "npm run gseos -- manifest",
+    "npm run gseos -- validate gseos/events/ui.reward.apply.gse.json",
+    "npm run gseos -- generate gseos/events/ui.reward.apply.gse.json",
+    "npm run test:godot"
+  ],
+  "fixture": "gseos/events/ui.reward.apply.gse.json",
+  "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9",
+  "offline_node_tests": { "passed": 6, "failed": 0, "skipped": 0 },
+  "godot_headless": { "passed": true, "scope": "RunHandle, WaitRegistration, EventRegistry start/call_sync, publish/subscribe, generated reward runner, editor asset transaction, Event Dock smoke" },
+  "performance": { "status": "deferred_to_t2", "reason": "T2.3 performance and export evidence are recorded in tests/reports/t2-performance.json and tests/reports/t2-export-audit.json" }
+}

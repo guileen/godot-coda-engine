@@ -1,0 +1,21 @@
+{
+  "theme": {
+    "dark": "切换到深色主题",
+    "light": "切换到浅色主题"
+  },
+  "menu": {
+    "open": "菜单",
+    "close": "关闭"
+  },
+  "code": {
+    "managedOutput": "受管理输出",
+    "managedWait": "受管理等待",
+    "versionedTopic": "版本化主题",
+    "sourceMap": "已附带源映射"
+  },
+  "copy": {
+    "button": "复制校验命令",
+    "done": "已复制",
+    "failed": "请选中上方命令后复制。"
+  }
+}

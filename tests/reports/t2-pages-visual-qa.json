@@ -1,0 +1,25 @@
+{
+  "report_version": 1,
+  "stage": "T2.3-pages-visual-qa",
+  "recorded_at": "2026-09-21",
+  "browser": "system Chrome via Playwright fallback",
+  "viewports": [390, 768, 1440],
+  "command": "visual-qa.mjs http://127.0.0.1:<port>/en/ and /zh-CN/ --viewports 390,768,1440 --shots",
+  "result": "passed",
+  "p0": 0,
+  "p1": 0,
+  "p2": 3,
+  "p2_notes": [
+    "The checker reports a non-blocking L3 hardcoded-color advisory because the site defines its own CSS token values in :root."
+  ],
+  "covered": [
+    "390px mobile layout without horizontal overflow",
+    "768px tablet layout",
+    "1440px desktop layout",
+    "console error scan",
+    "contrast and touch-target checks",
+    "English and Simplified Chinese routes, language links, 404 pages, and favicon request",
+    "theme toggle, mobile menu, copy command, and link target interaction"
+  ],
+  "third_party_tracking": false
+}

@@ -1,0 +1,67 @@
+import { assetFingerprint, validateEventAsset } from "./asset.js";
+import { bindEventAsset } from "./frontend.js";
+import { gseosDiagnostic, gseosReceipt, sourceRef } from "./diagnostics.js";
+
+const SUPPORTED_COMMANDS = new Set(["if", "let", "read", "do", "await", "publish", "return", "escape"]);
+
+function expression(value) {
+  if (value && typeof value === "object" && value.ref) return { kind: "ref", name: value.ref };
+  if (value && typeof value === "object" && value.op === "connect") return { kind: "connect", items: (value.items ?? []).map(expression) };
+  if (value && typeof value === "object" && (value.op === "record" || value.record)) return { kind: "record", fields: Object.fromEntries(Object.entries(value.fields ?? value.record).map(([key, item]) => [key, expression(item)])) };
+  if (value && typeof value === "object" && value.op) return { kind: "op", op: value.op, left: expression(value.left), right: expression(value.right) };
+  return { kind: "literal", value };
+}
+
+function expressionArguments(args) { return Object.fromEntries(Object.entries(args ?? {}).filter(([key]) => key !== "bind").map(([key, value]) => [key, expression(value)])); }
+
+export function checkEventAsset(asset, registry) {
+  const diagnostics = [];
+  diagnostics.push(...validateEventAsset(asset, { capabilities: [...(registry?.manifest?.capabilities ?? [])] }).diagnostics);
+  diagnostics.push(...bindEventAsset(asset, registry).receipt.diagnostics);
+  const walk = (nodes) => {
+    for (const node of nodes ?? []) {
+      const params = node.params ?? {};
+      const capability = params.capability;
+      if (capability) {
+        const awaited = node.command_id === "await";
+        const result = registry?.checkCapability?.(capability, { awaitable: awaited });
+        if (result && !result.ok) diagnostics.push(...result.diagnostics.map((item) => ({ ...item, event_id: asset.event_id, node_id: node.node_id })));
+      }
+      if (!SUPPORTED_COMMANDS.has(node.command_id)) diagnostics.push(gseosDiagnostic("BACKEND_UNSUPPORTED", `${node.command_id} 不在 E0 首发后端范围内。`, { event_id: asset.event_id, node_id: node.node_id }));
+      if (node.command_id === "publish") {
+        const topic = registry?.topic?.(params.topic);
+        if (!topic) diagnostics.push(gseosDiagnostic("TOPIC_VERSION_MISMATCH", `事件主题未登记：${params.topic}。`, { event_id: asset.event_id, node_id: node.node_id, target_id: params.topic }));
+      }
+      if (node.command_id === "escape" && (!Array.isArray(params.inputs) || !Array.isArray(params.outputs))) diagnostics.push(gseosDiagnostic("INVALID_ESCAPE_CONTRACT", "escape 必须声明 inputs 和 outputs 数组。", { event_id: asset.event_id, node_id: node.node_id }));
+      walk(Object.values(node.children ?? {}).flat());
+    }
+  };
+  walk(asset.root);
+  return gseosReceipt(diagnostics);
+}
+
+export function lowerToExecutionPlan(asset, registry) {
+  const check = checkEventAsset(asset, registry);
+  if (!check.ok) return { plan: null, receipt: check };
+  const instructions = [];
+  const walk = (nodes) => {
+    for (const node of nodes ?? []) {
+      const ref = sourceRef(asset.event_id, node.node_id);
+      const params = node.params ?? {};
+      if (node.command_id === "if") {
+        const branch = { opcode: "Branch", condition: expression(params.condition), source_ref: ref, then: [], else: [] };
+        instructions.push(branch); const before = instructions.length; walk(node.children?.then); branch.then.push(...instructions.splice(before)); const beforeElse = instructions.length; walk(node.children?.else); branch.else.push(...instructions.splice(beforeElse));
+      } else if (node.command_id === "let") instructions.push({ opcode: "Bind", name: params.name, value: expression(params.value), source_ref: ref });
+      else if (node.command_id === "read") instructions.push({ opcode: "ReadCapability", target: params.capability ?? "read@1", args: expressionArguments(Object.fromEntries(Object.entries(params).filter(([key]) => key !== "bind"))), bind: params.bind, source_ref: ref });
+      else if (node.command_id === "do") instructions.push({ opcode: "InvokeSync", target: params.capability, args: expressionArguments(params.args), bind: params.bind ?? params.args?.bind, source_ref: ref });
+      else if (node.command_id === "await") instructions.push({ opcode: "AwaitCapability", target: params.capability, args: expressionArguments(params.args), bind: params.bind ?? params.args?.bind, source_ref: ref });
+      else if (node.command_id === "publish") instructions.push({ opcode: "Publish", target: params.topic, payload: expression(params.payload), source_ref: ref });
+      else if (node.command_id === "return") instructions.push({ opcode: "Return", value: expression(params.value), source_ref: ref });
+      else if (node.command_id === "escape") instructions.push({ opcode: "Escape", inputs: params.inputs ?? [], outputs: params.outputs ?? [], code: params.code ?? "", source_ref: ref });
+      else instructions.push({ opcode: "Unsupported", command_id: node.command_id, source_ref: ref });
+    }
+  };
+  walk(asset.root);
+  const plan = { plan_type: "ExecutionPlan", plan_version: 1, event_id: asset.event_id, asset_fingerprint: assetFingerprint(asset), instructions };
+  return { plan, receipt: gseosReceipt() };
+}

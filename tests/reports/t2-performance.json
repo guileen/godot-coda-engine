@@ -1,0 +1,52 @@
+{
+  "report_version": 1,
+  "stage": "T2.3",
+  "recorded_at": "2026-09-21",
+  "godot": "4.7.2-stable official ed1daf0bf",
+  "platform": "macOS",
+  "configuration": "headless, project.godot renderer=gl_compatibility, debug runner",
+  "event_shape": "ui.reward.apply: condition -> read/calculate -> await animation -> remove/create/set_text -> publish",
+  "cold_start_seconds": 1.29,
+  "reward_activation_us": 152,
+  "reward_completion_us": 836,
+  "recovery_us": 85,
+  "sync_activation_us_total_for_1000_runs": 42529,
+  "sync_activation_us_per_run": 42.529,
+  "memory_static_before_bytes": 24952128,
+  "memory_static_after_bytes": 103735132,
+  "memory_static_peak_bytes": 103735132,
+  "memory_static_steady_bytes": 103735132,
+  "active_runs_after": 0,
+  "cancel_survivors": 0,
+  "per_frame_allocations": {
+    "measurement": "positive live-object delta plus static-memory delta proxy",
+    "sample_frames": 60,
+    "max_static_memory_delta_bytes": 0,
+    "max_live_object_delta": 0,
+    "positive_live_object_delta_total": 0
+  },
+  "per_frame_allocations_note": "Godot 4.7 exposes live-object and static-memory monitors but not raw malloc call counts; this records the bounded runtime allocation proxy explicitly.",
+  "command": "/usr/bin/time -p godot --headless --path . --script res://tests/integration/benchmark.gd",
+  "raw_malloc": {
+    "command": "npm run benchmark:malloc:godot",
+    "interposer": "scripts/gseos-malloc-counter.c",
+    "malloc_calls": 501344,
+    "calloc_calls": 41064,
+    "realloc_calls": 25646,
+    "free_calls": 547138,
+    "scope": "whole Godot benchmark process, macOS DYLD interposition"
+  },
+  "exported_runtime_startup": {
+    "command": "npm run export:pack",
+    "pack": "<temporary-output>/gseos-runtime.zip",
+    "target": "Linux/X11 GSEOS Runtime Pack",
+    "result": "passed",
+    "entrypoint": "addons/gseos/runtime/main.tscn",
+    "boundary_audit": "passed",
+    "host_native_command": "npm run export:native:macos",
+    "host_native_bundle": "<temporary-output>/GSEOSRuntime.app",
+    "host_native_executable_startup": "passed"
+  },
+  "result": "passed",
+  "caveats": ["editor settings and user://logs are not writable in the sandbox", "memory_after includes the benchmark process before final teardown", "raw malloc counts are macOS-specific whole-process interposer counts", "Linux/X11 native executable was not launched on macOS; host-native macOS bundle startup passed"]
+}
