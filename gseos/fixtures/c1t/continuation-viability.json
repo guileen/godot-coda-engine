@@ -5,7 +5,15 @@
     "schema_version": 1,
     "contract_id": "taiji.resume@1",
     "resume_modes": ["exact_phase", "compatible_phase", "checkpoint", "replan_remaining", "reject"],
-    "checkpoint_refs": ["taiji.checkpoint.shift@1"]
+    "phase_progress_ref": "taiji.phase.progress@1",
+    "capture_region_ref": "taiji.capture.region@1",
+    "checkpoint_refs": ["taiji.checkpoint.shift@1"],
+    "viability_gate_ref": "taiji.viability.gate@1",
+    "bridge_planner_ref": "taiji.bridge.planner@1",
+    "commit_alignment_ref": "taiji.commit.alignment@1",
+    "token_fields": ["generation", "state_digest"],
+    "on_no_solution": "reject",
+    "restore_old_generation": false
   },
   "context": {
     "evidence_level": "heuristic",

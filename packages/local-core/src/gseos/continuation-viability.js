@@ -1,3 +1,5 @@
+import { validateContinuationContract } from "./embodied-contract-validation.js";
+
 const RESUME_ORDER = ["exact_phase", "compatible_phase", "checkpoint", "replan_remaining"];
 const EVIDENCE_LEVELS = new Set(["exact", "conservative", "reduced", "sampled", "heuristic"]);
 const REQUIRED_GATES = ["model_valid", "contact_valid", "inputs_bounded", "controller_valid", "capture_region", "bridge_residual_ok", "deadline_ok"];
@@ -9,7 +11,7 @@ const REQUIRED_GATES = ["model_valid", "contact_valid", "inputs_bounded", "contr
 export function evaluateContinuationViability(contract, context) {
   const diagnostics = [];
   const reject = (code) => diagnostics.push({ code });
-  if (!contract || contract.contract_type !== "ContinuationContract" || contract.schema_version !== 1) reject("INVALID_CONTINUATION_CONTRACT");
+  if (!validateContinuationContract(contract).ok) reject("INVALID_CONTINUATION_CONTRACT");
   if (!context || typeof context !== "object") reject("CONTINUATION_CONTEXT_REQUIRED");
   if (diagnostics.length) return result("reject", null, "heuristic", diagnostics);
 

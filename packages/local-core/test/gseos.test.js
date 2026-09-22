@@ -963,6 +963,7 @@ test("C1-L.1 shared observation, hybrid, tracking and control contracts fail clo
 test("R-C1T-14/15 continuation viability selects finite modes and rejects unsafe or stale re-entry", () => {
   const { contract, context } = continuationViabilityFixture;
   assert.equal(evaluateContinuationViability(contract, context).resume_mode, "exact_phase");
+  assert.equal(evaluateContinuationViability({}, context).diagnostics[0].code, "INVALID_CONTINUATION_CONTRACT");
   const compatible = structuredClone(context);
   compatible.candidates[0].admitted = false;
   assert.equal(evaluateContinuationViability(contract, compatible).resume_mode, "compatible_phase");
@@ -1022,6 +1023,17 @@ test("R-C1T-16 temporal admission rejects stale authority and applies buffer hys
   const heartbeat = structuredClone(context);
   heartbeat.liveness.last_heartbeat_tick = 90;
   assert.equal(evaluateTemporalCommandAdmission(contract, heartbeat).diagnostics[0].code, "TEMPORAL_LIVENESS_EXPIRED");
+  const staleCommand = structuredClone(context);
+  staleCommand.command.valid_until_tick = 99;
+  assert.equal(evaluateTemporalCommandAdmission(contract, staleCommand).diagnostics[0].code, "TEMPORAL_COMMAND_INVALID");
+  const emptyBuffer = structuredClone(context);
+  emptyBuffer.buffer.remaining_ticks = 0;
+  assert.equal(evaluateTemporalCommandAdmission(contract, emptyBuffer).diagnostics[0].code, "TEMPORAL_BUFFER_EMPTY");
+  const backupPolicy = { ...contract, on_invalid: "enter_admitted_backup" };
+  assert.equal(evaluateTemporalCommandAdmission(backupPolicy, { ...staleCommand, backup_admitted: true }).decision, "backup_candidate");
+  assert.equal(evaluateTemporalCommandAdmission(backupPolicy, staleCommand).decision, "reject");
+  const yieldPolicy = { ...contract, on_invalid: "yield_safety_authority" };
+  assert.equal(evaluateTemporalCommandAdmission(yieldPolicy, staleCommand).decision, "yield_safety_authority");
   const noImplicitExtension = evaluateTemporalCommandAdmission(contract, context);
   assert.equal(noImplicitExtension.renew_lease, false);
   assert.equal(noImplicitExtension.emit_command, false);
