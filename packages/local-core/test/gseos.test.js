@@ -1113,6 +1113,43 @@ test("C1-T.1.1 参考仲裁器全取或全拒并阻断旧 generation 写入", ()
   assert.equal(arbiter.checkWrite({ lease_id: "lease.b", generation: preempted.value.lease.generation, resources: ["head@1"] }).ok, true);
 });
 
+test("R-C1T-03 multi-resource lease commits atomically at a revalidated write barrier", () => {
+  const registry = {
+    registry_type: "ResourceRegistry", schema_version: 1,
+    resources: ["head", "arm", "torso"].map((id) => ({ id, version: 1, kind: "leaf", leaves: [] })),
+    lease_policy: { mode: "exclusive", ordering: "lexicographic", shared_write: false, implicit_queue: false }
+  };
+  const arbiter = new TransitionLeaseArbiter(registry);
+  const head = arbiter.request({ lease_id: "lease.head", owner_id: "run.head", resources: ["head@1"], priority: 70 });
+  const arm = arbiter.request({ lease_id: "lease.arm", owner_id: "run.arm", resources: ["arm@1"], priority: 20 });
+  const before = arbiter.snapshot();
+  const partial = arbiter.prepareRequest({ lease_id: "lease.partial", owner_id: "run.partial", resources: ["head@1", "arm@1"], priority: 50 });
+  assert.equal(partial.value.ownership_changed, false);
+  assert.deepEqual(arbiter.snapshot(), before);
+  assert.equal(arbiter.commitBarrier("lease.partial").diagnostics[0].code, "LEASE_REJECTED");
+  assert.deepEqual(arbiter.snapshot(), before);
+
+  const prepared = arbiter.prepareRequest({ lease_id: "lease.atomic", owner_id: "run.atomic", resources: ["head@1", "arm@1"], priority: 80 });
+  assert.equal(prepared.ok, true);
+  assert.equal(arbiter.checkWrite({ lease_id: "lease.atomic", generation: 1, resources: ["head@1"] }).ok, false);
+  const committed = arbiter.commitBarrier("lease.atomic");
+  assert.equal(committed.ok, true);
+  assert.deepEqual(committed.value.preempted, ["lease.arm", "lease.head"]);
+  assert.equal(arbiter.checkWrite({ lease_id: "lease.head", generation: head.value.lease.generation, resources: ["head@1"] }).ok, false);
+  assert.equal(arbiter.checkWrite({ lease_id: "lease.arm", generation: arm.value.lease.generation, resources: ["arm@1"] }).ok, false);
+  assert.equal(arbiter.checkWrite({ lease_id: "lease.atomic", generation: committed.value.lease.generation, resources: ["head@1", "arm@1"] }).ok, true);
+
+  const raced = arbiter.prepareRequest({ lease_id: "lease.raced", owner_id: "run.raced", resources: ["head@1"], priority: 85 });
+  assert.equal(raced.ok, true);
+  const newerOwner = arbiter.request({ lease_id: "lease.winner", owner_id: "run.winner", resources: ["head@1"], priority: 90 });
+  assert.equal(newerOwner.ok, true);
+  assert.equal(arbiter.commitBarrier("lease.raced").diagnostics[0].code, "LEASE_REJECTED");
+  const abandoned = arbiter.prepareRequest({ lease_id: "lease.abandoned", owner_id: "run.abandoned", resources: ["torso@1"], priority: 1 });
+  assert.equal(abandoned.ok, true);
+  assert.equal(arbiter.abortBarrier("lease.abandoned").value.ownership_changed, false);
+  assert.equal(arbiter.commitBarrier("lease.abandoned").diagnostics[0].code, "BARRIER_NOT_PENDING");
+});
+
 test("R-C1T-02 resource registry validates versioned trees and closes transitive coupling groups", () => {
   const registry = resourceRegistryFixture;
   assert.equal(validateResourceRegistry(registry).ok, true);

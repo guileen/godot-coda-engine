@@ -99,52 +99,78 @@ export function expandResourceLeaves(registry, requestedIds) {
   return result(true, [...expanded.leaves].sort());
 }
 
-function compareLease(a, b) {
-  if (a.priority !== b.priority) return a.priority - b.priority;
-  return a.sequence - b.sequence;
-}
-
 /**
- * Deterministic all-or-reject lease arbiter. A successful request is the only
- * operation that changes ownership; no implicit queue or partial lease exists.
+ * Deterministic all-or-reject lease arbiter. Preparation has no write effect;
+ * commitBarrier revalidates conflicts and atomically publishes the new owner.
  */
 export class TransitionLeaseArbiter {
   #registry;
   #leases = new Map();
   #owners = new Map();
   #generations = new Map();
+  #pending = new Map();
 
   constructor(registry) {
     this.#registry = structuredClone(registry);
   }
 
   request({ lease_id, owner_id, resources, priority, sequence = 0 }) {
+    const prepared = this.prepareRequest({ lease_id, owner_id, resources, priority, sequence });
+    if (!prepared.ok) return prepared;
+    return this.commitBarrier(lease_id);
+  }
+
+  prepareRequest({ lease_id, owner_id, resources, priority, sequence = 0 }) {
     if (typeof lease_id !== "string" || !lease_id) return result(false, null, [diagnostic("INVALID_LEASE_ID", "lease_id 必须是非空字符串。")]);
     if (typeof owner_id !== "string" || !owner_id) return result(false, null, [diagnostic("INVALID_OWNER_ID", "owner_id 必须是非空字符串。")]);
     if (!Number.isInteger(priority) || priority < 0) return result(false, null, [diagnostic("INVALID_PRIORITY", "priority 必须是非负整数。")]);
     if (!Number.isInteger(sequence) || sequence < 0) return result(false, null, [diagnostic("INVALID_SEQUENCE", "sequence 必须是非负整数。")]);
     const expanded = expandResourceLeaves(this.#registry, resources);
     if (!expanded.ok) return expanded;
-    if (this.#leases.has(lease_id)) return result(false, null, [diagnostic("DUPLICATE_LEASE_ID", `租约已存在：${lease_id}。`)]);
+    if (this.#leases.has(lease_id) || this.#pending.has(lease_id)) return result(false, null, [diagnostic("DUPLICATE_LEASE_ID", `租约 ID 已使用或等待 barrier：${lease_id}。`)]);
     const candidate = { lease_id, owner_id, resources: expanded.value, priority, sequence };
-    const conflicts = expanded.value.map((resource) => this.#owners.get(resource)).filter(Boolean);
+    this.#pending.set(lease_id, candidate);
+    return result(true, { lease_id, resources: [...candidate.resources], barrier: "prepared", ownership_changed: false });
+  }
+
+  commitBarrier(lease_id) {
+    const candidate = this.#pending.get(lease_id);
+    if (!candidate) return result(false, null, [diagnostic("BARRIER_NOT_PENDING", "write barrier 必须绑定已准备的 lease request。", { lease_id })]);
+    if (this.#leases.has(lease_id)) {
+      this.#pending.delete(lease_id);
+      return result(false, null, [diagnostic("DUPLICATE_LEASE_ID", `租约已存在：${lease_id}。`)]);
+    }
+    const conflictsById = new Map();
+    for (const resource of candidate.resources) {
+      const owner = this.#owners.get(resource);
+      if (owner) conflictsById.set(owner.lease_id, owner);
+    }
+    const conflicts = [...conflictsById.values()].sort((a, b) => a.lease_id.localeCompare(b.lease_id));
     const blocked = conflicts.filter((current) => current.priority >= candidate.priority);
     if (blocked.length) {
+      this.#pending.delete(lease_id);
       return result(false, null, [diagnostic("LEASE_REJECTED", "资源冲突且候选没有严格更高优先级；全取或全拒。", {
         lease_id,
         conflicts: blocked.map(({ lease_id: id, resources: held }) => ({ lease_id: id, resources: held }))
       })]);
     }
-    const preempted = [...new Set(conflicts.map((current) => current.lease_id))].sort();
+    const preempted = conflicts.map((current) => current.lease_id);
     for (const oldId of preempted) this.#revoke(oldId, "preempted");
     const generation = Math.max(0, ...candidate.resources.map((resource) => this.#generations.get(resource) ?? 0)) + 1;
     const lease = { ...candidate, generation, mode: "all_or_reject", status: "active" };
+    this.#pending.delete(lease_id);
     this.#leases.set(lease_id, lease);
     for (const resource of lease.resources) {
       this.#owners.set(resource, lease);
       this.#generations.set(resource, generation);
     }
-    return result(true, { lease: structuredClone(lease), preempted });
+    return result(true, { lease: structuredClone(lease), preempted, barrier: "committed", ownership_changed: true });
+  }
+
+  abortBarrier(lease_id) {
+    if (!this.#pending.has(lease_id)) return result(false, null, [diagnostic("BARRIER_NOT_PENDING", "只有等待 barrier 的 lease request 可取消。", { lease_id })]);
+    this.#pending.delete(lease_id);
+    return result(true, { lease_id, barrier: "aborted", ownership_changed: false });
   }
 
   #revoke(leaseId, reason) {
