@@ -111,10 +111,35 @@ export function bindEventAsset(asset, registry) {
   walk(asset.root); return { asset, receipt: gseosReceipt(diagnostics) };
 }
 
-export function formatGse(textOrAsset, mode = "preserve") {
+function formatGseLegacy(textOrAsset, mode = "preserve") {
   if (typeof textOrAsset === "string") { const normalized = textOrAsset.normalize("NFC").replace(/\r\n?/g, "\n").replace(/\t/g, "  ").trimEnd(); if (mode === "preserve") return `${normalized}\n`; const parsed = parseGse(normalized); return parsed.receipt.ok ? formatGse(parsed.asset, mode) : `${normalized}\n`; }
   const asset = textOrAsset; const chinese = mode === "zh"; const keyword = chinese ? { if: "若", else: "否则", let: "令", do: "执行", await: "等待", intent: "意图", publish: "发出" } : { if: "if", else: "else", let: "let", do: "do", await: "await", intent: "intent", publish: "publish" }; const lines = [chinese ? `事件 ${asset.event_id}：` : `event ${asset.event_id}:`];
   const walk = (nodes, indent) => { for (const node of nodes ?? []) { const pad = "  ".repeat(indent); if (node.command_id === "if") { lines.push(`${pad}${keyword.if}${chinese ? "（" : " ("}${formatExpression(node.params.condition)}${chinese ? "）：" : "):"}`); walk(node.children?.then, indent + 1); if ((node.children?.else ?? []).length > 0) { lines.push(`${pad}${keyword.else}${chinese ? "：" : ":"}`); walk(node.children.else, indent + 1); } } else if (node.command_id === "let") lines.push(`${pad}${keyword.let} ${node.params.name} ${chinese ? "为" : "="} ${formatExpression(node.params.value)}`); else if (["do", "await"].includes(node.command_id)) lines.push(`${pad}${keyword[node.command_id]} ${node.params.capability}(${formatArguments(node.params.args)})`); else if (node.command_id === "motion_intent") lines.push(`${pad}${keyword.intent} ${node.params.intent}(${formatArguments(node.params.args)})`); else if (node.command_id === "publish") lines.push(`${pad}${keyword.publish} ${node.params.topic}(${formatExpression(node.params.payload)})`); } }; walk(asset.root, 1); return `${lines.join("\n")}\n`;
+}
+
+export function formatGse(textOrAsset, mode = "preserve") {
+  const formatted = formatGseLegacy(textOrAsset, mode);
+  if (typeof textOrAsset === "string" || !textOrAsset || typeof textOrAsset !== "object") return formatted;
+  const nodeIds = [];
+  const collect = (nodes) => {
+    for (const node of nodes ?? []) {
+      if (["if", "let", "do", "await", "motion_intent", "publish"].includes(node.command_id)) nodeIds.push(node.node_id);
+      if (node.command_id === "if") {
+        collect(node.children?.then);
+        collect(node.children?.else);
+      }
+    }
+  };
+  collect(textOrAsset.root);
+  const lines = formatted.split("\n");
+  let nodeIndex = 0;
+  for (let index = 1; index < lines.length && nodeIndex < nodeIds.length; index += 1) {
+    const line = lines[index];
+    if (!line || /^\s*(?:else|否则)\s*[:：]?\s*$/u.test(line)) continue;
+    if (!line.includes("# @node_id=")) lines[index] = `${line} # @node_id=${nodeIds[nodeIndex]}`;
+    nodeIndex += 1;
+  }
+  return lines.join("\n");
 }
 
 function formatExpression(value) { if (value && typeof value === "object" && value.ref) return value.ref; if (value && typeof value === "object" && value.op) return value.op === "connect" ? value.items.map(formatExpression).join(" connect ") : `${formatExpression(value.left)} ${value.op} ${formatExpression(value.right)}`; if (typeof value === "string") return JSON.stringify(value); return String(value); }
