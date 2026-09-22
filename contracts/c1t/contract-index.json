@@ -13,6 +13,7 @@
     "temporal-command-contract@1",
     "authority-claim-matrix@1",
     "reactive-execution-graph@1",
+    "guard-expression@1",
     "task-activation-contract@1",
     "model-validity-envelope@1",
     "state-alignment-contract@1",

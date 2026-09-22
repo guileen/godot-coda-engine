@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/guard-expression@1",
+  "title": "CODA typed GuardExpression@1",
+  "type": "object",
+  "required": ["guard_type", "guard_version", "guard_id", "unknown_policy", "expression"],
+  "properties": {
+    "guard_type": { "const": "GuardExpression" },
+    "guard_version": { "const": 1 },
+    "guard_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "unknown_policy": { "const": "reject_or_yield_safety" },
+    "expression": { "$ref": "#/$defs/expression" }
+  },
+  "$defs": {
+    "expression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["node_type", "value"],
+          "properties": {
+            "node_type": { "const": "literal" },
+            "value": { "type": ["string", "number", "boolean", "null"] }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["node_type", "contract_ref", "path"],
+          "properties": {
+            "node_type": { "const": "observation_ref" },
+            "contract_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+            "path": { "type": "string", "pattern": "^/[^\\u0000]*$" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["node_type", "operator", "operands"],
+          "properties": {
+            "node_type": { "const": "operation" },
+            "operator": { "enum": ["eq", "neq", "lt", "lte", "gt", "gte", "and", "or", "not", "is_known"] },
+            "operands": { "type": "array", "items": { "$ref": "#/$defs/expression" }, "maxItems": 32 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

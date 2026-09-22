@@ -320,6 +320,8 @@ outside safety/viability domain or hardware hazard
 
 Guard 的部署由四项共同决定：所需信息来源、最坏响应 deadline、评估成本和执行权威。核心不冻结视觉 1–5Hz、监督 20–100Hz、控制 1kHz 等通用数字。
 
+Guard 条件使用 `GuardExpression@1` 的封闭 AST：literal、版本化 ObservationContract 字段引用和白名单比较/逻辑运算；未知输入只能 reject 或交给预授权安全路径。任意条件字符串、源码片段和未绑定的 observation path 均不构成可执行 Guard。该结构与引用绑定校验不提供 deadline/WCET 或安全证明。
+
 典型分层是：
 
 | Guard | 典型评估位置 |

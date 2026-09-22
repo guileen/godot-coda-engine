@@ -108,5 +108,19 @@
     "terminal_nodes": ["adapter_terminal"],
     "arbitrary_source_execution": false,
     "adapter_authority_without_admission": false
+  },
+  "guard_expression": {
+    "guard_type": "GuardExpression",
+    "guard_version": 1,
+    "guard_id": "hand.pose.calibrated@1",
+    "unknown_policy": "reject_or_yield_safety",
+    "expression": {
+      "node_type": "operation",
+      "operator": "eq",
+      "operands": [
+        { "node_type": "observation_ref", "contract_ref": "hand.pose@1", "path": "/quality/calibrated" },
+        { "node_type": "literal", "value": true }
+      ]
+    }
   }
 }
