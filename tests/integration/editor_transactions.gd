@@ -94,10 +94,47 @@ func _start() -> void:
 	if not committed.ok or committed.asset.get("display_name") != "临时修改":
 		failures.append("valid text transaction did not commit")
 
+	var text_source_path := "res://.gseos/text-owned-transaction.coda"
+	var text_asset_path := "res://.gseos/text-owned-transaction.gse.json"
+	var text_source := "event ui.text.owned [id: ui.text.owned]:\n  let score = 1 # @node_id=stable.score\n"
+	var text_source_file := FileAccess.open(text_source_path, FileAccess.WRITE)
+	text_source_file.store_string(text_source)
+	text_source_file.close()
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var parse_output: Array[String] = []
+	OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(text_source_path)], parse_output, true)
+	var parsed_text = JSON.parse_string("\n".join(parse_output))
+	var text_asset: Dictionary = parsed_text.asset
+	var text_created := store.save_text_owned_asset(text_asset_path, text_source_path, text_source, text_asset, -1, "")
+	if not text_created.saved or store.load_asset(text_asset_path).ownership.authoring_mode != "text_owned":
+		failures.append("text-owned source, projection and owner were not committed together")
+	var source_fingerprint: String = store.load_asset(text_asset_path).ownership.source.fingerprint
+	var edited_source := text_source.replace("score = 1", "score = 2")
+	var edited_source_path := text_source_path + ".candidate"
+	var edited_source_file := FileAccess.open(edited_source_path, FileAccess.WRITE)
+	edited_source_file.store_string(edited_source)
+	edited_source_file.close()
+	parse_output.clear()
+	OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(edited_source_path)], parse_output, true)
+	parsed_text = JSON.parse_string("\n".join(parse_output))
+	var edited_text_asset: Dictionary = parsed_text.asset
+	var text_updated := store.save_text_owned_asset(text_asset_path, text_source_path, edited_source, edited_text_asset, 0, source_fingerprint)
+	var text_reloaded := store.load_asset(text_asset_path)
+	if not text_updated.saved or text_reloaded.asset.root[0].params.value != 2 or text_reloaded.ownership.owner_revision != 1:
+		failures.append("text-owned source edit did not advance the source/projection owner atomically")
+	var stale_text_save := store.save_text_owned_asset(text_asset_path, text_source_path, text_source, text_asset, 0, source_fingerprint)
+	if stale_text_save.saved or stale_text_save.receipt.diagnostics[0].get("code") != "AUTHORING_SOURCE_CHANGED":
+		failures.append("stale text-owned source edit was not rejected")
+	var graph_write_to_text_owner := store.save_asset(text_asset_path, edited_text_asset, text_reloaded.asset)
+	if graph_write_to_text_owner.saved:
+		failures.append("graph-owned EventAsset store wrote a text-owned projection")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".ownership.json"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".tmp"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".ownership.json.tmp"))
+	for suffix in ["", ".ownership.json", ".coda", ".gse.json", ".gse.json.ownership.json", ".tmp", ".ownership.json.tmp", ".coda.tmp", ".coda.bak", ".gse.json.bak", ".gse.json.ownership.json.bak", ".coda.candidate"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("res://.gseos/text-owned-transaction" + suffix))
 	if failures.is_empty():
 		print("GSEOS editor asset transaction integration passed")
 		quit(0)

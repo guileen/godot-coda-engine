@@ -37,10 +37,30 @@ func load_ownership(path: String, asset: Dictionary) -> Dictionary:
 	var node_identity: Variant = parsed.get("node_identity", {})
 	var owner_revision: Variant = parsed.get("owner_revision", null)
 	var revision_valid: bool = owner_revision is int or (owner_revision is float and is_finite(owner_revision) and floor(owner_revision) == owner_revision)
-	if parsed.get("authoring_mode") != "graph_owned" or not revision_valid or owner_revision < 0 or not parsed.get("derived_projections", null) is Array:
+	var authoring_mode := String(parsed.get("authoring_mode", ""))
+	if authoring_mode not in ["graph_owned", "text_owned"] or not revision_valid or owner_revision < 0 or not parsed.get("derived_projections", null) is Array:
 		return {"record": parsed, "receipt": _receipt("INVALID_AUTHORING_OWNERSHIP", "EventAsset owner sidecar revision、mode 或 projections 无效。"), "persisted": true}
-	if not source is Dictionary or source.get("source_type") != "event_asset" or source.get("source_ref") != path.trim_prefix("res://") or source.get("fingerprint", "") != _fingerprint(asset) or parsed.get("asset_id", "") != _asset_id(asset):
+	var expected_source_type := "event_asset" if authoring_mode == "graph_owned" else "coda_source"
+	if not source is Dictionary or source.get("source_type") != expected_source_type or parsed.get("asset_id", "") != _asset_id(asset):
 		return {"record": parsed, "receipt": _receipt("AUTHORING_OWNERSHIP_SOURCE_MISMATCH", "owner sidecar 与当前 EventAsset 不匹配；拒绝写入。"), "persisted": true}
+	if authoring_mode == "graph_owned":
+		if source.get("source_ref") != path.trim_prefix("res://") or source.get("fingerprint", "") != _fingerprint(asset):
+			return {"record": parsed, "receipt": _receipt("AUTHORING_OWNERSHIP_SOURCE_MISMATCH", "owner sidecar 与当前 EventAsset 不匹配；拒绝写入。"), "persisted": true}
+	else:
+		var source_ref := String(source.get("source_ref", ""))
+		if source_ref.is_empty() or source_ref.begins_with("/") or source_ref.split("/").has("..") or source_ref.contains("\\"):
+			return {"record": parsed, "receipt": _receipt("INVALID_AUTHORING_SOURCE_REF", "text_owned source_ref 必须是项目内相对路径。"), "persisted": true}
+		var owned_source_path := "res://" + source_ref
+		if FileAccess.file_exists(ProjectSettings.globalize_path(owned_source_path + ".bak")) or not FileAccess.file_exists(owned_source_path):
+			return {"record": parsed, "receipt": _receipt("TEXT_OWNERSHIP_SOURCE_MISSING", "text_owned 源缺失或处于备份中间态；拒绝读取派生资产。"), "persisted": true}
+		var owned_source := FileAccess.get_file_as_string(owned_source_path)
+		if source.get("fingerprint", "") != _fingerprint(owned_source):
+			return {"record": parsed, "receipt": _receipt("AUTHORING_OWNERSHIP_SOURCE_MISMATCH", "owner sidecar 与 CODA 源不匹配；拒绝读取派生资产。"), "persisted": true}
+		var projection_found := false
+		for projection in parsed.derived_projections:
+			if projection is Dictionary and projection.get("artifact_type") == "event_asset" and projection.get("authority") == "derived" and projection.get("writable") == false and projection.get("fingerprint") == _fingerprint(asset): projection_found = true
+		if not projection_found:
+			return {"record": parsed, "receipt": _receipt("AUTHORING_DERIVED_PROJECTION_MISMATCH", "text_owned EventAsset projection 与 owner sidecar 不匹配。"), "persisted": true}
 	if not node_identity is Dictionary or node_identity.get("policy") != "stable_node_id@1" or node_identity.get("mapping_digest", "") != _make_ownership(path, asset, "graph_owned", int(parsed.owner_revision)).node_identity.mapping_digest:
 		return {"record": parsed, "receipt": _receipt("AUTHORING_NODE_IDENTITY_MISMATCH", "owner sidecar 中的 stable node identity 与当前 EventAsset 不匹配。"), "persisted": true}
 	return {"record": parsed, "receipt": {"ok": true, "diagnostics": []}, "persisted": true}
@@ -147,6 +167,101 @@ func save_asset(path: String, asset: Dictionary, expected_asset: Variant = null,
 	if not cleanup_ok:
 		return {"receipt": receipt, "saved": true, "ownership": owner, "asset": checker.data, "cleanup_pending": true}
 	return {"receipt": receipt, "saved": true, "ownership": owner, "asset": checker.data}
+
+func save_text_owned_asset(asset_path: String, source_path: String, source_text: String, asset: Dictionary, expected_owner_revision: int, expected_source_fingerprint: String) -> Dictionary:
+	if asset_path == source_path or asset_path + ".ownership.json" == source_path:
+		return {"receipt": _receipt("AUTHORING_SOURCE_PATH_COLLISION", "派生资产、CODA 源与 ownership sidecar 必须使用不同路径。"), "saved": false}
+	var checker := GSEOS_EventAsset.new()
+	var receipt: Dictionary = checker.from_dictionary(asset)
+	if not receipt.ok: return {"receipt": receipt, "saved": false}
+	if source_text.is_empty(): return {"receipt": _receipt("TEXT_AUTHORING_SOURCE_EMPTY", "text_owned 源不能为空。"), "saved": false}
+	var source_temp := source_path + ".validate.tmp"
+	var source_file := FileAccess.open(source_temp, FileAccess.WRITE)
+	if source_file == null: return {"receipt": _receipt("TEXT_AUTHORING_SOURCE_WRITE_FAILED", "无法暂存 text_owned 源进行 parse-check。"), "saved": false}
+	source_file.store_string(source_text)
+	source_file.close()
+	var parse_output: Array[String] = []
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var parse_exit := OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(source_temp)], parse_output, true)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(source_temp))
+	var parsed = JSON.parse_string("\n".join(parse_output))
+	if parse_exit != 0 or not parsed is Dictionary or not parsed.get("receipt", {}).get("ok", false) or not parsed.get("asset") is Dictionary:
+		return {"receipt": _receipt("TEXT_AUTHORING_SOURCE_INVALID", "text_owned 源未通过 GSE parse；本次事务未写入。"), "saved": false}
+	var parsed_checker := GSEOS_EventAsset.new()
+	var parsed_asset_receipt: Dictionary = parsed_checker.from_dictionary(parsed.asset)
+	if not parsed_asset_receipt.ok or _fingerprint(parsed_checker.data) != _fingerprint(checker.data):
+		return {"receipt": _receipt("TEXT_AUTHORING_PROJECTION_MISMATCH", "候选 EventAsset 与 text_owned 源解析结果不一致。"), "saved": false}
+	var owner_path := asset_path + ".ownership.json"
+	var previous_owner: Dictionary = {}
+	if FileAccess.file_exists(ProjectSettings.globalize_path(asset_path)):
+		var current := load_asset(asset_path)
+		if not current.receipt.ok or not current.ownership_receipt.ok:
+			return {"receipt": current.receipt if not current.receipt.ok else current.ownership_receipt, "saved": false}
+		previous_owner = current.ownership
+		if int(previous_owner.get("owner_revision", -1)) != expected_owner_revision or String(previous_owner.get("source", {}).get("fingerprint", "")) != expected_source_fingerprint:
+			return {"receipt": _receipt("AUTHORING_SOURCE_CHANGED", "owner revision 或 source fingerprint 已变化；本次事务未写入。"), "saved": false}
+	else:
+		if expected_owner_revision != -1 or not expected_source_fingerprint.is_empty() or FileAccess.file_exists(ProjectSettings.globalize_path(owner_path)):
+			return {"receipt": _receipt("AUTHORING_SOURCE_CHANGED", "预期的 authoring source 不存在或 owner sidecar 孤立；拒绝创建。"), "saved": false}
+	if previous_owner.get("authoring_mode", "graph_owned") == "text_owned" and String(previous_owner.get("source", {}).get("source_ref", "")) != source_path.trim_prefix("res://"):
+		return {"receipt": _receipt("AUTHORING_SOURCE_PATH_CHANGED", "text_owned 编辑不得隐式迁移 source_ref。"), "saved": false}
+	var next_revision := int(previous_owner.get("owner_revision", -1)) + 1
+	var ids: Array[String] = []
+	_collect_node_ids(checker.data.get("root", []), ids)
+	ids.sort()
+	var owner := {
+		"contract_type": "AuthoringOwnership", "schema_version": 1,
+		"asset_id": _asset_id(checker.data), "authoring_mode": "text_owned", "owner_revision": next_revision,
+		"source": {"source_type": "coda_source", "source_ref": source_path.trim_prefix("res://"), "fingerprint": _fingerprint(source_text)},
+		"node_identity": {"policy": "stable_node_id@1", "mapping_digest": _fingerprint({"node_ids": ids})},
+		"derived_projections": [{"artifact_type": "event_asset", "fingerprint": _fingerprint(checker.data), "authority": "derived", "writable": false}]
+	}
+	var writes := _commit_file_set(
+		[asset_path, source_path, owner_path],
+		[JSON.stringify(checker.data, "  ") + "\n", source_text, JSON.stringify(owner, "  ") + "\n"],
+	)
+	if not writes.ok: return {"receipt": writes.receipt, "saved": false}
+	return {"receipt": receipt, "saved": true, "ownership": owner, "asset": checker.data, "cleanup_pending": writes.cleanup_pending}
+
+func _commit_file_set(paths: Array[String], contents: Array[String]) -> Dictionary:
+	var targets: Array[String] = []
+	var temporaries: Array[String] = []
+	var backups: Array[String] = []
+	var existed: Array[bool] = []
+	for index in paths.size():
+		var absolute_target := ProjectSettings.globalize_path(paths[index])
+		var absolute_temp := ProjectSettings.globalize_path(paths[index] + ".tmp")
+		var absolute_backup := absolute_target + ".bak"
+		if FileAccess.file_exists(absolute_backup):
+			for temp in temporaries: DirAccess.remove_absolute(temp)
+			return {"ok": false, "receipt": _receipt("ASSET_TRANSACTION_RECOVERY_REQUIRED", "检测到待恢复备份；三文件事务未启动。")}
+		var file := FileAccess.open(paths[index] + ".tmp", FileAccess.WRITE)
+		if file == null:
+			for temp in temporaries: DirAccess.remove_absolute(temp)
+			return {"ok": false, "receipt": _receipt("AUTHORING_STAGE_WRITE_FAILED", "无法暂存 text_owned 三文件事务。")}
+		file.store_string(contents[index])
+		file.close()
+		targets.append(absolute_target)
+		temporaries.append(absolute_temp)
+		backups.append(absolute_backup)
+		existed.append(FileAccess.file_exists(absolute_target))
+	for index in targets.size():
+		if existed[index] and DirAccess.rename_absolute(targets[index], backups[index]) != OK:
+			for restore_index in range(index - 1, -1, -1):
+				if existed[restore_index]: DirAccess.rename_absolute(backups[restore_index], targets[restore_index])
+			for temp in temporaries: DirAccess.remove_absolute(temp)
+			return {"ok": false, "receipt": _receipt("AUTHORING_BACKUP_FAILED", "无法备份三文件事务的旧版本；已尝试恢复。")}
+	for index in targets.size():
+		if DirAccess.rename_absolute(temporaries[index], targets[index]) != OK:
+			for rollback_index in targets.size():
+				if FileAccess.file_exists(targets[rollback_index]): DirAccess.remove_absolute(targets[rollback_index])
+				if existed[rollback_index] and FileAccess.file_exists(backups[rollback_index]): DirAccess.rename_absolute(backups[rollback_index], targets[rollback_index])
+			for temp in temporaries: DirAccess.remove_absolute(temp)
+			return {"ok": false, "receipt": _receipt("AUTHORING_RENAME_FAILED", "无法提交完整的 text_owned 事务；已尝试恢复旧版本。")}
+	var cleanup_pending := false
+	for index in backups.size():
+		if existed[index] and DirAccess.remove_absolute(backups[index]) != OK: cleanup_pending = true
+	return {"ok": true, "cleanup_pending": cleanup_pending, "receipt": {"ok": true, "diagnostics": []}}
 
 func _make_ownership(path: String, asset: Dictionary, mode: String, revision: int) -> Dictionary:
 	var ids: Array[String] = []

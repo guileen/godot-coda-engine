@@ -24,6 +24,7 @@ var _draft_param_controls: Dictionary = {}
 var _asset_paths: Array[String] = []
 var _selected_path := ""
 var _selected_asset: Dictionary = {}
+var _selected_ownership: Dictionary = {}
 var _selected_node_id := ""
 var _draft_asset: Dictionary = {}
 var _draft_node_id := ""
@@ -151,6 +152,7 @@ func _on_event_selected(index: int) -> void:
 		_status.text = _format_diagnostics(loaded.receipt.diagnostics)
 		return
 	_selected_asset = loaded.asset
+	_selected_ownership = loaded.ownership
 	_draft_asset = {}
 	_draft_node_id = ""
 	_name_edit.text = String(_selected_asset.get("display_name", _selected_asset.get("event_id", "")))
@@ -800,11 +802,15 @@ func _remove_node(nodes: Array, node_id: String) -> bool:
 	return false
 
 func _write_asset_transaction(path: String, before: Dictionary, after: Dictionary, title: String) -> bool:
+	if path == _selected_path and _selected_ownership.get("authoring_mode", "graph_owned") == "text_owned":
+		_status.text = "该资产由 CODA 源唯一拥有；请通过文本事务编辑，图形写入已拒绝。"
+		return false
 	if _undo_redo == null:
 		var result := _store.save_asset(path, after, before)
 		if result.saved:
 			after.clear()
 			after.merge(result.asset, true)
+			if path == _selected_path: _selected_ownership = result.ownership
 			if result.get("cleanup_pending", false):
 				_status.text = "资产与 owner 已提交；旧备份未清理，后续读取/写入将 fail-closed。"
 			_record_fallback_history(path, before, after, title)
@@ -825,6 +831,7 @@ func _write_asset(path: String, expected_asset: Dictionary, asset: Dictionary) -
 	if result.saved:
 		asset.clear()
 		asset.merge(result.asset, true)
+		if path == _selected_path: _selected_ownership = result.ownership
 		if result.get("cleanup_pending", false):
 			_status.text = "资产与 owner 已提交；旧备份未清理，后续读取/写入将 fail-closed。"
 		_update_disk_modified_time()
@@ -907,6 +914,7 @@ func _reload_selected_from_disk() -> void:
 		_status.text = _format_diagnostics(loaded.receipt.diagnostics)
 		return
 	_selected_asset = loaded.asset
+	_selected_ownership = loaded.ownership
 	_draft_asset = {}
 	_draft_node_id = ""
 	_selected_node_id = ""
@@ -955,7 +963,14 @@ func _open_text_import() -> void:
 	if not _can_format_asset_to_gse(_selected_asset.get("root", [])):
 		_status.text = "此资产包含当前文本投影器不支持的节点/分支；为避免丢失语义，不能打开文本事务。"
 		return
-	_text_import_edit.text = _asset_to_gse_text(_selected_asset)
+	if _selected_ownership.get("authoring_mode", "graph_owned") == "text_owned":
+		var source_path := "res://" + String(_selected_ownership.get("source", {}).get("source_ref", ""))
+		if not FileAccess.file_exists(source_path):
+			_status.text = "text_owned CODA 源缺失；拒绝编辑派生 EventAsset。"
+			return
+		_text_import_edit.text = FileAccess.get_file_as_string(source_path)
+	else:
+		_text_import_edit.text = _asset_to_gse_text(_selected_asset)
 	_text_import_status.text = "编辑文本后预览；失败只保留 draft 和诊断，不改资产。"
 	_text_import_diff.text = ""
 	_text_import_candidate = {}
@@ -988,9 +1003,16 @@ func _preview_text_import() -> void:
 		_text_import_diff.text = ""
 		return
 	var candidate: Dictionary = parsed.asset.duplicate(true)
-	candidate["event_id"] = _selected_asset.get("event_id", candidate.get("event_id", ""))
-	candidate["display_name"] = _selected_asset.get("display_name", candidate.get("display_name", ""))
-	candidate["recovery"] = _selected_asset.get("recovery", "E0")
+	if _selected_ownership.get("authoring_mode", "graph_owned") == "text_owned":
+		if candidate.get("event_id") != _selected_asset.get("event_id"):
+			_text_import_candidate = {}
+			_text_import_status.text = "text_owned 编辑不得更改 asset_id；请执行显式 owner migration。"
+			return
+		candidate["recovery"] = _selected_asset.get("recovery", "E0")
+	else:
+		candidate["event_id"] = _selected_asset.get("event_id", candidate.get("event_id", ""))
+		candidate["display_name"] = _selected_asset.get("display_name", candidate.get("display_name", ""))
+		candidate["recovery"] = _selected_asset.get("recovery", "E0")
 	_rebase_imported_node_ids(candidate, _selected_asset)
 	_text_transaction.begin(_selected_asset, _text_import_edit.text)
 	var preview := _text_transaction.preview(candidate, parsed.receipt.diagnostics)
@@ -1006,9 +1028,19 @@ func _commit_text_import() -> void:
 	if not committed.ok:
 		_text_import_status.text = _format_diagnostics(committed.diagnostics)
 		return
-	if not _write_asset_transaction(_selected_path, _selected_asset, committed.asset, "提交 GSE 文本导入"):
-		return
-	_selected_asset = committed.asset
+	if _selected_ownership.get("authoring_mode", "graph_owned") == "text_owned":
+		var source_path := "res://" + String(_selected_ownership.get("source", {}).get("source_ref", ""))
+		var saved := _store.save_text_owned_asset(_selected_path, source_path, _text_import_edit.text, committed.asset, int(_selected_ownership.get("owner_revision", -1)), String(_selected_ownership.get("source", {}).get("fingerprint", "")))
+		if not saved.saved:
+			_text_import_status.text = _format_diagnostics(saved.receipt.diagnostics)
+			return
+		_selected_asset = saved.asset
+		_selected_ownership = saved.ownership
+		if saved.get("cleanup_pending", false): _text_import_status.text = "源、派生投影与 owner 已提交；旧备份待恢复清理。"
+	else:
+		if not _write_asset_transaction(_selected_path, _selected_asset, committed.asset, "提交 GSE 文本导入"):
+			return
+		_selected_asset = committed.asset
 	_text_import_candidate = {}
 	_text_import_panel.visible = false
 	_rebuild_tree()
