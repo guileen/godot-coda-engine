@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateTemporalCommandContract } from "../src/index.js";
-import { applyAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
+import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
 import { applyIntentProtocolRequest, createIntentProtocolState, settleIntentProtocolInstance, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
@@ -338,6 +338,39 @@ test("C1-L.0.1 reference authoring transaction applies atomically with owner rev
     operations: [{ operation: "add_node", node_id: "new.parent", field_path: "/root", value: { node_id: "new.parent", children: { body: [{ node_id: "nested.same" }, { node_id: "nested.same" }] } } }],
   };
   assert.equal(applyAuthoringTransaction(ownership, source, duplicateSubtreeIds).receipt.diagnostics[0].code, "INVALID_AUTHORING_NODE_ADDITION");
+});
+
+test("C1-L.0.1 text-owned authoring edits canonical anchored GSE atomically", () => {
+  const source = "event test.textowned:\n  let value = 1 # @node_id=stable.value\n";
+  const parsed = parseGse(source);
+  const identityDigest = authoringNodeIdentityDigest(parsed.asset);
+  const ownership = {
+    contract_type: "AuthoringOwnership", schema_version: 1, asset_id: "test.textowned@1", authoring_mode: "text_owned", owner_revision: 2,
+    source: { source_type: "coda_source", source_ref: "gseos/events/test.textowned.coda", fingerprint: assetFingerprint(source) },
+    node_identity: { policy: "stable_node_id@1", mapping_digest: identityDigest }, derived_projections: [],
+  };
+  const candidate = structuredClone(parsed.asset);
+  candidate.root[0].params.value = 7;
+  const candidateText = formatGse(candidate, "en");
+  const transaction = {
+    transaction_type: "AuthoringTransaction", schema_version: 1, transaction_id: "text.edit.001", asset_id: ownership.asset_id,
+    expected_mode: "text_owned", expected_owner_revision: ownership.owner_revision, expected_source_fingerprint: ownership.source.fingerprint,
+    operation: "edit", target_mode: "text_owned",
+    target_source: { source_type: "coda_source", source_ref: ownership.source.source_ref, candidate_fingerprint: assetFingerprint(candidateText), node_identity_digest: identityDigest },
+    operations: [{ operation: "replace_field", node_id: "stable.value", field_path: "/params/value", expected_node_fingerprint: authoringSourceNodeFingerprint(parsed.asset.root[0]), value: 7 }],
+  };
+  const committed = applyTextAuthoringTransaction(ownership, source, transaction);
+  assert.equal(committed.receipt.status, "committed");
+  assert.equal(committed.ownership.owner_revision, 3);
+  assert.match(committed.source, /value = 7 # @node_id=stable\.value/u);
+  assert.equal(applyTextAuthoringTransaction(committed.ownership, source, transaction).receipt.status, "conflict");
+  const unanchoredSource = "event test.textowned:\n  let value = 1\n";
+  const unanchored = applyTextAuthoringTransaction(
+    { ...ownership, source: { ...ownership.source, fingerprint: assetFingerprint(unanchoredSource) } },
+    unanchoredSource,
+    { ...transaction, expected_source_fingerprint: assetFingerprint(unanchoredSource) },
+  );
+  assert.equal(unanchored.receipt.diagnostics[0].code, "TEXT_AUTHORING_SOURCE_NOT_CANONICAL");
 });
 
 test("C1-L.1 TaskGraph 与 source reference 固定类型和作者源定位", () => {

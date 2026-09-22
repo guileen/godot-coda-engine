@@ -1,5 +1,6 @@
-import { assetFingerprint } from "./asset.js";
+import { assetFingerprint, validateEventAsset } from "./asset.js";
 import { gseosDiagnostic } from "./diagnostics.js";
+import { formatGse, parseGse } from "./frontend.js";
 
 const refPattern = /^[-\w.]+@\d+$/u;
 const blockedPathSegments = new Set(["__proto__", "prototype", "constructor"]);
@@ -169,6 +170,94 @@ export function applyAuthoringTransaction(ownership, sourceDocument, transaction
     ownership: nextOwnership,
     receipt: makeReceipt(transaction, nextOwnership, "committed", [], [...changed].sort()),
   };
+}
+
+/** Apply an atomic AST edit to canonical, explicitly anchored text-owned GSE source. */
+export function applyTextAuthoringTransaction(ownership, sourceText, transaction) {
+  const reject = (code, status = "rejected") => ({ source: null, ownership, receipt: makeReceipt(transaction, ownership, status, [code]) });
+  if (!ownership || ownership.contract_type !== "AuthoringOwnership" || ownership.schema_version !== 1 || ownership.authoring_mode !== "text_owned" || ownership.source?.source_type !== "coda_source") return reject("INVALID_TEXT_AUTHORING_OWNERSHIP");
+  if (typeof sourceText !== "string" || !transaction || transaction.transaction_type !== "AuthoringTransaction" || transaction.schema_version !== 1 || typeof transaction.transaction_id !== "string" || transaction.transaction_id.length === 0 || !Array.isArray(transaction.operations) || transaction.operations.length === 0) return reject("INVALID_TEXT_AUTHORING_TRANSACTION");
+  if (transaction.asset_id !== ownership.asset_id || !refPattern.test(String(transaction.asset_id ?? ""))) return reject("AUTHORING_ASSET_ID_MISMATCH");
+  if (transaction.expected_mode !== ownership.authoring_mode) return reject("AUTHORING_OWNER_MODE_CHANGED", "stale_owner");
+  if (!Number.isInteger(ownership.owner_revision) || ownership.owner_revision < 0) return reject("INVALID_AUTHORING_REVISION");
+  if (transaction.expected_owner_revision !== ownership.owner_revision || transaction.expected_source_fingerprint !== ownership.source.fingerprint || assetFingerprint(sourceText) !== ownership.source.fingerprint) return reject("AUTHORING_SOURCE_CHANGED", "conflict");
+  if (transaction.operation !== "edit" || transaction.target_mode !== "text_owned" || transaction.target_source?.source_type !== "coda_source" || transaction.target_source?.source_ref !== ownership.source.source_ref || typeof transaction.target_source.candidate_fingerprint !== "string" || typeof transaction.target_source.node_identity_digest !== "string") return reject("AUTHORING_TEXT_SOURCE_ADAPTER_REQUIRED");
+
+  const parsed = parseGse(sourceText);
+  if (!parsed.receipt.ok || !parsed.asset || transaction.asset_id !== `${parsed.asset.event_id}@1`) return reject("TEXT_AUTHORING_SOURCE_INVALID");
+  const nodeKinds = new Set(["if", "let", "do", "await", "motion_intent", "publish"]);
+  const supportsTextNodes = (asset) => {
+    const check = (nodes) => Array.isArray(nodes) && nodes.every((node) => {
+      if (!node || !nodeKinds.has(node.command_id)) return false;
+      const children = node.children ?? {};
+      if (!children || typeof children !== "object" || Array.isArray(children)) return false;
+      if (node.command_id !== "if") return Object.keys(children).length === 0;
+      return Array.isArray(children.then) && Object.keys(children).every((slot) => ["then", "else"].includes(slot) && Array.isArray(children[slot])) && Object.values(children).every(check);
+    });
+    return check(asset.root);
+  };
+  if (!supportsTextNodes(parsed.asset)) return reject("TEXT_AUTHORING_UNSUPPORTED_NODE");
+  const mode = sourceText.trimStart().startsWith("事件 ") ? "zh" : "en";
+  if (formatGse(parsed.asset, mode) !== sourceText) return reject("TEXT_AUTHORING_SOURCE_NOT_CANONICAL");
+  const originalIdentity = authoringNodeIdentityDigest(parsed.asset);
+  if (ownership.node_identity?.policy !== "stable_node_id@1" || ownership.node_identity.mapping_digest !== originalIdentity) return reject("AUTHORING_NODE_IDENTITY_MISMATCH", "conflict");
+
+  const originalIds = collectAllNodeIds(parsed.asset);
+  if (new Set(originalIds).size !== originalIds.length) return reject("DUPLICATE_AUTHORING_NODE_ID");
+  const addedIds = new Set();
+  const preflight = new Map();
+  for (const operation of transaction.operations) {
+    if (!operation || !["add_node", "replace_field", "remove_node"].includes(operation.operation) || typeof operation.node_id !== "string" || !/^[\w.-]+$/u.test(operation.node_id)) return reject("INVALID_AUTHORING_OPERATION");
+    if (operation.operation === "add_node") {
+      const segments = pointerSegments(operation.field_path);
+      const targetArray = segments ? resolveContainer(parsed.asset, segments) : null;
+      const subtreeIds = collectSubtreeNodeIds(operation.value);
+      if (!Array.isArray(targetArray) || !operation.value || operation.value.node_id !== operation.node_id || subtreeIds.length === 0 || new Set(subtreeIds).size !== subtreeIds.length || subtreeIds.some((id) => !/^[\w.-]+$/u.test(id) || originalIds.includes(id) || addedIds.has(id))) return reject("INVALID_AUTHORING_NODE_ADDITION");
+      subtreeIds.forEach((id) => addedIds.add(id));
+      continue;
+    }
+    const found = findNode(parsed.asset, operation.node_id);
+    if (!found || typeof operation.expected_node_fingerprint !== "string" || assetFingerprint(found.node) !== operation.expected_node_fingerprint) return reject("AUTHORING_NODE_CHANGED", "conflict");
+    if (preflight.has(operation.node_id) && (operation.operation === "remove_node" || preflight.get(operation.node_id) === "remove_node")) return reject("CONFLICTING_AUTHORING_OPERATIONS");
+    preflight.set(operation.node_id, operation.operation);
+    if (operation.operation === "replace_field") {
+      const segments = pointerSegments(operation.field_path);
+      const parent = segments ? resolveContainer(found.node, segments.slice(0, -1)) : null;
+      if (!segments || segments.length === 0 || ["node_id", "source_span"].includes(segments[0]) || !parent || !Object.hasOwn(parent, segments.at(-1))) return reject("INVALID_AUTHORING_FIELD_PATH");
+    }
+  }
+
+  const candidate = structuredClone(parsed.asset);
+  const changed = new Set();
+  for (const operation of transaction.operations) {
+    if (operation.operation === "add_node") {
+      resolveContainer(candidate, pointerSegments(operation.field_path)).push(structuredClone(operation.value));
+      changed.add(operation.node_id);
+      continue;
+    }
+    const found = findNode(candidate, operation.node_id);
+    if (!found) return reject("AUTHORING_NODE_CHANGED", "conflict");
+    if (operation.operation === "replace_field") {
+      if (!setExistingPath(found.node, pointerSegments(operation.field_path), operation.value)) return reject("INVALID_AUTHORING_FIELD_PATH");
+    } else found.nodes.splice(found.index, 1);
+    changed.add(operation.node_id);
+  }
+  if (!validateEventAsset(candidate).ok) return reject("TEXT_AUTHORING_CANDIDATE_INVALID");
+  if (!supportsTextNodes(candidate)) return reject("TEXT_AUTHORING_UNSUPPORTED_NODE");
+  const candidateIdentity = authoringNodeIdentityDigest(candidate);
+  if (candidateIdentity !== transaction.target_source.node_identity_digest) return reject("AUTHORING_CANDIDATE_FINGERPRINT_MISMATCH");
+  const candidateText = formatGse(candidate, mode);
+  const reparsed = parseGse(candidateText);
+  if (!reparsed.receipt.ok || !reparsed.asset || !validateEventAsset(reparsed.asset).ok || authoringNodeIdentityDigest(reparsed.asset) !== candidateIdentity) return reject("TEXT_AUTHORING_CANDIDATE_INVALID");
+  const candidateFingerprint = assetFingerprint(candidateText);
+  if (candidateFingerprint !== transaction.target_source.candidate_fingerprint) return reject("AUTHORING_CANDIDATE_FINGERPRINT_MISMATCH");
+  const nextOwnership = {
+    ...structuredClone(ownership),
+    owner_revision: ownership.owner_revision + 1,
+    source: { ...ownership.source, fingerprint: candidateFingerprint },
+    node_identity: { ...ownership.node_identity, mapping_digest: candidateIdentity },
+  };
+  return { source: candidateText, ownership: nextOwnership, receipt: makeReceipt(transaction, nextOwnership, "committed", [], [...changed].sort()) };
 }
 
 export function authoringSourceNodeFingerprint(node) {
