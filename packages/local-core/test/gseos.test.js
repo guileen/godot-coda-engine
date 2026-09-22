@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -220,6 +221,42 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.equal(c1lContractPack.dynamics_profile.target_class, "game_visual");
   assert.equal(c1lContractPack.dynamics_profile.guarantee_level, "visual_plausibility");
   assert.equal(c1lContractPack.dynamics_profile.status, "draft");
+});
+
+test("C1-L.0.3 IntentProtocol reference isolates 100 instances and rejects stale generations", () => {
+  const makeRequest = (request_id, instance_id, operation, generation = 0, extra = {}) => ({
+    protocol: "IntentProtocol", schema_version: 1, request_id, operation, skill_ref: "social.wave@1", instance_id, generation,
+    issued_at: { clock_domain: "test.tick", tick: 10 }, deadline: { clock_domain: "test.tick", not_after_tick: 20 },
+    parameter_schema_ref: "social.wave.parameters@1", authority_ref: "test.authority@1", priority: 50, ...extra,
+  });
+  let state = createIntentProtocolState();
+  const initialState = state;
+  for (let index = 0; index < 100; index += 1) {
+    const request = makeRequest(`invoke.${index}`, `actor.${index}.wave`, "invoke", 0, { parameters: { actor_index: index } });
+    assert.equal(validateIntentProtocolRequest(request).ok, true);
+    const applied = applyIntentProtocolRequest(state, request);
+    assert.equal(applied.receipt.status, "admitted");
+    state = applied.state;
+  }
+  assert.equal(Object.keys(state.instances).length, 100);
+  assert.deepEqual(initialState.instances, {});
+
+  state = applyIntentProtocolRequest(state, makeRequest("amend.17", "actor.17.wave", "amend", 0, { parameters: { target: "left" } })).state;
+  assert.equal(state.instances["actor.17.wave"].parameters.target, "left");
+  assert.equal(state.instances["actor.18.wave"].parameters.target, undefined);
+  state = applyIntentProtocolRequest(state, makeRequest("pause.17", "actor.17.wave", "pause", 0)).state;
+  const resumed = applyIntentProtocolRequest(state, makeRequest("resume.17", "actor.17.wave", "resume", 1, { continuation_ref: "continuation.17@1" }));
+  assert.equal(resumed.receipt.status, "resumed");
+  state = resumed.state;
+  const stale = applyIntentProtocolRequest(state, makeRequest("late.cancel.17", "actor.17.wave", "cancel", 0));
+  assert.equal(stale.receipt.status, "stale");
+  assert.equal(stale.state.instances["actor.17.wave"].generation, 1);
+  assert.equal(stale.state.instances["actor.17.wave"].status, "running");
+  const cancelled = applyIntentProtocolRequest(stale.state, makeRequest("cancel.17", "actor.17.wave", "cancel", 1));
+  assert.equal(cancelled.receipt.terminal, true);
+  assert.equal(cancelled.state.instances["actor.17.wave"].terminal, true);
+  assert.equal(applyIntentProtocolRequest(cancelled.state, makeRequest("cancel.17", "actor.17.wave", "cancel", 1)).receipt.status, "stale");
+  assert.equal(cancelled.state.instances["actor.18.wave"].status, "running");
 });
 
 test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子", () => {
