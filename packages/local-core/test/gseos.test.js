@@ -333,6 +333,37 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
   assert.deepEqual(postTerminalReference.ledger, afterTerminal);
 });
 
+test("C1-M.0 mode changes and handoffs require an active lease binding at protocol admission", () => {
+  const adapterRef = "mock.embodiment.adapter@1";
+  const makeMessage = (message_type, payload) => ({
+    protocol: "EmbodimentProtocol", schema_version: 1, message_id: `missing-lease.${message_type}`,
+    direction: "coda_to_adapter", message_type, adapter_ref: adapterRef, epoch: 2, sequence: 0,
+    clock: { domain: "coda.clock", tick: 5, quality: "synchronized" },
+    validity: { valid_from_tick: 0, valid_until_tick: 10 }, payload,
+  });
+  const adapter = new MockEmbodimentAdapter({ adapter_ref: adapterRef });
+  for (const [message_type, payload] of [
+    ["mode_request", { controller_ref: "controller.position@1", mode_ref: "mode.contact@1", handoff_contract_ref: "handoff.contact@1" }],
+    ["handoff", { handoff_contract_ref: "handoff.contact@1", incoming_controller_ref: "controller.contact@1", barrier_id: "barrier.1" }],
+  ]) {
+    const message = makeMessage(message_type, payload);
+    const validation = validateEmbodimentProtocolMessage(message);
+    assert.ok(validation.diagnostics.some((item) => item.code === "EMBODIMENT_LEASE_BINDING_REQUIRED"));
+    const before = adapter.snapshot();
+    const response = adapter.receive(message);
+    assert.equal(response.accepted, false);
+    assert.equal(response.response.message_type, "reject");
+    assert.equal(response.response.payload.partial_write, false);
+    assert.deepEqual(response.ledger, before);
+  }
+
+  const schema = c1lSchemas.find((item) => item.$id.endsWith("/embodiment-protocol@1"));
+  for (const type of ["mode_request", "handoff"]) {
+    const condition = schema.allOf.find((item) => item.if.properties.message_type.const === type);
+    assert.deepEqual(condition.then.required, ["lease_ref", "generation"]);
+  }
+});
+
 test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子", () => {
   const ownershipSchema = c1lSchemas.find((item) => item.$id.endsWith("/authoring-ownership@1"));
   const transactionSchema = c1lSchemas.find((item) => item.$id.endsWith("/authoring-transaction@1"));
