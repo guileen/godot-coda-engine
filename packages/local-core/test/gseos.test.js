@@ -432,7 +432,7 @@ test("C1-L.1 lowers a two-arm MotionIntent branch only through a source-bound ob
   assert.equal(unbound.receipt.diagnostics[0].code, "TASK_GRAPH_GUARD_UNBOUND");
 });
 
-test("C1-L.1 lowers terminal nested Guard branches and rejects unmodeled branch continuation", () => {
+test("C1-L.1 lowers nested Guard branches through an explicit any-predecessor join", () => {
   const asset = structuredClone(motionIntentAsset);
   const intent = structuredClone(asset.root[0].params);
   asset.args = [{ id: "contact_confirmed", type: "Boolean" }, { id: "hand_clear", type: "Boolean" }];
@@ -475,13 +475,18 @@ test("C1-L.1 lowers terminal nested Guard branches and rejects unmodeled branch 
   assert.deepEqual(lowered.task_graph.nodes.find((node) => node.node_id === "outer-branch").branch_entries, { true: "approach", false: "yield-no-contact" });
   assert.ok(lowered.task_graph.edges.some((edge) => edge.from === "approach" && edge.to === "inner-branch" && edge.relation === "requires"));
 
-  asset.root[0].children.then.push({ node_id: "after-join", command_id: "motion_intent", params: structuredClone(intent) });
-  const unsupported = lowerToTaskGraph(asset, registry, {
+  asset.root.push({ node_id: "after-join", command_id: "motion_intent", params: structuredClone(intent) });
+  const joined = lowerToTaskGraph(asset, registry, {
     guard_bindings: { "outer-branch": guardFor(outer, "contact_confirmed"), "inner-branch": guardFor(inner, "hand_clear") },
     known_observation_refs: [knownObservation],
   });
-  assert.equal(unsupported.task_graph, null);
-  assert.ok(unsupported.receipt.diagnostics.some((item) => item.code === "TASK_GRAPH_UNSUPPORTED_BRANCH_CONTINUATION"));
+  assert.equal(joined.receipt.ok, true);
+  const continuation = joined.task_graph.nodes.find((node) => node.node_id === "after-join");
+  assert.equal(continuation.activation_policy, "any_predecessor");
+  assert.deepEqual(joined.task_graph.edges.filter((edge) => edge.to === "after-join" && edge.relation === "completes").map((edge) => edge.from).sort(), ["wave-clear", "yield-blocked", "yield-no-contact"]);
+  const missingJoinPolicy = structuredClone(joined.task_graph);
+  delete missingJoinPolicy.nodes.find((node) => node.node_id === "after-join").activation_policy;
+  assert.ok(validateTaskGraph(missingJoinPolicy).diagnostics.some((item) => item.code === "TASK_GRAPH_COMPLETION_POLICY_MISSING"));
 });
 
 test("C1-L.1 typed GuardExpression binds observations and fails closed on unknown/free-form input", () => {

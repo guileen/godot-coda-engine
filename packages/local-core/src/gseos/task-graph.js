@@ -29,6 +29,7 @@ export function validateTaskGraph(graph) {
     else nodes.set(node.node_id, node);
     if (!TASK_NODE_KINDS.has(node.kind)) add("INVALID_TASK_GRAPH_NODE_KIND", "TaskGraph 节点 kind 必须使用已知类型。", { event_id: graph.event_id, node_id: node.node_id });
     if (typeof node.contract_ref !== "string" || !/^[a-z][a-z0-9_.-]*@\d+$/u.test(node.contract_ref)) add("INVALID_TASK_GRAPH_CONTRACT_REF", "TaskGraph contract_ref 必须是带版本的稳定引用。", { event_id: graph.event_id, node_id: node.node_id });
+    if (node.activation_policy !== undefined && node.activation_policy !== "any_predecessor") add("INVALID_TASK_GRAPH_ACTIVATION_POLICY", "TaskGraph 当前只允许显式 any_predecessor 合流策略。", { event_id: graph.event_id, node_id: node.node_id });
     const ref = node.source_ref;
     if (!ref || ref.event_id !== graph.event_id || ref.node_id !== node.node_id || typeof ref.path !== "string" || !ref.path.startsWith("/")) {
       add("TASK_GRAPH_SOURCE_REF_MISMATCH", "source_ref 必须定位到本图同一事件与节点的作者源路径。", { event_id: graph.event_id, node_id: node.node_id });
@@ -44,7 +45,8 @@ export function validateTaskGraph(graph) {
       continue;
     }
     if (edge.relation === "guards" && (nodes.get(edge.from)?.kind !== "guard" || !["true", "false"].includes(edge.outcome))) add("INVALID_TASK_GRAPH_GUARD_EDGE", "guards 边必须从 Guard 节点发出并标记 true/false outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
-    else if (edge.relation !== "guards" && edge.outcome !== undefined) add("INVALID_TASK_GRAPH_EDGE_OUTCOME", "只有 guards 边可以带条件 outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
+    else if (edge.relation === "completes" && edge.outcome !== "complete") add("INVALID_TASK_GRAPH_COMPLETION_EDGE", "completes 边必须标记 complete outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
+    else if (!["guards", "completes"].includes(edge.relation) && edge.outcome !== undefined) add("INVALID_TASK_GRAPH_EDGE_OUTCOME", "guards/completes 边之外不得携带 outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
     const key = `${edge.from}\u0000${edge.to}\u0000${edge.relation}\u0000${edge.outcome ?? ""}`;
     if (edgeKeys.has(key)) add("DUPLICATE_TASK_GRAPH_EDGE", "TaskGraph 不允许重复边。", { event_id: graph.event_id, path: `/edges/${index}` });
     edgeKeys.add(key);
@@ -58,6 +60,12 @@ export function validateTaskGraph(graph) {
     }
   }
   for (const node of nodes.values()) {
+    const incomingCompletionEdges = graph.edges.filter((edge) => edge.to === node.node_id && edge.relation === "completes");
+    if (node.activation_policy === "any_predecessor") {
+      if (incomingCompletionEdges.length < 2 || incomingCompletionEdges.some((edge) => edge.outcome !== "complete") || (node.depends_on?.length ?? 0) > 0) add("TASK_GRAPH_ANY_PREDECESSOR_INVALID", "any_predecessor 节点必须由至少两个 complete 边作为互斥路径入口，且不得混入全体依赖。", { event_id: graph.event_id, node_id: node.node_id });
+    } else if (incomingCompletionEdges.length > 0) {
+      add("TASK_GRAPH_COMPLETION_POLICY_MISSING", "接收 completes 边的节点必须声明 any_predecessor。", { event_id: graph.event_id, node_id: node.node_id });
+    }
     if (node.kind !== "guard") {
       if (node.branch_entries !== undefined) add("TASK_GRAPH_BRANCH_ENTRIES_ON_NON_GUARD", "只有 Guard 节点可以声明分支入口。", { event_id: graph.event_id, node_id: node.node_id });
       continue;
@@ -95,7 +103,7 @@ export function validateTaskGraph(graph) {
   return gseosReceipt(diagnostics);
 }
 
-/** Lower supported linear MotionIntent plans or a GuardExpression-bound two-arm Intent branch. */
+/** Lower MotionIntent sequences and guarded branches with explicit any-predecessor joins. */
 export function lowerToTaskGraph(asset, registry, { guard_bindings = {}, known_observation_refs = [] } = {}) {
   const lowered = lowerToExecutionPlan(asset, registry);
   if (!lowered.receipt.ok) return { task_graph: null, receipt: lowered.receipt };
@@ -107,60 +115,66 @@ export function lowerToTaskGraph(asset, registry, { guard_bindings = {}, known_o
       receipt: gseosReceipt([gseosDiagnostic("TASK_GRAPH_EMPTY", "空执行计划不能生成 TaskGraph。", { event_id: asset.event_id })]),
     };
   }
-  const makeIntentNode = (instruction, previousId = null) => ({
-    node_id: instruction.source_ref.node_id,
-    kind: "intent",
-    contract_ref: instruction.target,
-    source_ref: instruction.source_ref,
-    ...(previousId ? { depends_on: [previousId] } : {}),
-  });
-  const lowerBranch = (branch) => {
+  const nodes = [];
+  const edges = [];
+  const makeIntentNode = (instruction) => ({ node_id: instruction.source_ref.node_id, kind: "intent", contract_ref: instruction.target, source_ref: instruction.source_ref });
+  const lowerSequence = (sequence) => {
+    if (!Array.isArray(sequence) || sequence.length === 0) return { error: gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_BRANCH_ARM", "每个受支持的控制流分支必须包含至少一个可 lower 的节点；未生成部分图。", { event_id: asset.event_id }) };
+    let entry = null;
+    let frontier = [];
+    let frontierIsAlternative = false;
+    for (const instruction of sequence) {
+      if (instruction.opcode === "MotionIntent") {
+        const node = makeIntentNode(instruction);
+        nodes.push(node);
+        if (entry === null) entry = node.node_id;
+        if (frontierIsAlternative) {
+          node.activation_policy = "any_predecessor";
+          for (const from of frontier) edges.push({ from, to: node.node_id, relation: "completes", outcome: "complete" });
+        } else if (frontier.length > 0) {
+          node.depends_on = [...frontier];
+          for (const from of frontier) edges.push({ from, to: node.node_id, relation: "requires" });
+        }
+        frontier = [node.node_id];
+        frontierIsAlternative = false;
+        continue;
+      }
+      if (instruction.opcode !== "Branch") {
+        return { error: gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_INSTRUCTION", `TaskGraph lowering 暂不支持此组合中的 ${instruction.opcode}；未生成部分图。`, { event_id: asset.event_id, node_id: instruction.source_ref?.node_id }) };
+      }
+      const branch = instruction;
     const guard = guard_bindings[branch.source_ref.node_id];
     const guardReceipt = validateGuardExpression(guard, { known_observation_refs });
     if (!guard || !guardReceipt.ok || branch.condition?.kind !== "ref" || guard.condition_ref !== branch.condition.name || guard.source_ref.event_id !== asset.event_id || guard.source_ref.node_id !== branch.source_ref.node_id || guard.source_ref.path !== branch.source_ref.path) {
-      return { error: gseosDiagnostic("TASK_GRAPH_GUARD_UNBOUND", "Branch 必须绑定同一 source node/path 的有效 GuardExpression@1。", { event_id: asset.event_id, node_id: branch.source_ref.node_id, diagnostics: guardReceipt.diagnostics }) };
+        return { error: gseosDiagnostic("TASK_GRAPH_GUARD_UNBOUND", "Branch 必须绑定同一 source node/path 的有效 GuardExpression@1。", { event_id: asset.event_id, node_id: branch.source_ref.node_id, diagnostics: guardReceipt.diagnostics }) };
     }
-    const containsObservationRef = (expression) => expression?.node_type === "observation_ref" || (expression?.node_type === "operation" && expression.operands.some(containsObservationRef));
-    if (!containsObservationRef(guard.expression)) return { error: gseosDiagnostic("TASK_GRAPH_GUARD_NOT_OBSERVATION_BOUND", "可 lower 的分支 Guard 必须依赖至少一个已绑定 observation。", { event_id: asset.event_id, node_id: branch.source_ref.node_id }) };
-    const thenArm = lowerSequence(branch.then);
-    const elseArm = lowerSequence(branch.else);
-    if (thenArm.error || elseArm.error) return { error: thenArm.error ?? elseArm.error };
-    const node = { node_id: branch.source_ref.node_id, kind: "guard", contract_ref: guard.guard_id, source_ref: branch.source_ref, branch_entries: { true: thenArm.entry, false: elseArm.entry } };
-    return {
-      entry: node.node_id,
-      nodes: [node, ...thenArm.nodes, ...elseArm.nodes],
-      edges: [
-        { from: node.node_id, to: thenArm.entry, relation: "guards", outcome: "true" },
-        { from: node.node_id, to: elseArm.entry, relation: "guards", outcome: "false" },
-        ...thenArm.edges,
-        ...elseArm.edges,
-      ],
-    };
-  };
-  const lowerSequence = (sequence) => {
-    if (!Array.isArray(sequence) || sequence.length === 0) return { error: gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_BRANCH_ARM", "每个受支持的控制流分支必须包含至少一个可 lower 的节点；未生成部分图。", { event_id: asset.event_id }) };
-    const branchIndex = sequence.findIndex((instruction) => instruction.opcode === "Branch");
-    if (branchIndex >= 0 && branchIndex !== sequence.length - 1) return { error: gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_BRANCH_CONTINUATION", "分支后的合流/续接尚无明确定义；拒绝生成部分图。", { event_id: asset.event_id, node_id: sequence[branchIndex].source_ref?.node_id }) };
-    const prefix = branchIndex < 0 ? sequence : sequence.slice(0, -1);
-    if (prefix.some((instruction) => instruction.opcode !== "MotionIntent")) {
-      const unsupported = prefix.find((instruction) => instruction.opcode !== "MotionIntent");
-      return { error: gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_INSTRUCTION", `TaskGraph lowering 暂不支持此组合中的 ${unsupported.opcode}；未生成部分图。`, { event_id: asset.event_id, node_id: unsupported.source_ref?.node_id }) };
+      const containsObservationRef = (expression) => expression?.node_type === "observation_ref" || (expression?.node_type === "operation" && expression.operands.some(containsObservationRef));
+      if (!containsObservationRef(guard.expression)) return { error: gseosDiagnostic("TASK_GRAPH_GUARD_NOT_OBSERVATION_BOUND", "可 lower 的分支 Guard 必须依赖至少一个已绑定 observation。", { event_id: asset.event_id, node_id: branch.source_ref.node_id }) };
+      const guardNode = { node_id: branch.source_ref.node_id, kind: "guard", contract_ref: guard.guard_id, source_ref: branch.source_ref };
+      nodes.push(guardNode);
+      if (entry === null) entry = guardNode.node_id;
+      if (frontierIsAlternative) {
+        guardNode.activation_policy = "any_predecessor";
+        for (const from of frontier) edges.push({ from, to: guardNode.node_id, relation: "completes", outcome: "complete" });
+      } else if (frontier.length > 0) {
+        guardNode.depends_on = [...frontier];
+        for (const from of frontier) edges.push({ from, to: guardNode.node_id, relation: "requires" });
+      }
+      const thenArm = lowerSequence(branch.then);
+      const elseArm = lowerSequence(branch.else);
+      if (thenArm.error || elseArm.error) return { error: thenArm.error ?? elseArm.error };
+      guardNode.branch_entries = { true: thenArm.entry, false: elseArm.entry };
+      edges.push(
+        { from: guardNode.node_id, to: thenArm.entry, relation: "guards", outcome: "true" },
+        { from: guardNode.node_id, to: elseArm.entry, relation: "guards", outcome: "false" },
+      );
+      frontier = [...thenArm.terminals, ...elseArm.terminals];
+      frontierIsAlternative = true;
     }
-    const nodes = prefix.map((instruction, index) => makeIntentNode(instruction, index > 0 ? prefix[index - 1].source_ref.node_id : null));
-    const edges = nodes.slice(1).map((node, index) => ({ from: nodes[index].node_id, to: node.node_id, relation: "requires" }));
-    if (branchIndex < 0) return { entry: nodes[0].node_id, nodes, edges };
-    const nested = lowerBranch(sequence.at(-1));
-    if (nested.error) return nested;
-    if (nodes.length > 0) {
-      const tail = nodes.at(-1);
-      nested.nodes[0].depends_on = [tail.node_id];
-      edges.push({ from: tail.node_id, to: nested.entry, relation: "requires" });
-    }
-    return { entry: nodes[0]?.node_id ?? nested.entry, nodes: [...nodes, ...nested.nodes], edges: [...edges, ...nested.edges] };
+    return { entry, terminals: frontier };
   };
   const loweredSequence = lowerSequence(instructions);
   if (loweredSequence.error) return { task_graph: null, receipt: gseosReceipt([loweredSequence.error]) };
-  const { nodes, edges } = loweredSequence;
 
   const task_graph = {
       graph_type: "TaskGraph",

@@ -19,6 +19,7 @@
           "kind": { "enum": ["task", "guard", "observation", "mode_transition", "tracking", "control", "intent", "reactive"] },
           "contract_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*@\\d+$" },
           "source_ref": { "$ref": "source-ref@1" },
+          "activation_policy": { "enum": ["any_predecessor"] },
           "depends_on": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
           "branch_entries": {
             "type": "object",
