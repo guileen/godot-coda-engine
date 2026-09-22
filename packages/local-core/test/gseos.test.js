@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { evaluateContinuationViability, evaluateTemporalCommandAdmission, validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
 import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, runEmbodimentAdapterConformance, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
-import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
+import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, expandResourceLeaves, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateResourceRegistry, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
@@ -52,6 +52,7 @@ const c1tContractHardeningPack = JSON.parse(await readFile(resolve(root, "gseos/
 const contactHandoffBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/contact-handoff.spec.json"), "utf8"));
 const modelValidityBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/model-validity-detection.spec.json"), "utf8"));
 const jointCompositionBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"), "utf8"));
+const resourceRegistryFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/resource-registry.json"), "utf8"));
 const continuationViabilityFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/continuation-viability.json"), "utf8"));
 const c1pContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1p/contract-index.json"), "utf8"));
 const c1pContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1p/contract-pack.json"), "utf8"));
@@ -705,6 +706,7 @@ test("C1-L 独立 contract schema 与 TransitionPlan fixture 保持后端中立"
 test("C1-T.0 设计契约冻结资源、快照、计划和 Adapter receipt 的硬边界", () => {
   assert.equal(resourceRegistrySchema.$id, "coda://contracts/c1t/resource-registry@1");
   assert.equal(resourceRegistrySchema.properties.lease_policy.properties.shared_write.const, false);
+  assert.equal(resourceRegistrySchema.properties.coupling_groups.items.properties.resource_refs.minItems, 2);
   assert.equal(snapshotBundleSchema.properties.quality.properties.same_tick.const, true);
   assert.deepEqual(transitionPlanSchema.properties.lease.properties.mode, { const: "all_or_reject" });
   assert.deepEqual(adapterReceiptSchema.properties.receipt_type.enum, ["barrier_receipt", "start_receipt", "terminal_receipt"]);
@@ -1088,23 +1090,48 @@ test("C1-T.0.7 shared contracts type observations, control, continuation, timing
 
 test("C1-T.1.1 参考仲裁器全取或全拒并阻断旧 generation 写入", () => {
   const registryFixture = {
+    registry_type: "ResourceRegistry",
+    schema_version: 1,
     resources: [
       { id: "body", version: 1, kind: "group", leaves: ["head@1", "arm@1"] },
       { id: "head", version: 1, kind: "leaf", leaves: [] },
       { id: "arm", version: 1, kind: "leaf", leaves: [] }
-    ]
+    ],
+    lease_policy: { mode: "exclusive", ordering: "lexicographic", shared_write: false, implicit_queue: false }
   };
+  assert.equal(validateResourceRegistry(registryFixture).ok, true);
   const arbiter = new TransitionLeaseArbiter(registryFixture);
-  const first = arbiter.request({ lease_id: "lease.a", owner_id: "run.a", resources: ["body"], priority: 40, sequence: 1 });
+  const first = arbiter.request({ lease_id: "lease.a", owner_id: "run.a", resources: ["body@1"], priority: 40, sequence: 1 });
   assert.equal(first.ok, true);
-  const rejected = arbiter.request({ lease_id: "lease.b", owner_id: "run.b", resources: ["head"], priority: 40, sequence: 2 });
+  const rejected = arbiter.request({ lease_id: "lease.b", owner_id: "run.b", resources: ["head@1"], priority: 40, sequence: 2 });
   assert.equal(rejected.ok, false);
   assert.equal(rejected.diagnostics[0].code, "LEASE_REJECTED");
-  const preempted = arbiter.request({ lease_id: "lease.b", owner_id: "run.b", resources: ["head"], priority: 80, sequence: 3 });
+  const preempted = arbiter.request({ lease_id: "lease.b", owner_id: "run.b", resources: ["head@1"], priority: 80, sequence: 3 });
   assert.equal(preempted.ok, true);
   assert.deepEqual(preempted.value.preempted, ["lease.a"]);
   assert.equal(arbiter.checkWrite({ lease_id: "lease.a", generation: first.value.lease.generation, resources: ["head@1"] }).ok, false);
   assert.equal(arbiter.checkWrite({ lease_id: "lease.b", generation: preempted.value.lease.generation, resources: ["head@1"] }).ok, true);
+});
+
+test("R-C1T-02 resource registry validates versioned trees and closes transitive coupling groups", () => {
+  const registry = resourceRegistryFixture;
+  assert.equal(validateResourceRegistry(registry).ok, true);
+  assert.deepEqual(expandResourceLeaves(registry, ["head@1"]).value, ["arm@1", "head@1", "torso@1"]);
+  assert.equal(expandResourceLeaves(registry, ["head@2"]).diagnostics[0].code, "RESOURCE_VERSION_MISMATCH");
+  assert.equal(expandResourceLeaves(registry, ["head"]).diagnostics[0].code, "INVALID_RESOURCE_REF");
+  const duplicate = structuredClone(registry);
+  duplicate.resources.push({ id: "head", version: 1, kind: "leaf", leaves: [] });
+  assert.equal(validateResourceRegistry(duplicate).diagnostics[0].code, "DUPLICATE_RESOURCE_ID");
+  const cycle = structuredClone(registry);
+  cycle.resources[0].leaves = ["head@1"];
+  cycle.resources.find((item) => item.id === "head").kind = "group";
+  cycle.resources.find((item) => item.id === "head").leaves = ["body@1"];
+  assert.ok(validateResourceRegistry(cycle).diagnostics.some((item) => item.code === "RESOURCE_CYCLE"));
+  const unknown = structuredClone(registry);
+  unknown.resources[0].leaves.push("missing@1");
+  assert.ok(validateResourceRegistry(unknown).diagnostics.some((item) => item.code === "UNKNOWN_RESOURCE"));
+  const malformedGroups = { ...registry, coupling_groups: "not-an-array" };
+  assert.equal(validateResourceRegistry(malformedGroups).diagnostics[0].code, "INVALID_RESOURCE_COUPLING_GROUPS");
 });
 
 test("C1-T.1.1 参考 planner 拒绝坏快照和未租资源且计划指纹可重复", () => {
@@ -1162,10 +1189,14 @@ test("C1-T.1.2 受信任 hook 按固定顺序执行并受 work budget/单级 fal
 });
 
 test("C1-T.1.3 离线语义 harness 对执行、快照、外部 writer 和坏 plan 给出确定终态", () => {
-  const registryFixture = { resources: [{ id: "head", version: 1, kind: "leaf", leaves: [] }] };
+  const registryFixture = {
+    registry_type: "ResourceRegistry", schema_version: 1,
+    resources: [{ id: "head", version: 1, kind: "leaf", leaves: [] }],
+    lease_policy: { mode: "exclusive", ordering: "lexicographic", shared_write: false, implicit_queue: false }
+  };
   const base = {
     registry: registryFixture,
-    request: { lease_id: "lease.case", owner_id: "run.case", resources: ["head"], priority: 60, sequence: 1 },
+    request: { lease_id: "lease.case", owner_id: "run.case", resources: ["head@1"], priority: 60, sequence: 1 },
     snapshot: validSnapshot,
     plan: { plan_id: "transition.case.1", intent: "social.wave@1", segments: [{ segment_id: "s1", duration_ticks: 2, start_tick: 0, start: { yaw: 0 }, end: { yaw: 0.1 } }], completion: { terminal_states: ["completed"], dwell_ticks: 1 } }
   };

@@ -1,0 +1,20 @@
+{
+  "registry_type": "ResourceRegistry",
+  "schema_version": 1,
+  "resources": [
+    { "id": "body", "version": 1, "kind": "group", "leaves": ["head@1", "arm@1"] },
+    { "id": "head", "version": 1, "kind": "leaf", "leaves": [] },
+    { "id": "arm", "version": 1, "kind": "leaf", "leaves": [] },
+    { "id": "torso", "version": 1, "kind": "leaf", "leaves": [] }
+  ],
+  "coupling_groups": [
+    { "group_id": "upper-link@1", "resource_refs": ["head@1", "torso@1"] },
+    { "group_id": "torso-arm-link@1", "resource_refs": ["torso@1", "arm@1"] }
+  ],
+  "lease_policy": {
+    "mode": "exclusive",
+    "ordering": "lexicographic",
+    "shared_write": false,
+    "implicit_queue": false
+  }
+}

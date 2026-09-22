@@ -79,6 +79,7 @@ const requiredFiles = [
   "docs/c1-owner-input-packet.md",
   "docs/coda-embodied-language-runtime-boundary.md",
   "gseos/fixtures/c1t/continuation-viability.json",
+  "gseos/fixtures/c1t/resource-registry.json",
   "gseos/fixtures/c1t/shared-contract-pack.json",
   "packages/local-core/src/gseos/continuation-viability.js",
   "packages/local-core/src/gseos/temporal-admission.js",

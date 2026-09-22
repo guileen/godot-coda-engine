@@ -14,36 +14,89 @@ function normalizeIds(ids) {
   return [...new Set((Array.isArray(ids) ? ids : []).map(String))].sort();
 }
 
+function parseResourceRef(ref) {
+  if (typeof ref !== "string") return null;
+  const match = /^([-\w.]+)@(\d+)$/u.exec(ref);
+  return match ? { id: match[1], version: Number(match[2]) } : null;
+}
+
+function expandTree(resources, refs) {
+  const leaves = new Set();
+  const diagnostics = [];
+  const visiting = new Set();
+  const visit = (ref, path = []) => {
+    const parsed = parseResourceRef(ref);
+    if (!parsed) { diagnostics.push(diagnostic("INVALID_RESOURCE_REF", `资源引用必须带版本：${String(ref)}。`, { resource_ref: ref })); return; }
+    const resource = resources.get(parsed.id);
+    if (!resource) { diagnostics.push(diagnostic("UNKNOWN_RESOURCE", `未知资源：${parsed.id}。`, { resource_id: parsed.id })); return; }
+    if (parsed.version !== resource.version) { diagnostics.push(diagnostic("RESOURCE_VERSION_MISMATCH", `资源版本不匹配：${ref}。`, { resource_ref: ref, actual_version: resource.version })); return; }
+    if (visiting.has(parsed.id)) { diagnostics.push(diagnostic("RESOURCE_CYCLE", `资源展开出现循环：${[...path, parsed.id].join(" → ")}。`, { resource_id: parsed.id })); return; }
+    visiting.add(parsed.id);
+    if (resource.kind === "leaf") leaves.add(`${resource.id}@${resource.version}`);
+    else for (const child of resource.leaves) visit(child, [...path, parsed.id]);
+    visiting.delete(parsed.id);
+  };
+  for (const ref of refs) visit(ref);
+  return { leaves, diagnostics };
+}
+
+export function validateResourceRegistry(registry) {
+  const diagnostics = [];
+  if (registry?.registry_type !== "ResourceRegistry" || registry.schema_version !== 1 || !Array.isArray(registry.resources)) return result(false, null, [diagnostic("INVALID_RESOURCE_REGISTRY", "必须提供 ResourceRegistry@1 与 resources 数组。")]);
+  const policy = registry.lease_policy;
+  const couplingGroups = registry.coupling_groups === undefined ? [] : Array.isArray(registry.coupling_groups) ? registry.coupling_groups : [];
+  if (registry.resources.length === 0) diagnostics.push(diagnostic("EMPTY_RESOURCE_REGISTRY", "ResourceRegistry 至少需要一个资源定义。"));
+  if (policy?.mode !== "exclusive" || policy.ordering !== "lexicographic" || policy.shared_write !== false || policy.implicit_queue !== false) diagnostics.push(diagnostic("INVALID_RESOURCE_LEASE_POLICY", "资源租约必须独占、全取全拒且不隐式排队。"));
+  if (registry.coupling_groups !== undefined && !Array.isArray(registry.coupling_groups)) diagnostics.push(diagnostic("INVALID_RESOURCE_COUPLING_GROUPS", "coupling_groups 必须是数组。"));
+  const resources = new Map();
+  for (const [index, resource] of registry.resources.entries()) {
+    if (!resource || typeof resource.id !== "string" || !/^[-\w.]+$/u.test(resource.id) || resource.version !== 1 || !["leaf", "group"].includes(resource.kind) || !Array.isArray(resource.leaves)) {
+      diagnostics.push(diagnostic("INVALID_RESOURCE_DEFINITION", "资源必须声明合法 id、version、kind 与 leaves。", { index }));
+      continue;
+    }
+    if (resources.has(resource.id)) diagnostics.push(diagnostic("DUPLICATE_RESOURCE_ID", `资源 ID 重复：${resource.id}。`, { resource_id: resource.id }));
+    else resources.set(resource.id, resource);
+    if (resource.kind === "leaf" && resource.leaves.length) diagnostics.push(diagnostic("RESOURCE_LEAF_HAS_CHILDREN", `叶资源不能包含子项：${resource.id}。`, { resource_id: resource.id }));
+    if (resource.kind === "group" && !resource.leaves.length) diagnostics.push(diagnostic("EMPTY_RESOURCE_GROUP", `资源组不能为空：${resource.id}。`, { resource_id: resource.id }));
+    if (new Set(resource.leaves).size !== resource.leaves.length) diagnostics.push(diagnostic("DUPLICATE_RESOURCE_CHILD", `资源组子项重复：${resource.id}。`, { resource_id: resource.id }));
+  }
+  if (diagnostics.length) return result(false, null, diagnostics);
+  for (const resource of resources.values()) diagnostics.push(...expandTree(resources, [`${resource.id}@${resource.version}`]).diagnostics);
+  const groupIds = new Set();
+  for (const [index, group] of couplingGroups.entries()) {
+    if (!group || !/^[-\w.]+@1$/u.test(String(group.group_id ?? "")) || groupIds.has(group.group_id) || !Array.isArray(group.resource_refs) || group.resource_refs.length < 2 || new Set(group.resource_refs).size !== group.resource_refs.length) {
+      diagnostics.push(diagnostic("INVALID_RESOURCE_COUPLING_GROUP", "耦合组必须包含唯一版本化 ID 与至少两个唯一资源引用。", { index }));
+      continue;
+    }
+    groupIds.add(group.group_id);
+    const expanded = expandTree(resources, group.resource_refs);
+    diagnostics.push(...expanded.diagnostics);
+    if (expanded.leaves.size < 2) diagnostics.push(diagnostic("RESOURCE_COUPLING_REQUIRES_DISTINCT_LEAVES", "耦合组必须展开为至少两个不同叶资源。", { group_id: group.group_id }));
+  }
+  return diagnostics.length ? result(false, null, diagnostics) : result(true, structuredClone(registry));
+}
+
 /**
  * Expand a C1-T ResourceRegistry into a deterministic leaf set. This is a
  * reference implementation only: it owns no Godot node and has no write
  * authority.
  */
 export function expandResourceLeaves(registry, requestedIds) {
-  const resources = new Map((registry?.resources ?? []).map((item) => [item.id, item]));
-  const leaves = new Set();
-  const visiting = new Set();
-  const diagnostics = [];
-  const visit = (requestedId, path = []) => {
-    const id = String(requestedId).replace(/@\d+$/, "");
-    const resource = resources.get(id);
-    if (!resource) {
-      diagnostics.push(diagnostic("UNKNOWN_RESOURCE", `未知资源：${id}。`, { resource_id: id }));
-      return;
+  const validation = validateResourceRegistry(registry);
+  if (!validation.ok) return validation;
+  const resources = new Map(registry.resources.map((item) => [item.id, item]));
+  const expanded = expandTree(resources, normalizeIds(requestedIds));
+  if (expanded.diagnostics.length) return result(false, null, expanded.diagnostics);
+  if (!expanded.leaves.size) return result(false, null, [diagnostic("EMPTY_RESOURCE_SET", "租约至少需要一个叶资源。")]);
+  const couplingLeaves = (registry.coupling_groups ?? []).map((group) => expandTree(resources, group.resource_refs).leaves);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const group of couplingLeaves) if ([...group].some((leaf) => expanded.leaves.has(leaf))) {
+      for (const leaf of group) if (!expanded.leaves.has(leaf)) { expanded.leaves.add(leaf); changed = true; }
     }
-    if (visiting.has(id)) {
-      diagnostics.push(diagnostic("RESOURCE_CYCLE", `资源展开出现循环：${[...path, id].join(" → ")}。`, { resource_id: id }));
-      return;
-    }
-    visiting.add(id);
-    if (resource.kind === "leaf") leaves.add(`${resource.id}@${resource.version}`);
-    else for (const child of resource.leaves ?? []) visit(child, [...path, id]);
-    visiting.delete(id);
-  };
-  for (const id of normalizeIds(requestedIds)) visit(id);
-  if (diagnostics.length) return result(false, null, diagnostics);
-  if (!leaves.size) return result(false, null, [diagnostic("EMPTY_RESOURCE_SET", "租约至少需要一个叶资源。")]);
-  return result(true, [...leaves].sort());
+  }
+  return result(true, [...expanded.leaves].sort());
 }
 
 function compareLease(a, b) {
