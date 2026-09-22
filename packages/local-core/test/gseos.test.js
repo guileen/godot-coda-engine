@@ -287,10 +287,15 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
     clock: { domain: "coda.clock", tick: 10 + sequence, quality: "synchronized" },
     validity: { valid_from_tick: 10, valid_until_tick: 30 }, payload, ...extras,
   });
-  const query = adapter.receive(message("query.1", "capability_query", 0, { profile_ref: "test.profile@1", minimum_protocol_version: 1 }));
+  const queryMessage = message("query.1", "capability_query", 0, { profile_ref: "test.profile@1", minimum_protocol_version: 1 });
+  const query = adapter.receive(queryMessage);
   assert.equal(query.accepted, true);
   assert.equal(query.response.message_type, "capability_report");
   assert.equal(validateEmbodimentProtocolMessage(query.response).ok, true);
+  const afterQuery = adapter.snapshot();
+  const replay = adapter.receive(queryMessage);
+  assert.equal(replay.accepted, false);
+  assert.deepEqual(replay.ledger, afterQuery);
   const lease = adapter.receive(message("lease.1", "authority_lease", 1, { lease_id: "lease.1", owner: "coda", resources: ["arm@1"], valid_until_tick: 25 }, { lease_ref: "lease.actor@1", generation: 4 }));
   assert.equal(lease.accepted, true);
   assert.equal(lease.response.payload.partial_write, false);
@@ -306,6 +311,10 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
   assert.equal(handoff.accepted, true);
   assert.equal(handoff.ledger.handoff_barrier.barrier_id, "barrier.contact.1");
   const beforeStale = adapter.snapshot();
+  const expired = adapter.receive(message("reference.expired", "reference", 5, { representation: "segment", reference_ref: "ref.expired@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 4 }), { now_tick: 26 });
+  assert.equal(expired.accepted, false);
+  assert.equal(validateEmbodimentProtocolMessage(expired.response).ok, true);
+  assert.deepEqual(expired.ledger, beforeStale);
   const stale = adapter.receive(message("reference.stale", "reference", 5, { representation: "segment", reference_ref: "ref.next@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 5 }));
   assert.equal(stale.accepted, false);
   assert.equal(stale.response.message_type, "reject");
