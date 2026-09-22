@@ -132,6 +132,7 @@ export function validateEmbodimentProtocolMessage(message, { now_tick = null, cl
   const clock = message.clock;
   if (!clock || typeof clock.domain !== "string" || clock.domain.length === 0 || !Number.isInteger(clock.tick) || clock.tick < 0 || !["synchronized", "bounded_skew", "uncertain", "invalid"].includes(clock.quality)) add("INVALID_EMBODIMENT_CLOCK", "/clock", "clock 必须包含有效 domain/tick/quality。");
   else {
+    if (Object.keys(clock).some((key) => !["domain", "tick", "quality"].includes(key))) add("UNKNOWN_EMBODIMENT_CLOCK_FIELD", "/clock", "clock 不允许未定义字段。");
     if (clock.quality === "invalid") add("EMBODIMENT_CLOCK_INVALID", "/clock/quality", "clock quality=invalid 的消息不可用于协议准入。");
     if (clock_domain !== null && clock.domain !== clock_domain) add("EMBODIMENT_CLOCK_DOMAIN_MISMATCH", "/clock/domain", "消息 clock domain 与当前 profile 不匹配。");
     if (now_tick !== null && Number.isInteger(now_tick) && clock.tick > now_tick) add("EMBODIMENT_MESSAGE_FROM_FUTURE", "/clock/tick", "消息时钟不得晚于当前 profile tick。");
@@ -139,6 +140,7 @@ export function validateEmbodimentProtocolMessage(message, { now_tick = null, cl
   const validity = message.validity;
   if (!validity || !Number.isInteger(validity.valid_from_tick) || validity.valid_from_tick < 0 || !Number.isInteger(validity.valid_until_tick) || validity.valid_until_tick < validity.valid_from_tick) add("INVALID_EMBODIMENT_VALIDITY", "/validity", "validity 必须是闭区间且结束 tick 不早于起始 tick。");
   else {
+    if (Object.keys(validity).some((key) => !["valid_from_tick", "valid_until_tick"].includes(key))) add("UNKNOWN_EMBODIMENT_VALIDITY_FIELD", "/validity", "validity 不允许未定义字段。");
     if (message.message_type === "observation" && Number.isInteger(clock?.tick) && (clock.tick < validity.valid_from_tick || clock.tick > validity.valid_until_tick)) add("EMBODIMENT_OBSERVATION_OUTSIDE_VALIDITY", "/validity", "observation 的签发 tick 必须位于其有效时域内。");
     if (now_tick !== null && Number.isInteger(now_tick) && now_tick > validity.valid_until_tick) add("EMBODIMENT_MESSAGE_EXPIRED", "/validity/valid_until_tick", "消息已超过有效时域。");
   }
@@ -154,6 +156,18 @@ export function validateEmbodimentProtocolMessage(message, { now_tick = null, cl
     reject: ["code", "partial_write"],
   }[message.message_type] ?? [];
   for (const key of requiredByType) if (!Object.hasOwn(payload, key)) add("EMBODIMENT_PAYLOAD_FIELD_MISSING", `/payload/${key}`, `payload 缺少必需字段 ${key}。`);
+  const nonemptyString = (value) => typeof value === "string" && value.length > 0;
+  const refFields = {
+    mode_request: ["controller_ref", "mode_ref", "handoff_contract_ref"],
+    handoff: ["handoff_contract_ref", "incoming_controller_ref"],
+  }[message.message_type] ?? [];
+  for (const key of refFields) if (!versionedRef.test(String(payload[key] ?? ""))) add("INVALID_EMBODIMENT_PAYLOAD_REF", `/payload/${key}`, `${key} 必须是版本化引用。`);
+  if (message.message_type === "capability_query" && !nonemptyString(payload.profile_ref)) add("INVALID_EMBODIMENT_PROFILE_REF", "/payload/profile_ref", "profile_ref 必须非空。");
+  if (message.message_type === "capability_report" && (!nonemptyString(payload.adapter_revision) || !["available", "degraded", "unsupported"].includes(payload.profile_status))) add("INVALID_EMBODIMENT_CAPABILITY_REPORT", "/payload", "capability_report 必须包含 adapter_revision 和有效 profile_status。");
+  if (message.message_type === "observation" && (!nonemptyString(payload.snapshot_ref) || !["valid", "degraded", "stale", "invalid"].includes(payload.quality) || !nonemptyString(payload.reference_frame) || !nonemptyString(payload.unit_system))) add("INVALID_EMBODIMENT_OBSERVATION", "/payload", "observation 必须声明快照、质量、reference frame 与 unit system。");
+  if (message.message_type === "reference" && (!new Set(["segment", "spline", "setpoint_sequence", "local_policy", "hold_reference"]).has(payload.representation) || !nonemptyString(payload.reference_ref) || !nonemptyString(payload.constraints_ref))) add("INVALID_EMBODIMENT_REFERENCE", "/payload", "reference 消息必须使用受支持的表示并绑定 reference/constraints。");
+  if (message.message_type === "handoff" && !nonemptyString(payload.barrier_id)) add("INVALID_EMBODIMENT_HANDOFF", "/payload/barrier_id", "handoff 必须绑定非空 barrier_id。");
+  if (message.message_type === "authority_lease" && (!Number.isInteger(payload.valid_until_tick) || payload.valid_until_tick < 0)) add("INVALID_EMBODIMENT_AUTHORITY_LEASE", "/payload/valid_until_tick", "lease valid_until_tick 必须是非负整数。");
   const leaseRequired = ["reference", "authority_lease", "barrier_receipt", "start_receipt", "transition_receipt", "terminal_receipt"].includes(message.message_type);
   if (leaseRequired && (typeof message.lease_ref !== "string" || message.lease_ref.length === 0 || !Number.isInteger(message.generation) || message.generation < 0)) add("EMBODIMENT_LEASE_BINDING_REQUIRED", "/lease_ref", "该消息类型必须绑定 lease_ref 和非负 generation。");
   if ((message.lease_ref === undefined) !== (message.generation === undefined)) add("EMBODIMENT_LEASE_BINDING_INCOMPLETE", "/generation", "lease_ref 与 generation 必须同时出现或同时省略。");
@@ -166,9 +180,10 @@ export function validateEmbodimentProtocolMessage(message, { now_tick = null, cl
   }
   if (["barrier_receipt", "start_receipt", "transition_receipt", "terminal_receipt"].includes(message.message_type)) {
     if (payload.partial_write !== false) add("EMBODIMENT_PARTIAL_WRITE_FORBIDDEN", "/payload/partial_write", "Adapter receipt 必须明确证明 partial_write=false。");
+    if (!nonemptyString(payload.receipt_id) || Object.keys(payload).some((key) => !["receipt_id", "status", "partial_write"].includes(key))) add("INVALID_EMBODIMENT_RECEIPT_PAYLOAD", "/payload", "Adapter receipt payload 只允许 receipt_id/status/partial_write。");
     if (!new Set(["accepted", "started", "completed", "failed", "rejected", "stale", "owner_lost"]).has(payload.status)) add("INVALID_EMBODIMENT_RECEIPT_STATUS", "/payload/status", "Adapter receipt status 不属于协议枚举。");
   }
-  if (message.message_type === "reject" && (payload.partial_write !== false || !/^[A-Z][A-Z0-9_]+$/u.test(String(payload.code ?? "")))) add("INVALID_EMBODIMENT_REJECT", "/payload", "reject 必须携带稳定 code 且 partial_write=false。");
+  if (message.message_type === "reject" && (payload.partial_write !== false || !/^[A-Z][A-Z0-9_]+$/u.test(String(payload.code ?? "")) || Object.keys(payload).some((key) => !["code", "partial_write"].includes(key)))) add("INVALID_EMBODIMENT_REJECT", "/payload", "reject 只允许稳定 code 与 partial_write=false。");
   const allowed = new Set(["protocol", "schema_version", "message_id", "direction", "message_type", "adapter_ref", "epoch", "sequence", "clock", "validity", "lease_ref", "generation", "payload"]);
   for (const key of Object.keys(message)) if (!allowed.has(key)) add("UNKNOWN_EMBODIMENT_MESSAGE_FIELD", `EmbodimentProtocol@1 不允许字段 ${key}。`, `/${key}`);
   return gseosReceipt(diagnostics);
