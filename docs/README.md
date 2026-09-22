@@ -16,6 +16,10 @@ Start with the language and a familiar gameplay situation, not implementation te
 | Public facts and evidence / 公开事实与证据 | [English](en/public-facts.md) | [中文](zh-CN/public-facts.md) |
 | Release policy / 发布策略 | [English](en/release-policy.md) | [中文](zh-CN/release-policy.md) |
 | AIBI Behavior Runtime proposal / AIBI 行为运行时提案 | — | [提案](aibi-behavior-runtime-proposal.md) |
+| Embodied language/runtime boundary / 具身语言与运行时边界 | — | [架构裁决](coda-embodied-language-runtime-boundary.md) |
+| Intentful Transition Runtime proposal / 意图式过渡运行时提案 | — | [提案](intentful-transition-runtime-proposal.md) |
+| Physics-informed Policy Compilation research / 物理知情策略编译研究 | — | [研究提案](physics-informed-intent-planning-proposal.md) |
+| Robot Motion Adapter proposal / 机器人运动 Adapter 提案 | — | [提案](robot-motion-intent-proposal.md) |
 
 Shared interface strings and the rules for adding locales live in [`i18n/`](../i18n/README.md). The root-level GitHub policy files are bilingual entry points to the same public project.
 

@@ -1,0 +1,4 @@
+module companion.greeting
+
+event companion.greet:
+  intent social.wave@1(target: "person.nearby", expression: "friendly_smile", resources: "character.right_arm@1+character.face@1", priority: 60, safety_profile: "game.character.safe@1", on_no_solution: "fallback")

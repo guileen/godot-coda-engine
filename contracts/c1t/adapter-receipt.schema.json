@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/adapter-receipt@1",
+  "title": "C1-T Adapter receipts",
+  "type": "object",
+  "required": ["receipt_type", "schema_version", "adapter_revision", "plan_id", "lease_id", "generation", "ownership", "status"],
+  "properties": {
+    "receipt_type": { "enum": ["barrier_receipt", "start_receipt", "terminal_receipt"] },
+    "schema_version": { "const": 1 },
+    "adapter_revision": { "type": "string" },
+    "plan_id": { "type": "string" },
+    "lease_id": { "type": "string" },
+    "generation": { "type": "integer", "minimum": 0 },
+    "ownership": { "enum": ["available", "coda_owned", "external_owned"] },
+    "status": { "enum": ["accepted", "started", "completed", "preempted", "failed", "rejected", "owner_lost", "stale"] }
+  },
+  "additionalProperties": true
+}

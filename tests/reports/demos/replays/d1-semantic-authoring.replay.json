@@ -1,0 +1,8 @@
+{
+  "replay_type": "CODA_DemoReplay",
+  "schema_version": 1,
+  "demo_id": "D1",
+  "input": { "event_id": "ui.reward.apply", "operation": "source_map_lookup", "path": "/root/0/children/then/2" },
+  "decision_record": { "outcome": "PASS", "source_owner": "EventAsset", "plan_and_generated_source": "derived" },
+  "runtime_observation": { "step": "generated_source_map", "source_ref_resolved": true, "terminal": "located" }
+}

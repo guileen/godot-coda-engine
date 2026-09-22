@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BehaviorRuntime, EventRegistry, RunContext, RunStatus, WaitRegistration, applySemanticPatch, assetFingerprint, bindEventAsset, buildSemanticProjectionMap, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, formatGse, generateGdscript, lexGse, lowerToExecutionPlan, migrateEventAsset, parseCst, parseExpressionText, parseGse, resolveAlias, resolveSourceRef, roundTripEventAsset, stableStringify, summarizeUserObservationReport, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateUserObservationReport, verifyManagedArtifact } from "../src/index.js";
+import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentToBackend, lowerToExecutionPlan, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateExpressionAdapterProfile, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTransitionSnapshot, validateUserObservationReport, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
@@ -15,6 +15,40 @@ const behaviorAsset = JSON.parse(await readFile(resolve(root, "gseos/events/aibi
 const behaviorManifest = JSON.parse(await readFile(resolve(root, "contracts/gseos/aibi-behavior-capabilities.json"), "utf8"));
 const registry = createSchemaRegistry(manifest);
 const behaviorRegistry = createSchemaRegistry(behaviorManifest);
+const motionIntentSource = await readFile(resolve(root, "examples/robot-acknowledge.coda"), "utf8");
+const motionIntentAsset = JSON.parse(await readFile(resolve(root, "gseos/events/robot.acknowledge_user.gse.json"), "utf8"));
+const waveSource = await readFile(resolve(root, "examples/social-wave.coda"), "utf8");
+const motionIntentSchema = JSON.parse(await readFile(resolve(root, "contracts/gseos/motion-intent.schema.json"), "utf8"));
+const transitionPlanFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/social.wave.transition-plan.json"), "utf8"));
+const resourceRegistrySchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/resource-registry.schema.json"), "utf8"));
+const snapshotBundleSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/snapshot-bundle.schema.json"), "utf8"));
+const transitionPlanSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/transition-plan.schema.json"), "utf8"));
+const adapterReceiptSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/adapter-receipt.schema.json"), "utf8"));
+const validSnapshot = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/valid-snapshot.json"), "utf8"));
+const externalWriterReject = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/external-writer-reject.json"), "utf8"));
+const hookManifestSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/hook-manifest.schema.json"), "utf8"));
+const replayEnvelopeSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/replay-envelope.schema.json"), "utf8"));
+const runtimeObservationSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/runtime-observation.schema.json"), "utf8"));
+const hookManifestFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/trusted-hook-manifest.json"), "utf8"));
+const replayEnvelopeFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/replay-envelope.json"), "utf8"));
+const runtimeObservationFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/runtime-observation.json"), "utf8"));
+const skeletonFixtureSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/skeleton-fixture.schema.json"), "utf8"));
+const skeletonFixtureDraft = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/skeleton-gdbot-draft.json"), "utf8"));
+const c1tDesignReview = JSON.parse(await readFile(resolve(root, "tests/reports/c1t-design-review.json"), "utf8"));
+const c1tContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1t/contract-index.json"), "utf8"));
+const taskActivationContractSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/task-activation-contract.schema.json"), "utf8"));
+const modelValidityEnvelopeSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/model-validity-envelope.schema.json"), "utf8"));
+const stateAlignmentContractSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/state-alignment-contract.schema.json"), "utf8"));
+const handoffContractSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/handoff-contract.schema.json"), "utf8"));
+const deviceCapabilityProfileSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/device-capability-profile.schema.json"), "utf8"));
+const safetyProfileSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/safety-profile.schema.json"), "utf8"));
+const falsificationBenchmarkSpecSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/falsification-benchmark-spec.schema.json"), "utf8"));
+const c1tContractHardeningPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/contract-hardening-pack.json"), "utf8"));
+const contactHandoffBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/contact-handoff.spec.json"), "utf8"));
+const modelValidityBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/model-validity-detection.spec.json"), "utf8"));
+const jointCompositionBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"), "utf8"));
+const c1pContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1p/contract-index.json"), "utf8"));
+const c1pContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1p/contract-pack.json"), "utf8"));
 
 test("EventAsset 保留未知字段并稳定排序", () => {
   const extended = { ...asset, z_unknown: { b: 2, a: 1 }, a_unknown: true };
@@ -71,6 +105,376 @@ test("迁移失败保留原始数据，往返和来源 span 不丢失", () => {
   assert.equal(migrated.json, unsupported);
   assert.equal(migrateEventAsset({ schema_version: 0, event_id: "demo", root: [] }).receipt.ok, true);
   assert.ok(parseGse("event demo:\n  let value = 1").asset.root[0].source_span.start.line === 2);
+});
+
+test("C1-L 机器人运动意图从源码进入计划并保留安全契约", () => {
+  const parsed = parseGse(motionIntentSource);
+  assert.equal(parsed.receipt.ok, true);
+  assert.equal(parsed.asset.root[0].command_id, "motion_intent");
+  assert.equal(parsed.asset.root[0].params.intent, "robot.acknowledge_user@1");
+  const lowered = lowerToExecutionPlan(parsed.asset, registry);
+  assert.equal(lowered.receipt.ok, true);
+  assert.equal(lowered.plan.instructions[0].opcode, "MotionIntent");
+  assert.equal(lowered.plan.instructions[0].args.priority.value, 80);
+  const formatted = formatGse(parsed.asset, "en");
+  assert.match(formatted, /intent robot\.acknowledge_user@1\(target:/);
+  assert.equal(lowerToExecutionPlan(motionIntentAsset, registry).receipt.ok, true);
+  const missingSafety = structuredClone(parsed.asset);
+  delete missingSafety.root[0].params.args.safety_profile;
+  assert.ok(lowerToExecutionPlan(missingSafety, registry).receipt.diagnostics.some((item) => item.code === "MISSING_MOTION_INTENT_CONTRACT"));
+});
+
+test("同一个高层挥手意图分流到 Godot 与机器人适配器", () => {
+  const parsed = parseGse(waveSource);
+  assert.equal(parsed.receipt.ok, true);
+  const lowered = lowerToExecutionPlan(parsed.asset, registry);
+  assert.equal(lowered.receipt.ok, true);
+  const instruction = lowered.plan.instructions[0];
+  const game = lowerMotionIntentToBackend(instruction, "game");
+  const robot = lowerMotionIntentToBackend(instruction, "robot");
+  assert.equal(game.receipt.ok, true);
+  assert.equal(robot.receipt.ok, true);
+  assert.equal(game.envelope.envelope_type, "GameIntentPlan");
+  assert.equal(robot.envelope.envelope_type, "RobotMotionEnvelope");
+  assert.equal(game.envelope.backend, "godot.motion@1");
+  assert.equal(robot.envelope.adapter_command, "robot.motion.request@1");
+  assert.equal(game.envelope.godot_actions[1].capability, "godot.expression.apply_profile@1");
+  assert.equal(game.envelope.godot_actions[1].profile, "friendly_smile");
+  assert.equal(game.envelope.llm_direct_write, false);
+  assert.equal(robot.envelope.motor_write, "adapter_owned_only");
+  assert.equal(JSON.stringify(game.envelope).includes("PWM"), false);
+});
+
+test("C1-L 独立 contract schema 与 TransitionPlan fixture 保持后端中立", () => {
+  assert.equal(motionIntentSchema.$id, "coda://contracts/gseos/motion-intent@1");
+  assert.deepEqual(motionIntentSchema.properties.args.required, ["target", "resources", "priority", "safety_profile", "on_no_solution"]);
+  assert.equal(transitionPlanFixture.plan_type, "TransitionPlan");
+  assert.equal(transitionPlanFixture.resource_lease.mode, "all_or_reject");
+  assert.deepEqual(transitionPlanFixture.backend_contracts, { game: "godot.motion@1", robot: "robot.motion@1" });
+  assert.equal(transitionPlanFixture.execution_authority, "adapter_only");
+});
+
+test("C1-T.0 设计契约冻结资源、快照、计划和 Adapter receipt 的硬边界", () => {
+  assert.equal(resourceRegistrySchema.$id, "coda://contracts/c1t/resource-registry@1");
+  assert.equal(resourceRegistrySchema.properties.lease_policy.properties.shared_write.const, false);
+  assert.equal(snapshotBundleSchema.properties.quality.properties.same_tick.const, true);
+  assert.deepEqual(transitionPlanSchema.properties.lease.properties.mode, { const: "all_or_reject" });
+  assert.deepEqual(adapterReceiptSchema.properties.receipt_type.enum, ["barrier_receipt", "start_receipt", "terminal_receipt"]);
+  assert.equal(validSnapshot.quality.finite, true);
+  assert.equal(validSnapshot.quality.same_tick, true);
+  assert.equal(externalWriterReject.ownership, "external_owned");
+  assert.equal(externalWriterReject.status, "rejected");
+  assert.equal(externalWriterReject.partial_write, false);
+});
+
+test("C1-T.0.3/.0.4 分离受信任 hook、确定回放与运行时观察", () => {
+  assert.equal(hookManifestSchema.properties.fallback_policy.properties.max_depth.const, 1);
+  assert.equal(hookManifestSchema.properties.trust_boundary.properties.allow_third_party.const, false);
+  assert.equal(replayEnvelopeSchema.properties.logical_tick.type, "integer");
+  assert.equal(runtimeObservationSchema.properties.wall.type, "object");
+  assert.equal(hookManifestFixture.fallback_policy.max_depth, 1);
+  assert.equal(hookManifestFixture.trust_boundary.allow_learning_models, false);
+  assert.deepEqual(hookManifestFixture.hooks.map((hook) => hook.order), [10, 40]);
+  assert.equal(replayEnvelopeFixture.decision_record.decision_id, "decision.c1t.wave.1");
+  assert.equal(runtimeObservationFixture.decision_id, replayEnvelopeFixture.decision_record.decision_id);
+  assert.equal(runtimeObservationFixture.receipts.at(-1).status, "completed");
+});
+
+test("C1-T.0.5 Skeleton fixture draft 显式保留五项 owner decision", () => {
+  assert.equal(skeletonFixtureSchema.$id, "coda://contracts/c1t/skeleton-fixture@1");
+  assert.equal(skeletonFixtureDraft.fixture_type, "SkeletonTransitionFixture");
+  assert.equal(skeletonFixtureDraft.mapping.controlled_channels[0].bone, "head");
+  assert.equal(skeletonFixtureDraft.ownership_policy.external_writer, "reject");
+  assert.equal(skeletonFixtureDraft.status, "DRAFT_NOT_AUTHORIZED_FOR_RUNTIME");
+  assert.equal(skeletonFixtureDraft.owner_decision_required.length, 5);
+  assert.equal(skeletonFixtureDraft.profile.first_response_ms, 120);
+});
+
+test("C1-T.0.6 设计审查将证据、未闭合项和 owner blockers 显式索引", () => {
+  assert.equal(c1tDesignReview.status, "HOLD_G-C1-T-A_OWNER_DECISION");
+  assert.equal(c1tDesignReview.requirement_review.length, 10);
+  assert.equal(c1tDesignReview.blocking_decisions.length, 5);
+  assert.equal(c1tDesignReview.non_claims.includes("does not authorize C1-T runtime"), true);
+  assert.equal(c1tDesignReview.evidence_index.hook_manifest, "contracts/c1t/hook-manifest.schema.json");
+});
+
+test("C1-T.0.7/.0.8 锁定四项边界合同、分离设备安全配置并冻结三组证伪规范", () => {
+  assert.equal(c1tContractIndex.canonical_encoding, "json-schema-2020-12");
+  assert.equal(c1tContractIndex.wire_bindings, "generated_only");
+  assert.equal(c1tContractIndex.semantic_digest_source, "canonical_semantic_object");
+  assert.equal(c1tContractIndex.stable_rejection_codes.includes("JOINT_TASK_SET_INFEASIBLE"), true);
+  assert.equal(taskActivationContractSchema.properties.transition.properties.commit_barrier.const, "atomic");
+  assert.equal(taskActivationContractSchema.properties.on_failure.enum.includes("reject_new_keep_current_if_still_valid"), true);
+  assert.equal(modelValidityEnvelopeSchema.properties.update_policy.properties.single_sample_parameter_update.const, "forbidden");
+  assert.equal(stateAlignmentContractSchema.properties.start_tube.properties.semantics.enum.includes("probabilistic_belief"), true);
+  assert.equal(stateAlignmentContractSchema.properties.start_tube.properties.complexity_bound.enum.includes("O(N2)"), true);
+  assert.equal(handoffContractSchema.properties.reconstruction.properties.method.enum.includes("versioned_translate"), true);
+  assert.equal(handoffContractSchema.properties.authority_barrier.const, "atomic_single_writer");
+  assert.equal(deviceCapabilityProfileSchema.properties.safety_profile_ref.pattern, "@1$");
+  assert.equal(safetyProfileSchema.properties.standard_domains.items.enum.includes("PX4_DEVICE_SPECIFIC"), true);
+  assert.equal(falsificationBenchmarkSpecSchema.properties.status.enum.includes("structure_frozen_thresholds_pending"), true);
+  assert.equal(c1tContractHardeningPack.status, "STRUCTURE_FROZEN_DEVICE_VALUES_PENDING");
+  assert.equal(c1tContractHardeningPack.positive.model_validity.update_policy.single_sample_parameter_update, "forbidden");
+  assert.equal(c1tContractHardeningPack.negative.some((item) => item.expected_rejection_code === "INTERNAL_STATE_INCOMPATIBLE"), true);
+  assert.deepEqual(
+    [contactHandoffBenchmark.kind, modelValidityBenchmark.kind, jointCompositionBenchmark.kind],
+    ["contact_handoff", "model_validity_detection", "joint_dynamics_composition"]
+  );
+  assert.equal(contactHandoffBenchmark.non_claims.includes("does not treat Godot physics as physical ground truth"), true);
+  assert.equal(jointCompositionBenchmark.counterexamples.every((item) => item.expected_rejection_code === "JOINT_TASK_SET_INFEASIBLE"), true);
+});
+
+test("C1-T.1.1 参考仲裁器全取或全拒并阻断旧 generation 写入", () => {
+  const registryFixture = {
+    resources: [
+      { id: "body", version: 1, kind: "group", leaves: ["head@1", "arm@1"] },
+      { id: "head", version: 1, kind: "leaf", leaves: [] },
+      { id: "arm", version: 1, kind: "leaf", leaves: [] }
+    ]
+  };
+  const arbiter = new TransitionLeaseArbiter(registryFixture);
+  const first = arbiter.request({ lease_id: "lease.a", owner_id: "run.a", resources: ["body"], priority: 40, sequence: 1 });
+  assert.equal(first.ok, true);
+  const rejected = arbiter.request({ lease_id: "lease.b", owner_id: "run.b", resources: ["head"], priority: 40, sequence: 2 });
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.diagnostics[0].code, "LEASE_REJECTED");
+  const preempted = arbiter.request({ lease_id: "lease.b", owner_id: "run.b", resources: ["head"], priority: 80, sequence: 3 });
+  assert.equal(preempted.ok, true);
+  assert.deepEqual(preempted.value.preempted, ["lease.a"]);
+  assert.equal(arbiter.checkWrite({ lease_id: "lease.a", generation: first.value.lease.generation, resources: ["head@1"] }).ok, false);
+  assert.equal(arbiter.checkWrite({ lease_id: "lease.b", generation: preempted.value.lease.generation, resources: ["head@1"] }).ok, true);
+});
+
+test("C1-T.1.1 参考 planner 拒绝坏快照和未租资源且计划指纹可重复", () => {
+  const lease = { lease_id: "lease.wave", generation: 1, resources: ["head@1"], mode: "all_or_reject" };
+  const base = { plan_id: "plan.wave.1", intent: "social.wave@1", lease, snapshot: validSnapshot, resources: ["head@1"], segments: [{ segment_id: "s1", duration_ticks: 4, start_tick: 0, start: { yaw: 0 }, end: { yaw: 0.5 } }], completion: { terminal_states: ["completed"], dwell_ticks: 2 } };
+  const built = buildTransitionPlan(base);
+  assert.equal(built.ok, true);
+  assert.equal(built.value.execution_authority, "adapter_only");
+  assert.equal(transitionDecisionFingerprint(built.value), transitionDecisionFingerprint(buildTransitionPlan(structuredClone(base)).value));
+  const badSnapshot = structuredClone(validSnapshot);
+  badSnapshot.quality.finite = false;
+  assert.equal(buildTransitionPlan({ ...base, snapshot: badSnapshot }).ok, false);
+  assert.equal(buildTransitionPlan({ ...base, resources: ["arm@1"] }).ok, false);
+});
+
+test("C1-T.1.2 受信任 hook 按固定顺序执行并受 work budget/单级 fallback 约束", async () => {
+  const pipeline = new TrustedHookPipeline(hookManifestFixture, {
+    intent_resolver: (input, context) => { context.consume(2); return { ...input, resolved: true }; },
+    validator: (input, context) => { context.consume(3); return { ...input, valid: true }; }
+  });
+  const primary = await pipeline.run({ intent: "social.wave@1" });
+  assert.equal(primary.ok, true);
+  assert.deepEqual(primary.value.trace.map((item) => item.hook_id), ["intent_resolver", "validator"]);
+  assert.equal(primary.value.execution_authority, "candidate_only");
+  const failing = new TrustedHookPipeline(hookManifestFixture, {
+    intent_resolver: () => { throw Object.assign(new Error("bad output"), { code: "HOOK_INVALID_OUTPUT" }); },
+    validator: () => ({ valid: true })
+  });
+  const fallback = await runWithSingleFallback({
+    pipeline: failing,
+    input: { resources: ["head@1"] },
+    fallback: (input) => ({ ...input, fallback: true }),
+    safetySignature: { envelope: "strict" },
+    resources: ["head@1"],
+    fallbackResources: ["head@1"]
+  });
+  assert.equal(fallback.ok, true);
+  assert.equal(fallback.path, "fallback");
+  const widened = await runWithSingleFallback({
+    pipeline: failing,
+    input: {},
+    fallback: () => ({ ok: true }),
+    safetySignature: { envelope: "strict" },
+    fallbackSafetySignature: { envelope: "relaxed" },
+    resources: ["head@1"],
+    fallbackResources: ["head@1", "arm@1"]
+  });
+  assert.equal(widened.ok, false);
+  assert.equal(widened.diagnostics[0].code, "FALLBACK_POLICY_VIOLATION");
+  const run = new TransitionRun();
+  assert.equal(run.start(), true);
+  assert.equal(run.ownerLost(), true);
+  assert.equal(run.cancel(), false);
+  assert.deepEqual(run.terminal, { status: "owner_lost" });
+});
+
+test("C1-T.1.3 离线语义 harness 对执行、快照、外部 writer 和坏 plan 给出确定终态", () => {
+  const registryFixture = { resources: [{ id: "head", version: 1, kind: "leaf", leaves: [] }] };
+  const base = {
+    registry: registryFixture,
+    request: { lease_id: "lease.case", owner_id: "run.case", resources: ["head"], priority: 60, sequence: 1 },
+    snapshot: validSnapshot,
+    plan: { plan_id: "transition.case.1", intent: "social.wave@1", segments: [{ segment_id: "s1", duration_ticks: 2, start_tick: 0, start: { yaw: 0 }, end: { yaw: 0.1 } }], completion: { terminal_states: ["completed"], dwell_ticks: 1 } }
+  };
+  const executed = evaluateTransitionCase({ ...base, case_id: "execute" });
+  assert.equal(executed.outcome, "execute");
+  assert.equal(executed.terminal.status, "completed");
+  const external = evaluateTransitionCase({ ...base, case_id: "external-writer", adapter_ownership: "external_owned" });
+  assert.equal(external.failure_code, "EXTERNAL_WRITER_ACTIVE");
+  assert.equal(external.partial_write, false);
+  const invalid = structuredClone(base);
+  invalid.case_id = "invalid-snapshot";
+  invalid.snapshot.quality.same_tick = false;
+  assert.equal(evaluateTransitionCase(invalid).failure_code, "SNAPSHOT_NOT_SAME_TICK");
+  const badPlan = structuredClone(base);
+  badPlan.case_id = "empty-plan";
+  badPlan.plan.segments = [];
+  assert.equal(evaluateTransitionCase(badPlan).failure_code, "EMPTY_PLAN_SEGMENTS");
+  const replay = replayTransitionCase({ ...base, case_id: "replay" });
+  assert.equal(replay.deterministic, true);
+  assert.equal(replay.records.length, 2);
+});
+
+test("C1-P.1 reference slice 只在硬门后选择 fidelity，并在 anytime 截断时 fallback", () => {
+  const options = { initial: { position: 0, velocity: 0 }, target: 1, target_tolerance: 0.45, horizon_ticks: 60, limits: { position: [-2, 2], velocity: [-4, 4] }, deadline_reserve_ms: 2, required_reserve_ms: 1 };
+  const cascade = runReferenceCascade(options);
+  assert.equal(cascade.ok, true);
+  assert.equal(cascade.value.execution_authority, "candidate_only");
+  assert.equal(cascade.value.candidates.length, 3);
+  assert.equal(cascade.value.candidates.every((candidate) => candidate.hard_safe), true);
+  assert.equal(cascade.value.selected.certified, true);
+  const lowBudget = runAnytimeReference({ ...options, budgets: [8, 200, 4000] });
+  assert.equal(lowBudget[0].outcome, "fallback");
+  assert.equal(lowBudget[0].certified, false);
+  assert.equal(lowBudget[1].outcome, "execute");
+  assert.equal(lowBudget[1].candidate.certified, true);
+  const unsafe = runReferenceCascade({ ...options, target: 10, limits: { position: [-1, 1], velocity: [-1, 1] }, budget_units: 10000 });
+  assert.equal(unsafe.value.candidates.every((candidate) => candidate.hard_safe === false), true);
+  assert.equal(unsafe.value.selected, null);
+  assert.equal(unsafe.value.decision, "fallback");
+  const simulation = runReferenceCascade(options).value.candidates[0];
+  const receipt = certifyReferenceCandidate({ simulation: { ok: true, value: { final: { position: 0.7, velocity: 0 }, tier: "kinematic", work_units: simulation.work_units, finite_state: true, in_domain: true } }, target: 1, target_tolerance: 0.45, budget_units: simulation.work_units });
+  assert.equal(receipt.value.certified, true);
+});
+
+test("C1-P.1b–1d hybrid reference 记录 tagged jump、关节限位和 finite/field 准入", () => {
+  const jump = applyTaggedExternalJump({ state: { position: 0, velocity: 1 }, impulse: 0.2, envelope: 0.5 });
+  assert.equal(jump.ok, true);
+  assert.equal(jump.value.ledger.admitted, true);
+  assert.equal(applyTaggedExternalJump({ state: { position: 0, velocity: 1 }, impulse: 0.8, envelope: 0.5 }).ok, false);
+  const contact = enforceOneSidedJointLimit({ state: { position: 1.2, velocity: 2 }, limits: [-1, 1], restitution: 0 });
+  assert.equal(contact.ok, true);
+  assert.equal(contact.value.state.position, 1);
+  assert.equal(contact.value.contact_receipt.contact, "upper_limit");
+  assert.equal(admitFiniteFieldSwitch({ source_in_domain: true, target_in_domain: true, state_safe_admissible: true, input_intersection: true }).value.switch_admissible, true);
+  assert.equal(admitFiniteFieldSwitch({ source_in_domain: true, target_in_domain: false, state_safe_admissible: true, input_intersection: true }).ok, false);
+  const hybrid = runHybridReference({ target: 1, horizon_ticks: 12, limits: [-0.2, 0.2], disturbance_envelope: 0.1, jumps: { 4: 0.05 }, switches: [6] });
+  assert.equal(hybrid.ok, true);
+  assert.equal(hybrid.value.jump_ledger.length, 1);
+  assert.equal(hybrid.value.switch_receipts.length, 1);
+  assert.equal(hybrid.value.execution_authority, "candidate_only");
+});
+
+test("C1-T.2.3 Node decision 与 Godot observation 只比较语义因果，不冒充 wall-time 确定性", () => {
+  const execute = compareTransitionDecisionObservation(
+    { decision_id: "decision.c1t.wave.1", outcome: "execute" },
+    runtimeObservationFixture
+  );
+  assert.equal(execute.equivalent, true);
+  assert.equal(execute.wall_time_comparable, false);
+  const rejected = compareTransitionDecisionObservation(
+    { decision_id: "decision.reject.1", outcome: "reject" },
+    { decision_id: "decision.reject.1", receipts: [{ receipt_type: "barrier_receipt", status: "rejected" }, { receipt_type: "terminal_receipt", status: "rejected" }] }
+  );
+  assert.equal(rejected.equivalent, true);
+  const badOrder = compareTransitionDecisionObservation(
+    { decision_id: "decision.bad.1", outcome: "execute" },
+    { decision_id: "decision.bad.1", receipts: [{ receipt_type: "terminal_receipt", status: "completed" }, { receipt_type: "barrier_receipt", status: "accepted" }, { receipt_type: "start_receipt", status: "started" }] }
+  );
+  assert.equal(badOrder.equivalent, false);
+  assert.ok(badOrder.issues.some((item) => item.code === "RECEIPT_CAUSAL_ORDER"));
+});
+
+test("C1-P.2 field 局部停滞可检测，并只能通过安全 finite escape 或 reject", () => {
+  const trace = Array.from({ length: 10 }, (_, tick) => ({ x: 0.2 + tick * 0.0001, y: 0.2, vx: 0.0001, vy: 0 }));
+  const stagnation = detectFieldStagnation(trace);
+  assert.equal(stagnation.stagnant, true);
+  const obstacle = { x: 0.5, y: 0.5, radius: 0.2 };
+  const escaped = selectFiniteEscapeWaypoint({ start: { x: 0, y: 0.5 }, target: { x: 1, y: 0.5 }, obstacles: [obstacle], margin: 0.05 });
+  assert.equal(escaped.ok, true);
+  const fallback = runFieldWithFiniteFallback({ start: { x: 0, y: 0.5 }, target: { x: 1, y: 0.5 }, obstacles: [obstacle], trace });
+  assert.equal(fallback.outcome, "fallback");
+  assert.equal(fallback.mode, "finite");
+  const narrowChannel = selectFiniteEscapeWaypoint({ start: { x: 0, y: 0 }, target: { x: 1, y: 0 }, obstacles: [{ x: 0.5, y: 0.27, radius: 0.2 }, { x: 0.5, y: -0.27, radius: 0.2 }], margin: 0.04 });
+  assert.equal(narrowChannel.ok, true);
+  assert.ok(narrowChannel.clearance > 0.04);
+  const blocked = runFieldWithFiniteFallback({ start: { x: 0, y: 0 }, target: { x: 1, y: 1 }, obstacles: [{ x: 0.5, y: 0.5, radius: 10 }], trace });
+  assert.equal(blocked.outcome, "reject");
+  assert.equal(blocked.reason, "NO_SAFE_ESCAPE_WAYPOINT");
+});
+
+test("C1-P.3 latent shadow guard 拒绝 OOD、metric 退化和 decoded 越界", () => {
+  const prior = { mean: [0, 0], basis: [[1, 0], [0, 1]] };
+  const base = { latent: [0.2, -0.1], prior, reference_state: [0.2, -0.1], decoded_limits: [[-1, 1], [-1, 1]], support: { min: [-1, -1], max: [1, 1] }, metric: { sigma_min: 0.8, condition_number: 2 } };
+  const accepted = evaluateLatentCandidate(base);
+  assert.equal(accepted.value.accepted, true);
+  assert.equal(accepted.value.candidate_only, true);
+  const ood = evaluateLatentCandidate({ ...base, latent: [2, 0] });
+  assert.equal(ood.value.accepted, false);
+  assert.ok(ood.diagnostics.some((item) => item.code === "LATENT_OOD"));
+  const singular = evaluateLatentCandidate({ ...base, metric: { sigma_min: 0.001, condition_number: 1000 } });
+  assert.equal(singular.value.accepted, false);
+  assert.ok(singular.diagnostics.some((item) => item.code === "METRIC_CONDITION_GUARD"));
+  const decodedOut = evaluateLatentCandidate({ ...base, latent: [2, 0], support: { min: [-3, -3], max: [3, 3] }, decoded_limits: [[-1, 1], [-1, 1]] });
+  assert.equal(decodedOut.value.accepted, false);
+  assert.ok(decodedOut.diagnostics.some((item) => item.code === "DECODED_CONSTRAINT_VIOLATION"));
+  assert.deepEqual(decodeLinearPrior({ latent: [0.2, -0.1], ...prior }).value, [0.2, -0.1]);
+  const modelError = buildModelErrorReport({ prediction_receipt_id: "prediction.1", reference: "high.reference", errors: { position: 0.1, velocity: 0.2, contact: 0.0, effort: 0.3 }, decision_flip: { execute_to_fallback: false, fallback_to_reject: false, dangerous_flip: false } });
+  assert.equal(modelError.value.recommendation, "retain_tier");
+  const dangerousModelError = buildModelErrorReport({ prediction_receipt_id: "prediction.2", reference: "kinematic.reference", errors: { position: 0.1, velocity: 0.2, contact: 0.0, effort: 0.3 }, decision_flip: { execute_to_fallback: false, fallback_to_reject: false, dangerous_flip: true } });
+  assert.equal(dangerousModelError.value.recommendation, "upgrade_or_reject");
+});
+
+test("C1-T.3.1 表情 Adapter reference 复用 ownership/generation/receipt 且不依赖 Skeleton 字段", () => {
+  const profile = { profile_type: "ExpressionAdapterProfile", schema_version: 1, channels: { "face.smile": { min: 0, max: 1 }, "face.eye_open": { min: 0, max: 1 } } };
+  assert.equal(validateExpressionAdapterProfile(profile).ok, true);
+  const adapter = new ExpressionAdapterReference(profile);
+  assert.equal(adapter.handoff("coda_owned").ok, true);
+  const generation = adapter.startGeneration();
+  assert.equal(generation.ok, true);
+  const completed = adapter.apply({ generation: generation.value.generation, channels: { "face.smile": 0.7, "face.eye_open": 0.85 } });
+  assert.equal(completed.ok, true);
+  assert.equal(completed.receipt.status, "completed");
+  const stale = adapter.apply({ generation: generation.value.generation - 1, channels: { "face.smile": 0.2 } });
+  assert.equal(stale.ok, false);
+  assert.equal(stale.receipt.status, "rejected");
+  assert.equal(stale.diagnostics[0].code, "STALE_EXPRESSION_GENERATION");
+  adapter.handoff("external_owned");
+  const denied = adapter.startGeneration();
+  assert.equal(denied.ok, false);
+  assert.equal(denied.diagnostics[0].code, "EXPRESSION_WRITER_NOT_OWNED");
+  assert.equal(Object.hasOwn(adapter.snapshot(), "skeleton"), false);
+});
+
+test("C1-P.4 Pareto 先过滤硬门，再标记 dominated 并稳定选择候选", () => {
+  const candidates = [
+    { id: "kinematic", tier: "kinematic", schema_valid: true, resource_valid: true, numerical_valid: true, hard_safe: true, deadline_ok: true, target_error: 0.4, state_error: 0.4, work_units: 10, energy_proxy: 2 },
+    { id: "reduced", tier: "reduced", schema_valid: true, resource_valid: true, numerical_valid: true, hard_safe: true, deadline_ok: true, target_error: 0.2, state_error: 0.2, work_units: 40, energy_proxy: 3 },
+    { id: "dominated", tier: "reduced", schema_valid: true, resource_valid: true, numerical_valid: true, hard_safe: true, deadline_ok: true, target_error: 0.5, state_error: 0.5, work_units: 50, energy_proxy: 4 },
+    { id: "unsafe-accurate", tier: "high", schema_valid: true, resource_valid: true, numerical_valid: true, hard_safe: false, deadline_ok: true, target_error: 0.01, state_error: 0.01, work_units: 100, energy_proxy: 1 }
+  ];
+  const frontier = buildSafeParetoFrontier(candidates);
+  assert.deepEqual(frontier.rejected.map((candidate) => candidate.id), ["unsafe-accurate"]);
+  assert.deepEqual(frontier.dominated.map((candidate) => candidate.id), ["dominated"]);
+  assert.deepEqual(frontier.frontier.map((candidate) => candidate.id), ["kinematic", "reduced"]);
+  const selected = selectStableParetoCandidate(frontier.frontier, { preferred_tier_order: ["reduced", "kinematic"] });
+  assert.equal(selected.outcome, "execute_candidate");
+  assert.equal(selected.candidate.id, "reduced");
+  assert.equal(selected.execution_authority, "candidate_only");
+});
+
+test("C1-P.0 契约包保持候选权、安全先行和三类收敛的责任分离", () => {
+  assert.equal(c1pContractIndex.contract_family, "C1-P");
+  assert.equal(c1pContractIndex.schemas.length, 10);
+  assert.equal(c1pContractIndex.execution_authority, "candidate_only");
+  assert.equal(c1pContractPack.status, "DESIGN_ONLY_NOT_RUNTIME");
+  assert.equal(c1pContractPack.policy.execution_authority, "candidate_only");
+  assert.equal(c1pContractPack.approximation.dangerous_decision_rule, "upgrade_or_reject");
+  assert.equal(c1pContractPack.approximation.anytime_rule, "certified_candidate_or_fallback");
+  assert.equal(c1pContractPack.safety.no_solution_action, "reject");
+  assert.equal(c1pContractPack.prediction.candidate_only, true);
+  assert.equal(c1pContractPack.error.decision_flip.dangerous_flip, false);
 });
 
 test("ExecutionPlan 与 GDScript 生成是确定的，并拒绝受管工件漂移", () => {

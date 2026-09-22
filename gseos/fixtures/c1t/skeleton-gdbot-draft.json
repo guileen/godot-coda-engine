@@ -1,0 +1,42 @@
+{
+  "fixture_type": "SkeletonTransitionFixture",
+  "schema_version": 1,
+  "model": {
+    "asset": "demos/d3-skeleton-transition/addons/gdquest_gdbot/model/gdbot.glb",
+    "sha256": "cdeca527d5672d0c402362e7b6bdfac35a091096ad504b3bd51d8fa49817025f",
+    "license": "CC BY-NC-SA 4.0 / prototype-only"
+  },
+  "mapping": {
+    "semantic_resources": ["character.head@1"],
+    "controlled_channels": [
+      { "id": "head.pitch", "bone": "head", "unit": "deg", "limits": { "min": -15, "max": 25 } },
+      { "id": "head.yaw", "bone": "head", "unit": "deg", "limits": { "min": -60, "max": 60 } },
+      { "id": "head.roll", "bone": "head", "unit": "deg", "limits": { "min": -20, "max": 20 } }
+    ]
+  },
+  "poses": {
+    "attack_recovery": { "head.pitch": -8, "head.yaw": -35, "head.roll": 5 },
+    "defense_high": { "head.pitch": 12, "head.yaw": 32, "head.roll": -4 },
+    "safe_neutral": { "head.pitch": 0, "head.yaw": 0, "head.roll": 0 }
+  },
+  "profile": {
+    "physics_tick_hz": 60,
+    "first_response_ms": 120,
+    "max_transition_ms": 1100,
+    "quantization_deg": 0.1,
+    "target_tolerance_deg": 1.0,
+    "stable_window_ticks": 6,
+    "max_velocity_deg_s": 180,
+    "max_acceleration_deg_s2": 720,
+    "max_contact_drift_mm": 5
+  },
+  "ownership_policy": { "external_writer": "reject", "animation_tree": "reject", "root_motion": "reject" },
+  "owner_decision_required": [
+    "approve_model_and_license_for_public_demo",
+    "approve_attack_and_defense_pose_semantics",
+    "approve_exclusive_writer_rejection_policy",
+    "approve_first_response_duration_tolerance_and_motion_limits",
+    "approve_parallel_execution_or_keep_hold"
+  ],
+  "status": "DRAFT_NOT_AUTHORIZED_FOR_RUNTIME"
+}

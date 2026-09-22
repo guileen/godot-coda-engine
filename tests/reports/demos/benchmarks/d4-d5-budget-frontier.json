@@ -1,0 +1,18 @@
+{
+  "report_type": "CODA_DemoBenchmarkFixture",
+  "schema_version": 1,
+  "status": "CONTRACT_FIXTURE_NOT_TARGET_DEVICE_CALIBRATED",
+  "d4_fidelity_sweep": [
+    { "tier": "kinematic", "steps": 8, "horizon": 4, "work_units": 12, "state_error": 0.18, "decision": "execute", "hard_gate": "pass" },
+    { "tier": "reduced", "steps": 16, "horizon": 8, "work_units": 44, "state_error": 0.07, "decision": "execute", "hard_gate": "pass" },
+    { "tier": "high", "steps": 32, "horizon": 12, "work_units": 160, "state_error": 0.02, "decision": "execute", "hard_gate": "pass" },
+    { "tier": "kinematic", "steps": 8, "horizon": 4, "work_units": 15, "state_error": 0.04, "decision": "reject", "hard_gate": "fail", "reason": "decision_safety_flip" }
+  ],
+  "d5_anytime_sweep": [
+    { "budget": 8, "certified_candidate": false, "outcome": "fallback", "deadline_reserve": "preserved" },
+    { "budget": 20, "certified_candidate": true, "candidate": "kinematic-1", "outcome": "execute", "deadline_reserve": "preserved" },
+    { "budget": 60, "certified_candidate": true, "candidate": "reduced-1", "outcome": "execute", "deadline_reserve": "preserved" },
+    { "budget": 180, "certified_candidate": true, "candidate": "high-1", "outcome": "execute", "deadline_reserve": "preserved" }
+  ],
+  "not_claimed": ["target-device wall p95/p99", "memory calibration", "robotics error envelope", "universal safety guarantee"]
+}

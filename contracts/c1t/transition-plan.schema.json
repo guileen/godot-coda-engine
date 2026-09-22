@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/transition-plan@1",
+  "title": "C1-T TransitionPlan",
+  "type": "object",
+  "required": ["plan_type", "schema_version", "plan_id", "intent", "lease", "snapshot_ref", "segments", "completion"],
+  "properties": {
+    "plan_type": { "const": "TransitionPlan" },
+    "schema_version": { "const": 1 },
+    "plan_id": { "type": "string", "minLength": 1 },
+    "intent": { "type": "string", "pattern": "@1$" },
+    "lease": { "type": "object", "required": ["lease_id", "generation", "resources", "mode"], "properties": { "lease_id": { "type": "string" }, "generation": { "type": "integer", "minimum": 0 }, "resources": { "type": "array", "minItems": 1 }, "mode": { "const": "all_or_reject" } } },
+    "snapshot_ref": { "type": "object", "required": ["revision", "physics_tick"] },
+    "segments": { "type": "array", "minItems": 1 },
+    "completion": { "type": "object", "required": ["terminal_states", "dwell_ticks"] }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,54 @@
+{
+  "report_type": "CODA_DemoReport",
+  "schema_version": 1,
+  "demo_id": "D5",
+  "title": "Anytime and safety boundary",
+  "status": "PASS_OFFLINE_AND_VISUAL_CAPTURED",
+  "evidence": {
+    "budget_sweep": [
+      {
+        "budget": 20,
+        "candidate": "kinematic-1",
+        "certified": true,
+        "outcome": "execute"
+      },
+      {
+        "budget": 60,
+        "candidate": "reduced-1",
+        "certified": true,
+        "outcome": "execute"
+      },
+      {
+        "budget": 180,
+        "candidate": "high-1",
+        "certified": true,
+        "outcome": "execute"
+      },
+      {
+        "budget": 8,
+        "candidate": null,
+        "certified": false,
+        "outcome": "fallback"
+      }
+    ],
+    "invariant": "budget exhaustion never returns an uncertified candidate",
+    "hard_gates": [
+      "schema/resource/numerical validity",
+      "safety/viability",
+      "deadline reserve"
+    ],
+    "pareto_scope": "certified candidates only",
+    "visual_states": [
+      {
+        "state": "anytime_frontier",
+        "file": "d5.png",
+        "sha256": "4adfa75e0854e0f9f17f116d3acfcc2efe73b628e8f8230ee3be5a87f567ab16"
+      }
+    ],
+    "replay": {
+      "file": "replays/d5-anytime-safety-boundary.replay.json",
+      "sha256": "35e6ed50c8b79d5fb43dfb55255c55acdfd9fefc6427f0f89cacd40e41f72b91"
+    }
+  },
+  "boundary": "Does not prove success when no certified candidate exists."
+}

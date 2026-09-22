@@ -1,0 +1,62 @@
+{
+  "report_type": "CODA_DemoSmokeReport",
+  "schema_version": 1,
+  "demo_id": "D3",
+  "title": "Skeleton3D intent transition",
+  "status": "PASS_RUNTIME_SMOKE_D3_DISTINCT_STATES_CAPTURED_ADAPTER_RECEIPT_VISIBLE",
+  "date": "2026-09-22",
+  "asset": {
+    "source": "/Users/gl/hz/aliyun-terraform/labs/game_toys/aibi/godot/addons/gdquest_gdbot/model/gdbot.glb",
+    "copied_to": "demos/d3-skeleton-transition/addons/gdquest_gdbot/model/gdbot.glb",
+    "sha256": "cdeca527d5672d0c402362e7b6bdfac35a091096ad504b3bd51d8fa49817025f",
+    "license": "CC BY-NC-SA 4.0",
+    "license_note": "Prototype and technical validation only; commercial distribution requires a replacement asset or written permission."
+  },
+  "command": "npm run demo:smoke && godot --headless --path demos/d3-skeleton-transition --script res://tests/d3_skeleton_transition_smoke.gd",
+  "checks": [
+    "scene loads",
+    "real GDBot Skeleton3D is present",
+    "Head bone is present",
+    "attack intent increments generation and acquires lease",
+    "interrupt revokes generation and converges to safe state",
+    "head yaw remains within the declared hard limit",
+    "late sample from an old generation is rejected without a pose write",
+    "external writer is rejected at the ownership barrier without a new generation",
+    "external writer rejection closes a terminal receipt without partial write",
+    "owner loss blocks new requests and closes one owner_lost terminal receipt",
+    "Godot motion Adapter receipt exposes backend, adapter-only authority, barrier, start and terminal fields",
+    "real GDBot FaceScreen target is present",
+    "happy/default/dizzy expression intents reach the face animation Adapter",
+    "external writer blocks expression generation without a partial face write"
+  ],
+  "result": "D3 Skeleton3D transition smoke passed",
+  "plan_consumed_by_runtime": true,
+  "plan_source_ref_observed": "/root/0",
+  "replay_evidence": "tests/reports/demos/replays/d3-skeleton-transition.replay.json",
+  "visual_evidence": ["tests/reports/demos/visual/d3-idle.png", "tests/reports/demos/visual/d3-interrupted.png"],
+  "fixture_sha256": "684c78f3c50f170508e339c41f3bc8acfaa6a46d67adc2528c2370d6240129fc",
+  "visual_sha256": {
+    "d3-idle.png": "8c0bb7b6207c422094ffb8b64cbd53de6e948993d2af0ed19ec60d3280221b10",
+    "d3-interrupted.png": "6a6d7524dddd8415bfb664042508cf2f2c9311f1edb2a97745cb2771a9d5a834"
+  },
+  "known_warnings": [
+    "Imported third-party scenes contain invalid source UIDs; Godot regenerated local import metadata.",
+    "A dummy material warning is emitted by the upstream asset and does not fail the smoke test."
+  ],
+  "adapter_receipt_contract": {
+    "backend": "godot.motion@1",
+    "execution_authority": "adapter_only",
+    "visible_fields": ["barrier", "start", "terminal"],
+    "external_writer_status": "rejected_without_partial_write"
+  },
+  "expression_adapter_contract": {
+    "target": "SubViewport/GDbotFace",
+    "allowed_expressions": ["default", "happy", "dizzy"],
+    "visible_fields": ["expression", "barrier", "terminal", "generation"],
+    "external_writer_status": "rejected_without_new_generation"
+  },
+  "remaining_for_stage_acceptance": [
+    "Calibrate C1-T technical thresholds and add full replay/observation correlation; this smoke does not prove naturalness.",
+    "Keep the generated plan step and runtime receipt versioned when the launcher grows a full source-to-plan UI action."
+  ]
+}

@@ -22,7 +22,7 @@ function objectToGd(value) {
 }
 
 function sourceField(opcode) {
-  return { Branch: "condition", Bind: "value", ReadCapability: "target", InvokeSync: "capability", AwaitCapability: "capability", Publish: "topic", Return: "value", Escape: "code" }[opcode] ?? "node";
+  return { Branch: "condition", Bind: "value", ReadCapability: "target", InvokeSync: "capability", AwaitCapability: "capability", MotionIntent: "intent", Publish: "topic", Return: "value", Escape: "code" }[opcode] ?? "node";
 }
 
 function traceFields(instruction) {
@@ -47,6 +47,7 @@ function emitInstruction(instruction, lines, map, indent = "  ") {
     case "ReadCapability": lines.push(`${indent}ctx.set_value(${JSON.stringify(instruction.bind ?? "result")}, await runtime.read(${JSON.stringify(instruction.target)}, ${objectToGd(instruction.args)}))`); break;
     case "InvokeSync": lines.push(`${indent}${instruction.bind ? `ctx.set_value(${JSON.stringify(instruction.bind)}, ` : ""}runtime.call_sync(${JSON.stringify(instruction.target)}, ${objectToGd(instruction.args)})${instruction.bind ? ")" : ""}`); break;
     case "AwaitCapability": lines.push(`${indent}${instruction.bind ? `ctx.set_value(${JSON.stringify(instruction.bind)}, ` : ""}await runtime.await_capability(${JSON.stringify(instruction.target)}, ${objectToGd(instruction.args)})${instruction.bind ? ")" : ""}`); break;
+    case "MotionIntent": lines.push(`${indent}await runtime.request_motion_intent(${JSON.stringify(instruction.target)}, ${objectToGd(instruction.args)})`); break;
     case "Publish": lines.push(`${indent}runtime.publish(${JSON.stringify(instruction.target)}, ${expressionToGd(instruction.payload)})`); break;
     case "Return": lines.push(`${indent}runtime.finish_context(ctx)`); lines.push(`${indent}return ${expressionToGd(instruction.value)}`); break;
     case "Escape": lines.push(`${indent}# gseos:escape inputs=${JSON.stringify(instruction.inputs)} outputs=${JSON.stringify(instruction.outputs)}`); lines.push(`${indent}${instruction.code}`); break;

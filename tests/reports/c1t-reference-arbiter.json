@@ -1,0 +1,30 @@
+{
+  "report_type": "C1TReferenceArbiterReport",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/transition.js",
+  "tests": [
+    "C1-T.1.1 参考仲裁器全取或全拒并阻断旧 generation 写入",
+    "C1-T.1.1 参考 planner 拒绝坏快照和未租资源且计划指纹可重复"
+  ],
+  "verified_invariants": [
+    "all_or_reject lease acquisition",
+    "only strictly higher priority preemption",
+    "stale lease/generation cannot pass write barrier",
+    "same-tick finite snapshot is required",
+    "transition plan resources must be leased",
+    "decision fingerprint is deterministic",
+    "execution authority remains adapter_only"
+  ],
+  "commands": [
+    "npm test",
+    "npm run check",
+    "git diff --check"
+  ],
+  "non_claims": [
+    "does not authorize C1-T Godot runtime",
+    "does not prove Skeleton3D thresholds or naturalness",
+    "does not control hardware or motor outputs",
+    "does not close G-C1-T-A, G-C1-T-B, or G-C1-T-C"
+  ]
+}

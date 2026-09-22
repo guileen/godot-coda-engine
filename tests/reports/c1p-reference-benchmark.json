@@ -1,0 +1,56 @@
+{
+  "report_type": "C1PReferenceBenchmark",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/physics-reference.js",
+  "options": {
+    "initial": { "position": 0, "velocity": 0 },
+    "target": 1,
+    "target_tolerance": 0.45,
+    "horizon_ticks": 60,
+    "limits": { "position": [-2, 2], "velocity": [-4, 4] },
+    "deadline_reserve_ms": 2,
+    "required_reserve_ms": 1
+  },
+  "cascade": {
+    "reference_tier": "high",
+    "tiers": [
+      { "tier": "kinematic", "work_units": 188, "state_error": 0.3898698914857016, "target_error": 0.4039127390015844, "hard_safe": true, "target_reached": true, "certified": true },
+      { "tier": "reduced", "work_units": 748, "state_error": 0.1329683909520775, "target_error": 0.3049820477501981, "hard_safe": true, "target_reached": true, "certified": true },
+      { "tier": "high", "work_units": 2976, "state_error": 0, "target_error": 0.20339032973432025, "hard_safe": true, "target_reached": true, "certified": true }
+    ],
+    "selected_under_unbounded_reference_budget": "kinematic-reference",
+    "execution_authority": "candidate_only"
+  },
+  "anytime": [
+    { "budget_units": 8, "outcome": "fallback", "certified": false },
+    { "budget_units": 200, "outcome": "execute", "certified": true, "candidate": "kinematic-reference" },
+    { "budget_units": 4000, "outcome": "execute", "certified": true, "candidate": "kinematic-reference" }
+  ],
+  "hybrid_reference": {
+    "implementation": "packages/local-core/src/gseos/hybrid-reference.js",
+    "jump_ledger": [
+      { "tick": 8, "external_impulse": 0.05, "envelope": 0.1, "admitted": true },
+      { "tick": 16, "external_impulse": -0.04, "envelope": 0.1, "admitted": true }
+    ],
+    "contact_receipt": { "contact": "upper_limit", "state_safe_admissible": true, "restitution": 0 },
+    "switch_receipt": { "tick": 12, "mode_from": "finite", "mode_to": "field", "switch_admissible": true, "execution_authority": "candidate_only" },
+    "verified_invariants": [
+      "jump outside disturbance envelope is rejected",
+      "one-sided limit clamps state and emits contact receipt",
+      "finite/field switch requires domain, state safety and input intersection"
+    ]
+  },
+  "verified_invariants": [
+    "hard safety and numerical validity are checked before selection",
+    "work budget is deterministic",
+    "budget exhaustion returns fallback rather than an uncertified iterate",
+    "reference tier is used for state error only and does not grant write authority"
+  ],
+  "non_claims": [
+    "not a target-device wall-time calibration",
+    "not a contact/friction or Skeleton3D benchmark",
+    "not evidence of naturalness or hardware safety",
+    "does not close G-C1-P-A or G-C1-P-B"
+  ]
+}

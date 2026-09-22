@@ -1,0 +1,154 @@
+{
+  "pack_type": "C1TContractHardeningPack",
+  "schema_version": 1,
+  "status": "STRUCTURE_FROZEN_DEVICE_VALUES_PENDING",
+  "canonical_contract_index": "contracts/c1t/contract-index.json",
+  "positive": {
+    "task_activation": {
+      "contract_type": "TaskActivationContract",
+      "schema_version": 1,
+      "contract_id": "activation.contact.establish.1",
+      "profile_ref": "profile.gdbot.contact@1",
+      "activation_class": "guarded_handoff",
+      "task_set_revision": "taskset.42",
+      "transition": {
+        "from_mode": "guarded_approach",
+        "to_mode": "established_contact",
+        "phase_graph_ref": "contact.reference_four_phase@1",
+        "presolve_budget_ref": "budget.gdbot.presolve@1",
+        "commit_barrier": "atomic"
+      },
+      "constraint_policy": {
+        "hard_invariants": ["authority.single_writer", "contact.force_limit"],
+        "slack_policy": "profile_bounded",
+        "soft_objectives": ["pose.preference"]
+      },
+      "continuity": {
+        "channels": ["position", "velocity", "effort", "effort_rate"],
+        "envelope_ref": "continuity.gdbot.contact@1"
+      },
+      "on_failure": "enter_certified_backup"
+    },
+    "model_validity": {
+      "contract_type": "ModelValidityEnvelope",
+      "schema_version": 1,
+      "envelope_id": "model-envelope.contact.1",
+      "model_ref": "model.gdbot.contact@1",
+      "model_revision": "sha256:pending-calibration",
+      "evidence_grade": "candidate_shadow",
+      "bounds": [
+        {
+          "parameter": "friction_coefficient",
+          "unit": "1",
+          "representation": "interval",
+          "bound_ref": "bound.contact.mu.draft"
+        }
+      ],
+      "detector_profile_ref": "detector.contact.residual@1",
+      "status": "unknown",
+      "update_policy": {
+        "contraction": "preapproved_conservative_only",
+        "expansion": "calibrated_persistent_evidence_only",
+        "single_sample_parameter_update": "forbidden"
+      },
+      "on_invalid": "enter_certified_backup"
+    },
+    "state_alignment": {
+      "contract_type": "StateAlignmentContract",
+      "schema_version": 1,
+      "contract_id": "alignment.reentry.1",
+      "epoch": "epoch.demo.1",
+      "generation": 7,
+      "clock_domain": "godot.physics_tick",
+      "estimator_ref": "estimator.gdbot.pose@1",
+      "predictor_ref": "predictor.gdbot.local@1",
+      "maximum_age_budget_ref": "budget.gdbot.state_age@1",
+      "start_tube": {
+        "representation": "dense_ellipsoid",
+        "semantics": "probabilistic_belief",
+        "dimension": 6,
+        "object_ref": "tube.gdbot.reentry.1",
+        "object_digest": "sha256:pending-generated-object",
+        "complexity_bound": "O(N2)",
+        "error_bound_ref": "error.gdbot.reentry@1",
+        "wcet_evidence_ref": "evidence.pending.target-wcet",
+        "confidence_and_tail_policy_ref": "belief.gdbot.reentry@1"
+      },
+      "commit_policy": {
+        "read_local_latest_state": true,
+        "atomic_checks": ["epoch", "generation", "start_tube", "model_envelope", "input_bounds", "horizon"],
+        "on_reject": "state_drift_exceeded"
+      }
+    },
+    "handoff": {
+      "contract_type": "HandoffContract",
+      "schema_version": 1,
+      "contract_id": "handoff.position.impedance.1",
+      "outgoing_controller_ref": "controller.position.gdbot@1",
+      "incoming_controller_ref": "controller.impedance.gdbot@1",
+      "authority_barrier": "atomic_single_writer",
+      "reconstruction": {
+        "method": "observable_reconstruct",
+        "required_inputs": ["measured_state", "last_commanded_state", "outgoing_effort", "contact_state"],
+        "compatibility_evidence_ref": "evidence.pending.handoff-pair"
+      },
+      "command_match": {
+        "channels": ["position", "velocity", "effort", "effort_rate", "contact_wrench"],
+        "continuity_envelope_ref": "continuity.gdbot.handoff@1"
+      },
+      "blend_policy": {
+        "mode": "none",
+        "admission_checks": ["effort", "effort_rate", "saturation", "contact", "closed_loop_domain"]
+      },
+      "safety_profile_ref": "safety.gdbot.non-safety-simulation@1",
+      "on_failure": "enter_certified_backup"
+    }
+  },
+  "negative": [
+    {
+      "case_id": "activation.timeout.implicit-lease-extension",
+      "expected_rejection_code": "PRESOLVE_TIMEOUT",
+      "forbidden_claim": "extend_current_lease_one_tick"
+    },
+    {
+      "case_id": "model.single-sample-expansion",
+      "expected_rejection_code": "MODEL_EVIDENCE_INSUFFICIENT",
+      "forbidden_claim": "expand_safe_domain_from_one_sample"
+    },
+    {
+      "case_id": "alignment.probability-as-hard-set",
+      "expected_rejection_code": "START_TUBE_UNSUPPORTED",
+      "forbidden_claim": "probabilistic_belief_is_hard_guarantee"
+    },
+    {
+      "case_id": "alignment.unmeasured-wcet",
+      "expected_rejection_code": "START_TUBE_WCET_UNPROVEN",
+      "forbidden_claim": "sparse_zonotope_is_always_microsecond"
+    },
+    {
+      "case_id": "handoff.raw-integrator-copy",
+      "expected_rejection_code": "INTERNAL_STATE_INCOMPATIBLE",
+      "forbidden_claim": "copy_internal_state_without_translator"
+    },
+    {
+      "case_id": "handoff.q0-only",
+      "expected_rejection_code": "COMMAND_DISCONTINUITY",
+      "forbidden_claim": "q0_measured_proves_total_effort_continuity"
+    },
+    {
+      "case_id": "composition.local-pass-global-fail",
+      "expected_rejection_code": "JOINT_TASK_SET_INFEASIBLE",
+      "forbidden_claim": "local_task_acceptance_implies_joint_feasibility"
+    },
+    {
+      "case_id": "safety.runtime-selected-stop-map",
+      "expected_rejection_code": "SAFETY_PROFILE_MISSING",
+      "forbidden_claim": "runtime_may_choose_stop_category"
+    }
+  ],
+  "non_claims": [
+    "does not authorize runtime implementation",
+    "does not supply target-device thresholds",
+    "does not prove real-hardware safety"
+  ]
+}

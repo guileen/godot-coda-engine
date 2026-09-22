@@ -1,0 +1,10 @@
+{
+  "manifest_type": "HookManifest",
+  "schema_version": 1,
+  "hooks": [
+    { "hook_id": "intent_resolver", "version": 1, "order": 10, "artifact_sha256": "sha256:fixture-intent-resolver", "input_schema": "MotionIntent@1", "output_schema": "ResolvedIntent@1", "determinism": "trusted_deterministic", "work_budget": 32, "wall_watchdog_ms": 4, "failure_codes": ["HOOK_TIMEOUT", "HOOK_INVALID_OUTPUT"] },
+    { "hook_id": "validator", "version": 1, "order": 40, "artifact_sha256": "sha256:fixture-validator", "input_schema": "TransitionPlan@1", "output_schema": "ValidationResult@1", "determinism": "trusted_deterministic", "work_budget": 64, "wall_watchdog_ms": 8, "failure_codes": ["HOOK_REJECTED", "HOOK_DIGEST_MISMATCH"] }
+  ],
+  "trust_boundary": { "allow_third_party": false, "allow_learning_models": false, "execution_mode": "repository_trusted_only" },
+  "fallback_policy": { "max_depth": 1, "resource_rule": "same_or_subset", "safety_rule": "never_relax", "runtime_selects": true }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/snapshot-bundle@1",
+  "title": "C1-T SnapshotBundle",
+  "type": "object",
+  "required": ["snapshot_type", "schema_version", "physics_tick", "revision", "unit_system", "quality", "state"],
+  "properties": {
+    "snapshot_type": { "const": "SnapshotBundle" },
+    "schema_version": { "const": 1 },
+    "physics_tick": { "type": "integer", "minimum": 0 },
+    "revision": { "type": "string", "minLength": 1 },
+    "unit_system": { "const": "SI" },
+    "quality": { "type": "object", "required": ["finite", "same_tick", "skew_ms"], "properties": { "finite": { "const": true }, "same_tick": { "const": true }, "skew_ms": { "type": "number", "maximum": 0.0 } } },
+    "state": { "type": "object", "minProperties": 1 }
+  },
+  "additionalProperties": false
+}

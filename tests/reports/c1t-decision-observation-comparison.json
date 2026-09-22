@@ -1,0 +1,19 @@
+{
+  "report_type": "C1TDecisionObservationComparison",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_SEMANTIC_COMPARISON",
+  "implementation": "packages/local-core/src/gseos/transition-comparison.js",
+  "verified": [
+    "execute decision maps to accepted barrier, started receipt and one terminal receipt",
+    "reject decision maps to no start receipt and one reject-like terminal receipt",
+    "receipt causal order is checked",
+    "decision_id association is checked",
+    "wall time is explicitly non-comparable"
+  ],
+  "commands": ["npm test", "npm run check", "git diff --check"],
+  "non_claims": [
+    "does not calibrate target-device wall time",
+    "does not prove naturalness",
+    "does not close G-C1-T-C without full Godot observation correlation"
+  ]
+}

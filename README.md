@@ -74,5 +74,6 @@ Most users can start from this README. The deeper references are available when 
 - [Language reference](docs/en/language.md) / [CODA 语法小抄](docs/zh-CN/language.md)
 - [Technical documentation](docs/en/README.md) / [中文技术文档](docs/zh-CN/README.md)
 - [AIBI Behavior Runtime](docs/aibi-behavior-runtime-proposal.md)（C0 已实现：EventAsset、Node/Godot 运行时与 AIBI 接入）
+- [Robot Motion Intent](docs/robot-motion-intent-proposal.md)（C1-M 提案：运动意图、抢占与安全收敛；尚未实现）
 
 For contributors and release verification, run `npm test`, `npm run check`, and `npm run test:all`. CODA code is MIT-licensed; documentation and website copy are CC BY 4.0. See [brand policy](TRADEMARKS.md) for the optional Made with CODA badge.

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/safety-profile@1",
+  "title": "C1-T SafetyProfile",
+  "type": "object",
+  "required": ["profile_type", "schema_version", "profile_id", "device_identity_ref", "status", "standard_domains", "authority_owner", "mappings", "immutable_digest", "approval_evidence_ref"],
+  "properties": {
+    "profile_type": { "const": "SafetyProfile" },
+    "schema_version": { "const": 1 },
+    "profile_id": { "type": "string", "minLength": 1 },
+    "device_identity_ref": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft_non_safety", "reviewed", "approved_for_target"] },
+    "standard_domains": { "type": "array", "minItems": 1, "items": { "enum": ["IEC60204-1", "IEC61800-5-2", "ISO13849-1", "ISO13850", "PX4_DEVICE_SPECIFIC", "NON_SAFETY_SIMULATION"] }, "uniqueItems": true },
+    "authority_owner": { "type": "string", "minLength": 1 },
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["event", "physical_action", "adapter_binding_ref", "receipt_code"],
+        "properties": {
+          "event": { "enum": ["software_authority_revoked", "protective_stop_requested", "emergency_stop_asserted", "controller_fault", "model_invalid"] },
+          "physical_action": { "enum": ["controlled_stop", "torque_off", "safe_operational_stop", "hold", "brake", "land", "return", "disarm", "terminate", "adapter_defined"] },
+          "stop_category": { "enum": ["IEC60204_CAT0", "IEC60204_CAT1", "IEC60204_CAT2", "not_applicable"] },
+          "drive_safety_function": { "enum": ["STO", "SS1", "SS2", "SOS", "not_applicable"] },
+          "adapter_binding_ref": { "type": "string", "pattern": "@1$" },
+          "receipt_code": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "immutable_digest": { "type": "string", "minLength": 1 },
+    "approval_evidence_ref": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

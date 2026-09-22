@@ -1,0 +1,21 @@
+{
+  "replay_type": "CODA_DemoReplayEnvelope",
+  "schema_version": 1,
+  "demo_id": "D3",
+  "status": "REPLAY_INPUT_FIXTURE_PASS_RUNTIME_OBSERVATION_SEPARATE",
+  "plan_source": "demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json",
+  "events": [
+    { "event_id": "robot.acknowledge.user", "sequence": 1, "intent": "attack" },
+    { "event_id": "interrupt", "sequence": 2, "intent": "interrupted_to_safe" },
+    { "event_id": "external_writer", "sequence": 3, "intent": "defense", "expected": "reject" },
+    { "event_id": "owner_lost", "sequence": 4, "intent": "defense", "expected": "owner_lost" }
+  ],
+  "expected": {
+    "source_to_plan_to_adapter": true,
+    "old_generation_write": "reject",
+    "external_writer_write": "reject",
+    "owner_lost_write": "reject",
+    "unique_terminal_receipt": true
+  },
+  "observation_boundary": "Decision replay is deterministic; Godot frame timing, wall time and face rendering observation remain runtime evidence and are not asserted byte-identical."
+}

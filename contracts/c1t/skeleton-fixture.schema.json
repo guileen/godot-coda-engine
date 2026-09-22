@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/skeleton-fixture@1",
+  "title": "C1-T first Skeleton fixture profile",
+  "type": "object",
+  "required": ["fixture_type", "schema_version", "model", "mapping", "poses", "profile", "ownership_policy", "owner_decision_required"],
+  "properties": {
+    "fixture_type": { "const": "SkeletonTransitionFixture" },
+    "schema_version": { "const": 1 },
+    "model": { "type": "object", "required": ["asset", "sha256", "license"], "properties": { "asset": { "type": "string" }, "sha256": { "type": "string" }, "license": { "type": "string" } } },
+    "mapping": { "type": "object", "required": ["semantic_resources", "controlled_channels"], "properties": { "semantic_resources": { "type": "array", "minItems": 1 }, "controlled_channels": { "type": "array", "items": { "type": "object", "required": ["id", "bone", "unit", "limits"] } } } },
+    "poses": { "type": "object", "required": ["attack_recovery", "defense_high", "safe_neutral"], "properties": { "attack_recovery": { "type": "object" }, "defense_high": { "type": "object" }, "safe_neutral": { "type": "object" } } },
+    "profile": { "type": "object", "required": ["physics_tick_hz", "first_response_ms", "max_transition_ms", "quantization_deg", "target_tolerance_deg", "stable_window_ticks", "max_velocity_deg_s", "max_acceleration_deg_s2", "max_contact_drift_mm"] },
+    "ownership_policy": { "type": "object", "required": ["external_writer", "animation_tree", "root_motion"], "properties": { "external_writer": { "const": "reject" }, "animation_tree": { "const": "reject" }, "root_motion": { "const": "reject" } } },
+    "owner_decision_required": { "type": "array", "minItems": 1 }
+  },
+  "additionalProperties": false
+}

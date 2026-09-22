@@ -1,0 +1,70 @@
+{
+  "report_type": "CODA_DemoReport",
+  "schema_version": 1,
+  "demo_id": "D4",
+  "title": "Multi-fidelity planning cascade",
+  "status": "PASS_OFFLINE_AND_VISUAL_CAPTURED",
+  "evidence": {
+    "cascade": [
+      "kinematic/admissibility",
+      "reduced/local dynamics",
+      "top-k or uncertainty high-fidelity validation"
+    ],
+    "candidates": [
+      {
+        "id": "kinematic-1",
+        "tier": "kinematic",
+        "hard_safe": true,
+        "decision": "execute",
+        "state_error": 0.18,
+        "work_units": 12
+      },
+      {
+        "id": "reduced-1",
+        "tier": "reduced",
+        "hard_safe": true,
+        "decision": "execute",
+        "state_error": 0.07,
+        "work_units": 44
+      },
+      {
+        "id": "high-1",
+        "tier": "high",
+        "hard_safe": true,
+        "decision": "execute",
+        "state_error": 0.02,
+        "work_units": 160
+      },
+      {
+        "id": "kinematic-dangerous",
+        "tier": "kinematic",
+        "hard_safe": false,
+        "decision": "reject",
+        "state_error": 0.04,
+        "work_units": 15
+      }
+    ],
+    "selected": {
+      "id": "kinematic-1",
+      "tier": "kinematic",
+      "hard_safe": true,
+      "decision": "execute",
+      "state_error": 0.18,
+      "work_units": 12
+    },
+    "dangerous_low_fidelity_candidate": "kinematic-dangerous",
+    "decision_flip_policy": "hard safety rejection wins over state-error average",
+    "visual_states": [
+      {
+        "state": "fidelity_cascade",
+        "file": "d4.png",
+        "sha256": "0230e72dcd67683d6c7e0a6b28b28329350bfeab3b3b37f0af0263b6dc6c8af4"
+      }
+    ],
+    "replay": {
+      "file": "replays/d4-multifidelity-planning.replay.json",
+      "sha256": "18a7a421ec4d108ffb9501a97ab2bccdbc90918727807eb4f24f31ea7a79d47f"
+    }
+  },
+  "boundary": "Does not claim highest fidelity is always required or universally best."
+}

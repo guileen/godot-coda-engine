@@ -1,0 +1,28 @@
+{
+  "report_type": "C1TCrossDomainAbstractionReview",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_REVIEW_G-C1-T-X_OWNER_REVIEW_PENDING",
+  "scope": ["C1-T.1.1", "C1-T.2.1", "C1-T.3.1", "C1-T.3.2"],
+  "shared_semantics": ["ownership", "generation", "write_barrier", "terminal_receipt", "candidate_only"],
+  "transition_snapshot_fields": ["ownership", "generation", "resources", "snapshot_quality", "segments"],
+  "expression_snapshot_fields": ["ownership", "generation", "channels"],
+  "forbidden_expression_fields": ["skeleton", "bone", "AnimationTree", "root_motion", "joint"],
+  "verified": [
+    "ExpressionAdapterReference accepts coda_owned generation-matched channel writes",
+    "stale and external-owned expression writes reject without a new generation",
+    "expression snapshot has no Skeleton-specific field",
+    "Godot FaceScreen Adapter smoke consumes expression intent without modifying the core reference model"
+  ],
+  "evidence": [
+    "packages/local-core/src/gseos/expression-reference.js",
+    "packages/local-core/src/gseos/transition.js",
+    "packages/local-core/test/gseos.test.js",
+    "demos/d3-skeleton-transition/scripts/d3_expression_adapter.gd",
+    "tests/reports/demos/d3-skeleton-transition-smoke.json"
+  ],
+  "non_claims": [
+    "does not close the owner decision for G-C1-T-A",
+    "does not close Godot threshold correlation G-C1-T-C",
+    "does not prove perception naturalness or robot hardware safety"
+  ]
+}

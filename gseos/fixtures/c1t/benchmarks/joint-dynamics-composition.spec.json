@@ -1,0 +1,40 @@
+{
+  "spec_type": "FalsificationBenchmarkSpec",
+  "schema_version": 1,
+  "benchmark_id": "c1t.joint-dynamics-composition.1",
+  "kind": "joint_dynamics_composition",
+  "status": "structure_frozen_thresholds_pending",
+  "claims_under_test": [
+    "local task acceptance never substitutes for joint-task-set admission",
+    "reaction torque, momentum, shared saturation and contact constraints enter the joint oracle",
+    "joint infeasibility produces one stable rejection without partial writes"
+  ],
+  "model_assumptions": [
+    "first fixture is upper-body motion composed with base or support stability",
+    "joint checker implementation is profile-specific and not fixed to a Minkowski sum",
+    "all solver guarantees are labeled exact, conservative, sampled or heuristic"
+  ],
+  "backend_roles": {
+    "semantic_visual": "Godot/GDBot joint-task visualization",
+    "reference_dynamics": "unselected whole-body or coupled rigid-body backend plus reduced analytic cross-check",
+    "target_device": "unselected; required for saturation and support calibration"
+  },
+  "sweeps": [
+    { "parameter": "upper_body_acceleration", "range_ref": "profile.pending.composition.arm-acceleration" },
+    { "parameter": "support_margin", "range_ref": "profile.pending.composition.support-margin" },
+    { "parameter": "shared_actuator_saturation", "range_ref": "profile.pending.composition.saturation" },
+    { "parameter": "contact_friction", "range_ref": "profile.pending.composition.friction" }
+  ],
+  "oracles": [
+    { "metric": "joint_solver_residual", "comparator": "<=", "threshold_ref": "profile.pending.composition.residual", "evidence_source": "joint admission receipt" },
+    { "metric": "support_or_stability_margin", "comparator": ">=", "threshold_ref": "profile.pending.composition.margin", "evidence_source": "reference dynamics trace" },
+    { "metric": "partial_write_count_on_reject", "comparator": "==", "threshold_ref": "constant.zero", "evidence_source": "authority and adapter trace" }
+  ],
+  "counterexamples": [
+    { "id": "arm-and-leg-local-pass-base-tip", "expected_rejection_code": "JOINT_TASK_SET_INFEASIBLE" },
+    { "id": "shared-saturation-hidden-by-local-checks", "expected_rejection_code": "JOINT_TASK_SET_INFEASIBLE" },
+    { "id": "contact-cone-collapses-after-composition", "expected_rejection_code": "JOINT_TASK_SET_INFEASIBLE" }
+  ],
+  "pass_rule": "all_hard_oracles_and_expected_rejections",
+  "non_claims": ["does not prescribe one whole-body solver", "does not prove all embodiments jointly feasible", "does not use visual plausibility as dynamics evidence"]
+}

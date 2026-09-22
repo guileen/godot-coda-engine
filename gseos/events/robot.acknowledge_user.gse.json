@@ -1,0 +1,24 @@
+{
+  "asset_type": "EventAsset",
+  "schema_version": 1,
+  "event_id": "robot.acknowledge.user",
+  "display_name": "robot.acknowledge.user",
+  "args": [],
+  "recovery": "E0",
+  "root": [
+    {
+      "node_id": "motion-intent-1",
+      "command_id": "motion_intent",
+      "params": {
+        "intent": "robot.acknowledge_user@1",
+        "args": {
+          "target": "pose.orient_to_source",
+          "resources": "robot.head@1+robot.torso@1",
+          "priority": 80,
+          "safety_profile": "aibi.gdbot.safety@1",
+          "on_no_solution": "safe_stop"
+        }
+      }
+    }
+  ]
+}

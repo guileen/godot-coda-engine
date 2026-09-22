@@ -1,0 +1,29 @@
+{
+  "report_type": "C1TTrustedHookFallbackReport",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/hooks.js",
+  "tests": [
+    "C1-T.1.2 受信任 hook 按固定顺序执行并受 work budget/单级 fallback 约束"
+  ],
+  "verified_invariants": [
+    "repository-trusted deterministic hooks only",
+    "strict manifest order",
+    "per-hook work budget and watchdog metadata",
+    "single fallback depth",
+    "fallback resources are same or subset",
+    "fallback safety signature cannot relax",
+    "parent transition has one terminal state"
+  ],
+  "commands": [
+    "npm test",
+    "npm run check",
+    "git diff --check"
+  ],
+  "non_claims": [
+    "does not authorize untrusted or learning hooks",
+    "does not implement Godot Adapter ownership",
+    "does not prove wall-time behavior on a target device",
+    "does not close G-C1-T-B or G-C1-T-C"
+  ]
+}

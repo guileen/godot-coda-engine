@@ -1,0 +1,39 @@
+{
+  "report_type": "C1T_DesignReview",
+  "schema_version": 1,
+  "review_id": "c1t.0.6.design-review.1",
+  "status": "HOLD_G-C1-T-A_OWNER_DECISION",
+  "scope": ["C1-T.0.1", "C1-T.0.2", "C1-T.0.3", "C1-T.0.4", "C1-T.0.5", "R-C1T-01", "R-C1T-02", "R-C1T-03", "R-C1T-04", "R-C1T-05", "R-C1T-06", "R-C1T-07", "R-C1T-08", "R-C1T-09", "R-C1T-10"],
+  "evidence_index": {
+    "resource_registry": "contracts/c1t/resource-registry.schema.json",
+    "snapshot_bundle": "contracts/c1t/snapshot-bundle.schema.json",
+    "transition_plan": "contracts/c1t/transition-plan.schema.json",
+    "adapter_receipt": "contracts/c1t/adapter-receipt.schema.json",
+    "hook_manifest": "contracts/c1t/hook-manifest.schema.json",
+    "replay_envelope": "contracts/c1t/replay-envelope.schema.json",
+    "runtime_observation": "contracts/c1t/runtime-observation.schema.json",
+    "skeleton_fixture": "gseos/fixtures/c1t/skeleton-gdbot-draft.json",
+    "positive_fixtures": ["gseos/fixtures/c1t/valid-snapshot.json", "gseos/fixtures/c1t/trusted-hook-manifest.json", "gseos/fixtures/c1t/replay-envelope.json", "gseos/fixtures/c1t/runtime-observation.json"],
+    "negative_fixture": "gseos/fixtures/c1t/external-writer-reject.json"
+  },
+  "requirement_review": [
+    { "id": "R-C1T-01", "status": "PARTIAL", "finding": "single-writer responsibility is documented; parent-cancel/owner-loss fixture is missing" },
+    { "id": "R-C1T-02", "status": "PARTIAL", "finding": "registry schema freezes exclusive ordering; full coupling conflict matrix is not yet frozen" },
+    { "id": "R-C1T-03", "status": "PARTIAL", "finding": "all_or_reject is frozen; barrier competition and stale-generation matrix remains runtime work" },
+    { "id": "R-C1T-04", "status": "PARTIAL", "finding": "same-tick finite snapshot contract and positive fixture exist; expiry/skew/NaN negatives remain" },
+    { "id": "R-C1T-05", "status": "PARTIAL", "finding": "TransitionPlan schema exists; complete validator and negative plan matrix are not authorized" },
+    { "id": "R-C1T-06", "status": "DESIGN_READY", "finding": "hook order, digest, budget, watchdog and trusted boundary are versioned" },
+    { "id": "R-C1T-07", "status": "PARTIAL", "finding": "single-level fallback policy is frozen; success/failure/subset fixtures remain" },
+    { "id": "R-C1T-08", "status": "DESIGN_READY", "finding": "ReplayEnvelope and RuntimeObservation are separated and linked by decision_id" },
+    { "id": "R-C1T-09", "status": "PARTIAL", "finding": "receipt and external-writer rejection are evidenced; owner-loss/handoff lifecycle remains" },
+    { "id": "R-C1T-10", "status": "OWNER_DECISION_REQUIRED", "finding": "GDBot/head/pose/profile draft exists but five owner decisions are not approved" }
+  ],
+  "blocking_decisions": [
+    "approve GDBot model/license and controlled semantic poses",
+    "approve external-writer/AnimationTree/root-motion rejection policy",
+    "approve trusted deterministic hooks only for first runtime",
+    "approve first-response, duration, tolerance, velocity/acceleration and contact-drift thresholds",
+    "approve parallel execution with P3.3.2 or keep C1-T on HOLD"
+  ],
+  "non_claims": ["does not authorize C1-T runtime", "does not prove naturalness", "does not prove real-robot safety"]
+}

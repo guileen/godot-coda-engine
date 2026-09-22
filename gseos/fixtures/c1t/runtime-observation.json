@@ -1,0 +1,9 @@
+{
+  "observation_type": "RuntimeObservation",
+  "schema_version": 1,
+  "observation_id": "observation.c1t.wave.1",
+  "decision_id": "decision.c1t.wave.1",
+  "frame": { "physics_tick": 42, "state": { "right_arm.profile": "wave" } },
+  "wall": { "duration_ms": 3.4, "p95_ms": 4.1, "p99_ms": 5.0, "memory_bytes": 65536 },
+  "receipts": [ { "receipt_type": "barrier_receipt", "status": "accepted" }, { "receipt_type": "start_receipt", "status": "started" }, { "receipt_type": "terminal_receipt", "status": "completed" } ]
+}

@@ -1,0 +1,10 @@
+{
+  "envelope_type": "ReplayEnvelope",
+  "schema_version": 1,
+  "replay_id": "replay.c1t.wave.1",
+  "logical_tick": 42,
+  "contract_digests": { "resource_registry": "sha256:fixture-resource", "hook_manifest": "sha256:fixture-hooks", "adapter": "sha256:fixture-adapter" },
+  "request": { "intent": "social.wave@1", "priority": 60, "resources": ["character.right_arm@1"] },
+  "snapshot": { "revision": "godot.fixture.1", "physics_tick": 42 },
+  "decision_record": { "decision_id": "decision.c1t.wave.1", "outcome": "execute", "source_ref": "/root/0", "plan_id": "transition.wave.1" }
+}

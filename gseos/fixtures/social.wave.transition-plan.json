@@ -1,0 +1,11 @@
+{
+  "plan_type": "TransitionPlan",
+  "plan_version": 1,
+  "intent": "social.wave@1",
+  "source_ref": { "event_id": "companion.greet", "node_id": "social-wave-1", "path": "/root/0" },
+  "resource_lease": { "resources": ["character.right_arm@1", "character.face@1"], "mode": "all_or_reject", "priority": 60 },
+  "backend_contracts": { "game": "godot.motion@1", "robot": "robot.motion@1" },
+  "constraints": { "safety_profile": "game.character.safe@1", "on_no_solution": "fallback", "deadline_reserve_ms": 120 },
+  "completion": { "receipt_required": true, "terminal_states": ["completed", "fallback", "rejected", "preempted"] },
+  "execution_authority": "adapter_only"
+}

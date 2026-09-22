@@ -1,0 +1,21 @@
+{
+  "replay_type": "CODA_DemoReplayEnvelope",
+  "schema_version": 1,
+  "demo_id": "D2",
+  "status": "REPLAY_FIXTURE_PASS",
+  "plan_source": "gseos/events/aibi.behavior.runtime.gse.json",
+  "events": [
+    { "event_id": "wake_word", "sequence": 1 },
+    { "event_id": "speech_end", "sequence": 2 },
+    { "event_id": "llm_response", "sequence": 3 },
+    { "event_id": "interrupt", "sequence": 4 },
+    { "event_id": "tts_done", "sequence": 5 }
+  ],
+  "expected": {
+    "final_state": "listening",
+    "cancelled_effect": "speech",
+    "stale_completion_rejections": 1,
+    "unique_terminal_state": true
+  },
+  "observation_boundary": "Decision replay is deterministic; wall time and external execution observation are not asserted equal."
+}

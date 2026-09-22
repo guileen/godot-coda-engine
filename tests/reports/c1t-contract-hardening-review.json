@@ -1,0 +1,68 @@
+{
+  "report_type": "C1T_ContractHardeningReview",
+  "schema_version": 1,
+  "review_id": "c1t.0.7-0.8.contract-hardening.1",
+  "status": "STRUCTURE_FROZEN_THRESHOLDS_PROFILES_AND_RUNTIME_AUTHORIZATION_PENDING",
+  "settlement": "HOLD_G-C1-T-A",
+  "locked": [
+    "canonical JSON Schema and semantic-object digest ownership",
+    "generated-only binary wire bindings",
+    "four boundary contract object shapes",
+    "separate DeviceCapabilityProfile and SafetyProfile",
+    "stable rejection-code family",
+    "three falsification benchmark structures and non-claims"
+  ],
+  "open": [
+    "first approved target device profile",
+    "benchmark dynamics backend and cross-backend oracle",
+    "contact and detector calibration corpus",
+    "WCET p95 p99 and deadline reserve on target hardware",
+    "controller-pair state translator or reconstruction evidence",
+    "approved device-specific safety mapping",
+    "owner authorization for runtime implementation"
+  ],
+  "evidence_index": {
+    "contract_index": "contracts/c1t/contract-index.json",
+    "task_activation": "contracts/c1t/task-activation-contract.schema.json",
+    "model_validity": "contracts/c1t/model-validity-envelope.schema.json",
+    "state_alignment": "contracts/c1t/state-alignment-contract.schema.json",
+    "handoff": "contracts/c1t/handoff-contract.schema.json",
+    "device_capability_profile": "contracts/c1t/device-capability-profile.schema.json",
+    "safety_profile": "contracts/c1t/safety-profile.schema.json",
+    "benchmark_schema": "contracts/c1t/falsification-benchmark-spec.schema.json",
+    "contract_fixture_pack": "gseos/fixtures/c1t/contract-hardening-pack.json",
+    "benchmark_specs": [
+      "gseos/fixtures/c1t/benchmarks/contact-handoff.spec.json",
+      "gseos/fixtures/c1t/benchmarks/model-validity-detection.spec.json",
+      "gseos/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"
+    ]
+  },
+  "blocking_challenges": [
+    {
+      "id": "OPEN-C1T-01",
+      "challenge": "A reference simulator is not physical ground truth; contact and coupled-dynamics oracles require model-form and target-data calibration.",
+      "reopen_condition": "cross-backend disagreement exceeds the frozen model-error envelope"
+    },
+    {
+      "id": "OPEN-C1T-02",
+      "challenge": "SITL and desktop measurements cannot certify target-hardware WCET or safety action timing.",
+      "reopen_condition": "target-device p99 or deadline reserve fails"
+    },
+    {
+      "id": "OPEN-C1T-03",
+      "challenge": "Controller internal states may be semantically incompatible even when command interfaces match.",
+      "reopen_condition": "no validated translator, reconstruction, reset/warm-up, or backup exists for a requested pair"
+    },
+    {
+      "id": "OPEN-C1T-04",
+      "challenge": "Local contract acceptance can still fail under joint dynamics and shared saturation.",
+      "reopen_condition": "the joint-admission checker produces unsafe false acceptance or misses its deadline"
+    }
+  ],
+  "non_claims": [
+    "does not authorize C1-T or D3 runtime implementation",
+    "does not freeze numerical thresholds",
+    "does not certify any real device",
+    "does not prove benchmark completeness"
+  ]
+}

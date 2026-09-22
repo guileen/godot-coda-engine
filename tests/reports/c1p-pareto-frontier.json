@@ -1,0 +1,20 @@
+{
+  "report_type": "C1PParetoFrontierReference",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/pareto-reference.js",
+  "hard_gate_order": ["schema", "resource", "numerical", "safety", "deadline"],
+  "verified": [
+    "unsafe accurate candidate is rejected before Pareto comparison",
+    "dominated safe candidate is marked dominated",
+    "non-dominated safe candidates remain on frontier",
+    "selection tie-break is deterministic",
+    "selected result remains candidate_only"
+  ],
+  "commands": ["npm test", "npm run check", "git diff --check"],
+  "non_claims": [
+    "reference dimensions are not target-device calibrated",
+    "not a Skeleton execution or perception comparison",
+    "does not close G-C1-P-E"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "receipt_type": "terminal_receipt",
+  "schema_version": 1,
+  "adapter_revision": "godot.motion.fixture@1",
+  "plan_id": "transition.wave.1",
+  "lease_id": "lease.character.1",
+  "generation": 3,
+  "ownership": "external_owned",
+  "status": "rejected",
+  "failure_code": "EXTERNAL_WRITER_ACTIVE",
+  "partial_write": false
+}

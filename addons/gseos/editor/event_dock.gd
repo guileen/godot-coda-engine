@@ -165,8 +165,11 @@ func _on_event_selected(index: int) -> void:
 func _rebuild_tree() -> void:
 	_tree.clear()
 	var view_asset := _draft_asset if not _draft_asset.is_empty() else _selected_asset
+	var tree_root := _tree.create_item()
+	tree_root.set_text(0, String(view_asset.get("display_name", view_asset.get("event_id", "EventAsset"))))
+	tree_root.set_metadata(0, "")
 	for node in view_asset.get("root", []):
-		_add_node(null, node)
+		_add_node(tree_root, node)
 	_render_inspector()
 	_status.text = "已加载 %s；确认/删除是单一可撤销事务。" % view_asset.get("event_id", "")
 

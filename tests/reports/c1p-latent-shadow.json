@@ -1,0 +1,23 @@
+{
+  "report_type": "C1PLatentShadowReport",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_LINEAR_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/latent-reference.js",
+  "verified": [
+    "support-domain/OOD guard",
+    "pullback metric sigma_min and condition-number guard",
+    "decoded output limits",
+    "decoded constraint checker",
+    "reconstruction error is reported separately",
+    "ModelErrorReport records position/velocity/contact/effort error and decision flips",
+    "dangerous decision flip recommends upgrade_or_reject while retaining candidate_only authority",
+    "accepted result remains candidate_only"
+  ],
+  "commands": ["npm test", "npm run check", "git diff --check"],
+  "non_claims": [
+    "linear reference is not a trained latent prior",
+    "no real dataset or target-device calibration",
+    "not real-time write authority",
+    "does not close G-C1-P-D"
+  ]
+}

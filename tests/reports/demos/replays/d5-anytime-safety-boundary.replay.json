@@ -1,0 +1,8 @@
+{
+  "replay_type": "CODA_DemoReplay",
+  "schema_version": 1,
+  "demo_id": "D5",
+  "input": { "budget_sweep": [8, 20, 60, 180], "deadline_reserve": 10 },
+  "decision_record": { "certified_candidates_only": true, "pareto_scope": "A_safe", "budget_exhausted_outcome": "fallback" },
+  "runtime_observation": { "returned_candidate": "reduced-1", "terminal": "executed", "uncertified_iterate_returned": false }
+}

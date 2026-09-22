@@ -16,7 +16,10 @@ func _start() -> void:
 	await process_frame
 	if dock._event_list.item_count < 1:
 		failures.append("Event Dock did not discover the reward EventAsset")
-	dock._on_event_selected(0)
+	var reward_index: int = dock._asset_paths.find("res://gseos/events/ui.reward.apply.gse.json")
+	if reward_index < 0:
+		failures.append("Event Dock did not index the reward EventAsset path")
+	dock._on_event_selected(reward_index)
 	if dock._tree.get_root() == null or dock._tree.get_root().get_child_count() < 1:
 		failures.append("Event Dock did not rebuild the asset tree")
 	dock._selected_node_id = "reward-check"

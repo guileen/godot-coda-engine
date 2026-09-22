@@ -1,0 +1,25 @@
+{
+  "asset_type": "EventAsset",
+  "schema_version": 1,
+  "event_id": "companion.greet",
+  "display_name": "companion.greet",
+  "args": [],
+  "recovery": "E0",
+  "root": [
+    {
+      "node_id": "social-wave-1",
+      "command_id": "motion_intent",
+      "params": {
+        "intent": "social.wave@1",
+        "args": {
+          "target": "person.nearby",
+          "expression": "friendly_smile",
+          "resources": "character.right_arm@1+character.face@1",
+          "priority": 60,
+          "safety_profile": "game.character.safe@1",
+          "on_no_solution": "fallback"
+        }
+      }
+    }
+  ]
+}

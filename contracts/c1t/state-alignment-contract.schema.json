@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/state-alignment-contract@1",
+  "title": "C1-T StateAlignmentContract",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "contract_id", "epoch", "generation", "clock_domain", "estimator_ref", "predictor_ref", "maximum_age_budget_ref", "start_tube", "commit_policy"],
+  "properties": {
+    "contract_type": { "const": "StateAlignmentContract" },
+    "schema_version": { "const": 1 },
+    "contract_id": { "type": "string", "minLength": 1 },
+    "epoch": { "type": "string", "minLength": 1 },
+    "generation": { "type": "integer", "minimum": 0 },
+    "clock_domain": { "type": "string", "minLength": 1 },
+    "estimator_ref": { "type": "string", "pattern": "@1$" },
+    "predictor_ref": { "type": "string", "pattern": "@1$" },
+    "maximum_age_budget_ref": { "type": "string", "pattern": "@1$" },
+    "start_tube": {
+      "type": "object",
+      "required": ["representation", "semantics", "dimension", "object_ref", "object_digest", "complexity_bound", "error_bound_ref", "wcet_evidence_ref"],
+      "properties": {
+        "representation": { "enum": ["aabb", "diagonal_ellipsoid", "dense_ellipsoid", "fixed_polytope", "zonotope", "profile_predicate"] },
+        "semantics": { "enum": ["hard_set", "conservative_outer", "probabilistic_belief"] },
+        "dimension": { "type": "integer", "minimum": 1 },
+        "object_ref": { "type": "string", "minLength": 1 },
+        "object_digest": { "type": "string", "minLength": 1 },
+        "complexity_bound": { "enum": ["O(N)", "O(N2)", "O(nnz)", "fixed_profile", "measured_only"] },
+        "error_bound_ref": { "type": "string", "minLength": 1 },
+        "wcet_evidence_ref": { "type": "string", "minLength": 1 },
+        "confidence_and_tail_policy_ref": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "commit_policy": {
+      "type": "object",
+      "required": ["read_local_latest_state", "atomic_checks", "on_reject"],
+      "properties": {
+        "read_local_latest_state": { "const": true },
+        "atomic_checks": { "type": "array", "items": { "enum": ["epoch", "generation", "start_tube", "model_envelope", "input_bounds", "horizon"] }, "minItems": 6, "maxItems": 6, "uniqueItems": true },
+        "on_reject": { "enum": ["state_drift_exceeded", "stale_epoch", "model_invalid", "start_tube_unsupported", "start_tube_wcet_unproven"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

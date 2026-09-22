@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/runtime-observation@1",
+  "title": "C1-T non-deterministic RuntimeObservation",
+  "type": "object",
+  "required": ["observation_type", "schema_version", "observation_id", "decision_id", "frame", "wall", "receipts"],
+  "properties": {
+    "observation_type": { "const": "RuntimeObservation" },
+    "schema_version": { "const": 1 },
+    "observation_id": { "type": "string" },
+    "decision_id": { "type": "string" },
+    "frame": { "type": "object", "required": ["physics_tick", "state"] },
+    "wall": { "type": "object", "required": ["duration_ms", "p95_ms", "p99_ms", "memory_bytes"] },
+    "receipts": { "type": "array", "items": { "type": "object", "required": ["receipt_type", "status"] } }
+  },
+  "additionalProperties": false
+}

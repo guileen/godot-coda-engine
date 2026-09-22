@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/task-activation-contract@1",
+  "title": "C1-T TaskActivationContract",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "contract_id", "profile_ref", "activation_class", "task_set_revision", "transition", "constraint_policy", "continuity", "on_failure"],
+  "properties": {
+    "contract_type": { "const": "TaskActivationContract" },
+    "schema_version": { "const": 1 },
+    "contract_id": { "type": "string", "minLength": 1 },
+    "profile_ref": { "type": "string", "pattern": "@1$" },
+    "activation_class": { "enum": ["hard_atomic", "soft_ramp", "guarded_handoff"] },
+    "task_set_revision": { "type": "string", "minLength": 1 },
+    "transition": {
+      "type": "object",
+      "required": ["from_mode", "to_mode", "phase_graph_ref", "presolve_budget_ref", "commit_barrier"],
+      "properties": {
+        "from_mode": { "type": "string", "minLength": 1 },
+        "to_mode": { "type": "string", "minLength": 1 },
+        "phase_graph_ref": { "type": "string", "pattern": "@1$" },
+        "presolve_budget_ref": { "type": "string", "pattern": "@1$" },
+        "commit_barrier": { "const": "atomic" }
+      },
+      "additionalProperties": false
+    },
+    "constraint_policy": {
+      "type": "object",
+      "required": ["hard_invariants", "slack_policy", "soft_objectives"],
+      "properties": {
+        "hard_invariants": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "slack_policy": { "enum": ["forbidden", "profile_bounded"] },
+        "soft_objectives": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      },
+      "additionalProperties": false
+    },
+    "continuity": {
+      "type": "object",
+      "required": ["channels", "envelope_ref"],
+      "properties": {
+        "channels": { "type": "array", "minItems": 1, "items": { "enum": ["position", "velocity", "acceleration", "effort", "effort_rate"] }, "uniqueItems": true },
+        "envelope_ref": { "type": "string", "pattern": "@1$" }
+      },
+      "additionalProperties": false
+    },
+    "on_failure": { "enum": ["reject_new_keep_current_if_still_valid", "enter_certified_backup", "yield_safety_authority"] }
+  },
+  "additionalProperties": false
+}

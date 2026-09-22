@@ -1,0 +1,19 @@
+{
+  "report_type": "C1TExpressionAdapterReference",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/expression-reference.js",
+  "verified": [
+    "expression ownership uses available/coda_owned/external_owned",
+    "generation matching rejects stale writes",
+    "declared channel ranges reject invalid values",
+    "terminal receipt is emitted on accepted and rejected writes",
+    "core snapshot contains no Skeleton-specific fields"
+  ],
+  "commands": ["npm test", "npm run check", "git diff --check"],
+  "non_claims": [
+    "not a Godot facial animation implementation",
+    "not a naturalness perception result",
+    "does not close G-C1-T-C or G-C1-T-X"
+  ]
+}

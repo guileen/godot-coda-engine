@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/resource-registry@1",
+  "title": "C1-T ResourceRegistry",
+  "type": "object",
+  "required": ["registry_type", "schema_version", "resources", "lease_policy"],
+  "properties": {
+    "registry_type": { "const": "ResourceRegistry" },
+    "schema_version": { "const": 1 },
+    "resources": { "type": "array", "items": { "type": "object", "required": ["id", "version", "kind", "leaves"], "properties": { "id": { "type": "string" }, "version": { "const": 1 }, "kind": { "enum": ["leaf", "group"] }, "leaves": { "type": "array", "items": { "type": "string", "pattern": "@1$" } } } } },
+    "lease_policy": { "type": "object", "required": ["mode", "ordering", "shared_write", "implicit_queue"], "properties": { "mode": { "const": "exclusive" }, "ordering": { "const": "lexicographic" }, "shared_write": { "const": false }, "implicit_queue": { "const": false } } }
+  },
+  "additionalProperties": false
+}

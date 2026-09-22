@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/falsification-benchmark-spec@1",
+  "title": "C1-T FalsificationBenchmarkSpec",
+  "type": "object",
+  "required": ["spec_type", "schema_version", "benchmark_id", "kind", "status", "claims_under_test", "model_assumptions", "backend_roles", "sweeps", "oracles", "counterexamples", "pass_rule", "non_claims"],
+  "properties": {
+    "spec_type": { "const": "FalsificationBenchmarkSpec" },
+    "schema_version": { "const": 1 },
+    "benchmark_id": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["contact_handoff", "model_validity_detection", "joint_dynamics_composition"] },
+    "status": { "enum": ["structure_frozen_thresholds_pending", "calibrated", "accepted"] },
+    "claims_under_test": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "model_assumptions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "backend_roles": { "type": "object", "required": ["semantic_visual", "reference_dynamics", "target_device"] },
+    "sweeps": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["parameter", "range_ref"] } },
+    "oracles": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["metric", "comparator", "threshold_ref", "evidence_source"] } },
+    "counterexamples": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "expected_rejection_code"] } },
+    "pass_rule": { "const": "all_hard_oracles_and_expected_rejections" },
+    "non_claims": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+  },
+  "additionalProperties": false
+}

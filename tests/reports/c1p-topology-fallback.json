@@ -1,0 +1,21 @@
+{
+  "report_type": "C1PTopologyFallbackReport",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/field-reference.js",
+  "verified": [
+    "field progress/speed stagnation is detected over a finite dwell window",
+    "finite escape path uses deterministic obstacle-clearance checks",
+    "narrow-channel fixture selects an explicit outer escape path when the gap is unsafe",
+    "escape candidate selection is deterministic",
+    "no safe escape path produces reject",
+    "fallback remains candidate_only"
+  ],
+  "commands": ["npm test", "npm run check", "git diff --check"],
+  "non_claims": [
+    "not a global navigation-function proof",
+    "not contact/friction evidence",
+    "not a Godot or hardware execution result",
+    "does not close G-C1-P-C"
+  ]
+}

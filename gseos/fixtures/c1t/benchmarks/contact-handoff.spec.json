@@ -1,0 +1,40 @@
+{
+  "spec_type": "FalsificationBenchmarkSpec",
+  "schema_version": 1,
+  "benchmark_id": "c1t.contact-handoff.1",
+  "kind": "contact_handoff",
+  "status": "structure_frozen_thresholds_pending",
+  "claims_under_test": [
+    "contact establishment does not apply firm-contact constraints before confirmation",
+    "handoff preserves the approved total-command continuity envelope",
+    "presolve timeout never extends authority implicitly"
+  ],
+  "model_assumptions": [
+    "first fixture uses approach, impact/settling, established contact, unloading/detachment",
+    "mechanical compliance and actuator protection remain explicit model inputs",
+    "rolling, stick-slip and multi-contact are out-of-model counterexamples"
+  ],
+  "backend_roles": {
+    "semantic_visual": "Godot/GDBot Adapter visualization only",
+    "reference_dynamics": "unselected calibrated contact backend plus analytic impulse/continuity checks",
+    "target_device": "unselected; required before calibrated status"
+  },
+  "sweeps": [
+    { "parameter": "approach_relative_velocity", "range_ref": "profile.pending.contact.velocity-sweep" },
+    { "parameter": "contact_compliance", "range_ref": "profile.pending.contact.compliance-sweep" },
+    { "parameter": "controller_pair", "range_ref": "profile.pending.handoff.controller-pairs" },
+    { "parameter": "presolve_completion_time", "range_ref": "profile.pending.presolve.deadline-sweep" }
+  ],
+  "oracles": [
+    { "metric": "premature_hard_constraint_activation", "comparator": "==", "threshold_ref": "constant.false", "evidence_source": "mode-and-contact receipt" },
+    { "metric": "total_command_jump", "comparator": "<=", "threshold_ref": "profile.pending.handoff.command-jump", "evidence_source": "reference dynamics trace" },
+    { "metric": "implicit_lease_extension_count", "comparator": "==", "threshold_ref": "constant.zero", "evidence_source": "authority trace" }
+  ],
+  "counterexamples": [
+    { "id": "q0-matches-but-effort-jumps", "expected_rejection_code": "COMMAND_DISCONTINUITY" },
+    { "id": "impact-faster-than-controller-bandwidth", "expected_rejection_code": "CONTACT_MODE_UNCONFIRMED" },
+    { "id": "presolve-timeout-current-set-invalid", "expected_rejection_code": "CURRENT_SET_INVALID" }
+  ],
+  "pass_rule": "all_hard_oracles_and_expected_rejections",
+  "non_claims": ["does not validate all contact topologies", "does not prove hardware safety", "does not treat Godot physics as physical ground truth"]
+}

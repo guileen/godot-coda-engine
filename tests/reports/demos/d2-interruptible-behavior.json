@@ -1,0 +1,37 @@
+{
+  "report_type": "CODA_DemoReport",
+  "schema_version": 1,
+  "demo_id": "D2",
+  "title": "Interruptible behavior runtime",
+  "status": "PASS_OFFLINE_AND_GODOT_SMOKE_D2_DISTINCT_STATES_CAPTURED",
+  "evidence": {
+    "behavior_id": "aibi.companion",
+    "plan_fingerprint": "sha256:1fe54fd2682c06d6c58743ee7bf4dbfd6294e96df26928a29c75b527f4d4ea8f",
+    "final_state": "listening",
+    "cancelled_effects": [
+      "speech"
+    ],
+    "stale_completion_rejections": 1,
+    "replay_trace_fingerprint": "sha256:ac4a919f5f4efd0a5ee4a40c03a6e27556f9f600f8b020d96a3f65edf85cbd27",
+    "visual_states": [
+      {
+        "state": "listening",
+        "file": "d2-idle.png",
+        "generation": 0,
+        "sha256": "e49244bed253fbdd5f06b7537d7a56a5cf83f2f35139e557de04434f9e026c61"
+      },
+      {
+        "state": "interrupted_to_listening",
+        "file": "d2-interrupted.png",
+        "generation": 1,
+        "sha256": "ab96876acf8665462d2401af04256d01a8670c4bbee6109157c5cb21b8060dd8"
+      }
+    ],
+    "visual_distinction": "不同 generation、终态记录和 RuntimeObservation；不是只替换标题",
+    "replay": {
+      "file": "replays/d2-interruptible-behavior.replay.json",
+      "sha256": "6a123bb20e5144b09ebbb26d657b7e8c7e077201bd327064a696faee4e2f56bb"
+    }
+  },
+  "boundary": "Does not prove cloud LLM behavior, microphone input, or hardware control."
+}

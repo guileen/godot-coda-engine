@@ -1,0 +1,3 @@
+module robot.intent
+event robot.acknowledge.user:
+  intent robot.acknowledge_user@1(target: "pose.orient_to_source", resources: "robot.head@1+robot.torso@1", priority: 80, safety_profile: "aibi.gdbot.safety@1", on_no_solution: "safe_stop")

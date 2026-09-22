@@ -1,0 +1,39 @@
+{
+  "spec_type": "FalsificationBenchmarkSpec",
+  "schema_version": 1,
+  "benchmark_id": "c1t.model-validity-detection.1",
+  "kind": "model_validity_detection",
+  "status": "structure_frozen_thresholds_pending",
+  "claims_under_test": [
+    "hazard evidence can select only a preapproved conservative envelope",
+    "statistical detectors expose false-alarm, missed-detection and delay evidence",
+    "safe-domain expansion requires persistent calibrated evidence"
+  ],
+  "model_assumptions": [
+    "detector residual model and sensor health are versioned inputs",
+    "hard overcurrent, limit and collision protection are outside the statistical detector",
+    "single-sample parameter truth is forbidden"
+  ],
+  "backend_roles": {
+    "semantic_visual": "Godot evidence panel only",
+    "reference_dynamics": "deterministic residual generator plus selected calibrated simulation backend",
+    "target_device": "unselected; required for detection-to-commit timing"
+  },
+  "sweeps": [
+    { "parameter": "residual_magnitude_and_duration", "range_ref": "profile.pending.detector.residual-sweep" },
+    { "parameter": "sensor_bias_and_dropout", "range_ref": "profile.pending.detector.health-sweep" },
+    { "parameter": "friction_or_payload_change", "range_ref": "profile.pending.model-change-sweep" }
+  ],
+  "oracles": [
+    { "metric": "unsafe_domain_expansion_count", "comparator": "==", "threshold_ref": "constant.zero", "evidence_source": "envelope revision trace" },
+    { "metric": "false_alarm_rate", "comparator": "<=", "threshold_ref": "profile.pending.detector.false-alarm", "evidence_source": "labeled residual corpus" },
+    { "metric": "worst_detection_to_commit", "comparator": "<=", "threshold_ref": "profile.pending.detector.deadline", "evidence_source": "target clock trace" }
+  ],
+  "counterexamples": [
+    { "id": "single-spike-treated-as-new-mu", "expected_rejection_code": "MODEL_EVIDENCE_INSUFFICIENT" },
+    { "id": "biased-estimator-small-covariance", "expected_rejection_code": "MODEL_INVALID" },
+    { "id": "detector-healthy-but-sensor-stale", "expected_rejection_code": "MODEL_INVALID" }
+  ],
+  "pass_rule": "all_hard_oracles_and_expected_rejections",
+  "non_claims": ["does not prove a universal best detector", "does not replace independent hardware protection", "does not authorize envelope expansion without target calibration"]
+}

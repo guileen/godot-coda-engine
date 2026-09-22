@@ -1,0 +1,71 @@
+{
+  "plan_type": "ExecutionPlan",
+  "plan_version": 1,
+  "event_id": "robot.acknowledge.user",
+  "asset_fingerprint": "sha256:059ecd2fb8a7632bd9d9f66682fe1ce686e23a474851d3bcc8283fdf6e519bab",
+  "instructions": [
+    {
+      "opcode": "MotionIntent",
+      "target": "robot.acknowledge_user@1",
+      "args": {
+        "target": {
+          "kind": "literal",
+          "value": "pose.orient_to_source"
+        },
+        "resources": {
+          "kind": "literal",
+          "value": "robot.head@1+robot.torso@1"
+        },
+        "priority": {
+          "kind": "literal",
+          "value": 80
+        },
+        "safety_profile": {
+          "kind": "literal",
+          "value": "aibi.gdbot.safety@1"
+        },
+        "on_no_solution": {
+          "kind": "literal",
+          "value": "safe_stop"
+        }
+      },
+      "source_ref": {
+        "event_id": "robot.acknowledge.user",
+        "node_id": "imported-3",
+        "path": "/root/0",
+        "source_refs": {
+          "target": {
+            "event_id": "robot.acknowledge.user",
+            "node_id": "imported-3",
+            "field_id": "target",
+            "path": "/root/0/params/args/target"
+          },
+          "resources": {
+            "event_id": "robot.acknowledge.user",
+            "node_id": "imported-3",
+            "field_id": "resources",
+            "path": "/root/0/params/args/resources"
+          },
+          "priority": {
+            "event_id": "robot.acknowledge.user",
+            "node_id": "imported-3",
+            "field_id": "priority",
+            "path": "/root/0/params/args/priority"
+          },
+          "safety_profile": {
+            "event_id": "robot.acknowledge.user",
+            "node_id": "imported-3",
+            "field_id": "safety_profile",
+            "path": "/root/0/params/args/safety_profile"
+          },
+          "on_no_solution": {
+            "event_id": "robot.acknowledge.user",
+            "node_id": "imported-3",
+            "field_id": "on_no_solution",
+            "path": "/root/0/params/args/on_no_solution"
+          }
+        }
+      }
+    }
+  ]
+}

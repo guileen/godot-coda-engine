@@ -1,0 +1,8 @@
+{
+  "replay_type": "CODA_DemoReplay",
+  "schema_version": 1,
+  "demo_id": "D4",
+  "input": { "snapshot": "fixed-fixture-01", "candidate_budget": 60 },
+  "decision_record": { "tiers": ["kinematic", "reduced", "high"], "selected": "reduced-1", "decision": "execute", "hard_gate_before_pareto": true },
+  "runtime_observation": { "state_error": 0.07, "work_units": 44, "terminal": "executed" }
+}

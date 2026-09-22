@@ -1,0 +1,23 @@
+{
+  "report_type": "C1TOfflineSemanticMatrixReport",
+  "schema_version": 1,
+  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "implementation": "packages/local-core/src/gseos/transition-harness.js",
+  "tested_cases": [
+    { "case": "execute", "expected": "execute" },
+    { "case": "external-writer", "expected": "reject/EXTERNAL_WRITER_ACTIVE" },
+    { "case": "invalid-snapshot", "expected": "reject/SNAPSHOT_NOT_SAME_TICK" },
+    { "case": "empty-plan", "expected": "reject/EMPTY_PLAN_SEGMENTS" },
+    { "case": "replay", "expected": "same decision fingerprint" }
+  ],
+  "commands": [
+    "npm test",
+    "npm run check",
+    "git diff --check"
+  ],
+  "non_claims": [
+    "offline semantic evidence is not Godot execution evidence",
+    "adapter receipt timing and target-device wall time remain unverified",
+    "G-C1-T-B and G-C1-T-C remain open"
+  ]
+}

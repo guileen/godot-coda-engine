@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/replay-envelope@1",
+  "title": "C1-T deterministic ReplayEnvelope",
+  "type": "object",
+  "required": ["envelope_type", "schema_version", "replay_id", "logical_tick", "contract_digests", "request", "snapshot", "decision_record"],
+  "properties": {
+    "envelope_type": { "const": "ReplayEnvelope" },
+    "schema_version": { "const": 1 },
+    "replay_id": { "type": "string" },
+    "logical_tick": { "type": "integer", "minimum": 0 },
+    "contract_digests": { "type": "object", "minProperties": 1 },
+    "request": { "type": "object", "minProperties": 1 },
+    "snapshot": { "type": "object", "required": ["revision", "physics_tick"] },
+    "decision_record": { "type": "object", "required": ["decision_id", "outcome", "source_ref", "plan_id"] }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,40 @@
+{
+  "contract_family": "C1-T",
+  "schema_version": 1,
+  "canonical_encoding": "json-schema-2020-12",
+  "wire_bindings": "generated_only",
+  "semantic_digest_source": "canonical_semantic_object",
+  "schemas": [
+    "task-activation-contract@1",
+    "model-validity-envelope@1",
+    "state-alignment-contract@1",
+    "handoff-contract@1",
+    "device-capability-profile@1",
+    "safety-profile@1",
+    "falsification-benchmark-spec@1"
+  ],
+  "stable_rejection_codes": [
+    "CONTACT_MODE_UNCONFIRMED",
+    "PRESOLVE_TIMEOUT",
+    "CURRENT_SET_INVALID",
+    "MODEL_INVALID",
+    "MODEL_EVIDENCE_INSUFFICIENT",
+    "STALE_EPOCH",
+    "STATE_DRIFT_EXCEEDED",
+    "START_TUBE_UNSUPPORTED",
+    "START_TUBE_WCET_UNPROVEN",
+    "INTERNAL_STATE_INCOMPATIBLE",
+    "COMMAND_DISCONTINUITY",
+    "JOINT_TASK_SET_INFEASIBLE",
+    "SAFETY_PROFILE_MISSING"
+  ],
+  "hard_boundaries": [
+    "no implicit lease extension",
+    "no safety-domain expansion from a single sample",
+    "no controller-internal-state migration without a versioned translator",
+    "no probability belief region presented as a hard set",
+    "no runtime-selected stop-category mapping",
+    "no local-task acceptance without joint-task-set admission",
+    "no binary wire format as a second semantic source"
+  ]
+}

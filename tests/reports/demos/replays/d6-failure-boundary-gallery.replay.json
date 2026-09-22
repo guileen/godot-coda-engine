@@ -1,0 +1,8 @@
+{
+  "replay_type": "CODA_DemoReplay",
+  "schema_version": 1,
+  "demo_id": "D6",
+  "input": { "cases": ["unknown-capability", "missing-motion-safety-contract", "uncertified-anytime"] },
+  "decision_record": { "fail_closed": true, "partial_write": false, "terminal_count": 1 },
+  "runtime_observation": { "diagnostics": ["CAPABILITY_VERSION_MISMATCH", "MISSING_MOTION_INTENT_CONTRACT", "NO_CERTIFIED_CANDIDATE"], "terminal": "reject_or_fallback" }
+}

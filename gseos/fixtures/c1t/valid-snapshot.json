@@ -1,0 +1,9 @@
+{
+  "snapshot_type": "SnapshotBundle",
+  "schema_version": 1,
+  "physics_tick": 42,
+  "revision": "godot.fixture.1",
+  "unit_system": "SI",
+  "quality": { "finite": true, "same_tick": true, "skew_ms": 0.0 },
+  "state": { "head.pitch_deg": 0.0, "head.yaw_deg": 0.0, "head.roll_deg": 0.0 }
+}

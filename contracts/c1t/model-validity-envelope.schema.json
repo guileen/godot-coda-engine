@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/model-validity-envelope@1",
+  "title": "C1-T ModelValidityEnvelope",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "envelope_id", "model_ref", "model_revision", "evidence_grade", "bounds", "status", "update_policy", "on_invalid"],
+  "properties": {
+    "contract_type": { "const": "ModelValidityEnvelope" },
+    "schema_version": { "const": 1 },
+    "envelope_id": { "type": "string", "minLength": 1 },
+    "model_ref": { "type": "string", "pattern": "@1$" },
+    "model_revision": { "type": "string", "minLength": 1 },
+    "evidence_grade": { "enum": ["exact", "conservative", "calibrated", "sampled", "heuristic", "candidate_shadow"] },
+    "bounds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["parameter", "unit", "representation", "bound_ref"],
+        "properties": {
+          "parameter": { "type": "string", "minLength": 1 },
+          "unit": { "type": "string", "minLength": 1 },
+          "representation": { "enum": ["interval", "set_ref", "probabilistic_belief"] },
+          "bound_ref": { "type": "string", "minLength": 1 },
+          "confidence_ref": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "detector_profile_ref": { "type": "string", "pattern": "@1$" },
+    "status": { "enum": ["valid", "tightened", "invalid", "unknown"] },
+    "update_policy": {
+      "type": "object",
+      "required": ["contraction", "expansion", "single_sample_parameter_update"],
+      "properties": {
+        "contraction": { "const": "preapproved_conservative_only" },
+        "expansion": { "const": "calibrated_persistent_evidence_only" },
+        "single_sample_parameter_update": { "const": "forbidden" }
+      },
+      "additionalProperties": false
+    },
+    "on_invalid": { "enum": ["tighten_margin", "upgrade_fidelity", "enter_certified_backup", "reject"] }
+  },
+  "additionalProperties": false
+}
