@@ -432,6 +432,58 @@ test("C1-L.1 lowers a two-arm MotionIntent branch only through a source-bound ob
   assert.equal(unbound.receipt.diagnostics[0].code, "TASK_GRAPH_GUARD_UNBOUND");
 });
 
+test("C1-L.1 lowers terminal nested Guard branches and rejects unmodeled branch continuation", () => {
+  const asset = structuredClone(motionIntentAsset);
+  const intent = structuredClone(asset.root[0].params);
+  asset.args = [{ id: "contact_confirmed", type: "Boolean" }, { id: "hand_clear", type: "Boolean" }];
+  asset.root = [{
+    node_id: "outer-branch",
+    command_id: "if",
+    params: { condition: { ref: "contact_confirmed" } },
+    children: {
+      then: [
+        { node_id: "approach", command_id: "motion_intent", params: structuredClone(intent) },
+        {
+          node_id: "inner-branch",
+          command_id: "if",
+          params: { condition: { ref: "hand_clear" } },
+          children: {
+            then: [{ node_id: "wave-clear", command_id: "motion_intent", params: structuredClone(intent) }],
+            else: [{ node_id: "yield-blocked", command_id: "motion_intent", params: structuredClone(intent) }],
+          },
+        },
+      ],
+      else: [{ node_id: "yield-no-contact", command_id: "motion_intent", params: structuredClone(intent) }],
+    },
+  }];
+  const planned = lowerToExecutionPlan(asset, registry);
+  assert.equal(planned.receipt.ok, true);
+  const [outer] = planned.plan.instructions;
+  const inner = outer.then.at(-1);
+  const knownObservation = "contact.state@1#/confirmed";
+  const guardFor = (instruction, conditionRef) => ({
+    guard_type: "GuardExpression", guard_version: 1, guard_id: `${conditionRef}.guard@1`, condition_ref: conditionRef,
+    unknown_policy: "reject_or_yield_safety", source_ref: instruction.source_ref,
+    expression: { node_type: "observation_ref", contract_ref: "contact.state@1", path: "/confirmed" },
+  });
+  const lowered = lowerToTaskGraph(asset, registry, {
+    guard_bindings: { "outer-branch": guardFor(outer, "contact_confirmed"), "inner-branch": guardFor(inner, "hand_clear") },
+    known_observation_refs: [knownObservation],
+  });
+  assert.equal(lowered.receipt.ok, true);
+  assert.equal(validateTaskGraph(lowered.task_graph).ok, true);
+  assert.deepEqual(lowered.task_graph.nodes.find((node) => node.node_id === "outer-branch").branch_entries, { true: "approach", false: "yield-no-contact" });
+  assert.ok(lowered.task_graph.edges.some((edge) => edge.from === "approach" && edge.to === "inner-branch" && edge.relation === "requires"));
+
+  asset.root[0].children.then.push({ node_id: "after-join", command_id: "motion_intent", params: structuredClone(intent) });
+  const unsupported = lowerToTaskGraph(asset, registry, {
+    guard_bindings: { "outer-branch": guardFor(outer, "contact_confirmed"), "inner-branch": guardFor(inner, "hand_clear") },
+    known_observation_refs: [knownObservation],
+  });
+  assert.equal(unsupported.task_graph, null);
+  assert.ok(unsupported.receipt.diagnostics.some((item) => item.code === "TASK_GRAPH_UNSUPPORTED_BRANCH_CONTINUATION"));
+});
+
 test("C1-L.1 typed GuardExpression binds observations and fails closed on unknown/free-form input", () => {
   const guard = c1tSharedContractPack.guard_expression;
   const schema = c1tIndexedSchemas.find((item) => item.$id.endsWith("/guard-expression@1"));
