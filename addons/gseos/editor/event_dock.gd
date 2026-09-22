@@ -485,13 +485,13 @@ func _commit_projection_preview() -> void:
 		_cancel_projection_preview()
 		return
 	var before := _selected_asset.duplicate(true)
-	var saved := _store.save_asset(_selected_path, _projection_pending_asset)
+	var saved := _store.save_asset(_selected_path, _projection_pending_asset, before)
 	if not saved.saved:
 		_status.text = _format_diagnostics(saved.receipt.diagnostics)
 		return
 	var generated := _generate_selected_asset()
 	if not generated.ok:
-		_store.save_asset(_selected_path, before)
+		_store.save_asset(_selected_path, before, _projection_pending_asset)
 		_update_disk_modified_time()
 		_status.text = "生成失败；已恢复原 EventAsset，未留下混合版本。%s" % generated.get("message", "")
 		return
@@ -794,18 +794,18 @@ func _remove_node(nodes: Array, node_id: String) -> bool:
 
 func _write_asset_transaction(path: String, before: Dictionary, after: Dictionary, title: String) -> void:
 	if _undo_redo == null:
-		var result := _store.save_asset(path, after)
+		var result := _store.save_asset(path, after, before)
 		if result.saved:
 			_record_fallback_history(path, before, after, title)
 			_update_disk_modified_time()
 		return
 	_undo_redo.create_action(title)
-	_undo_redo.add_do_method(self, "_write_asset", path, after)
-	_undo_redo.add_undo_method(self, "_write_asset", path, before)
+	_undo_redo.add_do_method(self, "_write_asset", path, before, after)
+	_undo_redo.add_undo_method(self, "_write_asset", path, after, before)
 	_undo_redo.commit_action()
 
-func _write_asset(path: String, asset: Dictionary) -> void:
-	var result := _store.save_asset(path, asset)
+func _write_asset(path: String, expected_asset: Dictionary, asset: Dictionary) -> void:
+	var result := _store.save_asset(path, asset, expected_asset)
 	if result.saved:
 		_update_disk_modified_time()
 	if not result.receipt.ok:
@@ -849,7 +849,10 @@ func _undo_change() -> void:
 	if _fallback_history_index < 0:
 		return
 	var action: Dictionary = _fallback_history[_fallback_history_index]
-	_store.save_asset(action.path, action.before)
+	var result := _store.save_asset(action.path, action.before, action.after)
+	if not result.saved:
+		_status.text = _format_diagnostics(result.receipt.diagnostics)
+		return
 	_fallback_history_index -= 1
 	_reload_selected_from_disk()
 
@@ -862,7 +865,11 @@ func _redo_change() -> void:
 		return
 	_fallback_history_index += 1
 	var action: Dictionary = _fallback_history[_fallback_history_index]
-	_store.save_asset(action.path, action.after)
+	var result := _store.save_asset(action.path, action.after, action.before)
+	if not result.saved:
+		_status.text = _format_diagnostics(result.receipt.diagnostics)
+		_fallback_history_index -= 1
+		return
 	_reload_selected_from_disk()
 
 func _update_disk_modified_time() -> void:

@@ -34,6 +34,18 @@ func _start() -> void:
 	var after_reject := store.load_asset(test_path)
 	if rejected.saved or after_reject.asset.get("event_id") != original.get("event_id"):
 		failures.append("invalid save overwrote the last valid asset")
+	var concurrent := original.duplicate(true)
+	concurrent["display_name"] = "并发版本"
+	var concurrent_saved := store.save_asset(test_path, concurrent, original)
+	var stale_candidate := original.duplicate(true)
+	stale_candidate["display_name"] = "过期预览"
+	var stale_save := store.save_asset(test_path, stale_candidate, original)
+	var after_stale := store.load_asset(test_path)
+	if not concurrent_saved.saved or stale_save.saved or stale_save.receipt.diagnostics[0].get("code") != "ASSET_SOURCE_CHANGED":
+		failures.append("stale compare-and-swap transaction was not rejected")
+	if after_stale.asset.get("display_name") != "并发版本":
+		failures.append("stale transaction overwrote the concurrent version")
+	store.save_asset(test_path, original, concurrent)
 
 	var transaction := TEXT_TRANSACTION.new()
 	transaction.begin(original, "event ui.reward.apply")

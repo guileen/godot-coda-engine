@@ -16,11 +16,15 @@ func load_asset(path: String) -> Dictionary:
 	var receipt: Dictionary = asset.from_dictionary(parsed)
 	return {"asset": asset.data, "receipt": receipt, "raw": raw}
 
-func save_asset(path: String, asset: Dictionary) -> Dictionary:
+func save_asset(path: String, asset: Dictionary, expected_asset: Variant = null) -> Dictionary:
 	var checker := GSEOS_EventAsset.new()
 	var receipt: Dictionary = checker.from_dictionary(asset)
 	if not receipt.ok:
 		return {"receipt": receipt, "saved": false}
+	if expected_asset != null:
+		var current := load_asset(path)
+		if not current.receipt.ok or current.asset != expected_asset:
+			return {"receipt": _receipt("ASSET_SOURCE_CHANGED", "EventAsset 自预览后已变化；本次事务未写入。"), "saved": false}
 	var temp_path := path + ".tmp"
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
@@ -33,6 +37,11 @@ func save_asset(path: String, asset: Dictionary) -> Dictionary:
 	if FileAccess.file_exists(backup_path):
 		DirAccess.remove_absolute(absolute_temp_path)
 		return {"receipt": _receipt("ASSET_BACKUP_EXISTS", "检测到未完成的 EventAsset 替换；请先恢复或移走 .bak。"), "saved": false}
+	if expected_asset != null:
+		var latest := load_asset(path)
+		if not latest.receipt.ok or latest.asset != expected_asset:
+			DirAccess.remove_absolute(absolute_temp_path)
+			return {"receipt": _receipt("ASSET_SOURCE_CHANGED", "EventAsset 在事务准备期间已变化；本次事务未写入。"), "saved": false}
 	var had_original := FileAccess.file_exists(absolute_path)
 	if had_original and DirAccess.rename_absolute(absolute_path, backup_path) != OK:
 		DirAccess.remove_absolute(absolute_temp_path)
