@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { evaluateContinuationViability, evaluateTemporalCommandAdmission, validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
-import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, runEmbodimentAdapterConformance, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, runEmbodimentAdapterConformance, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest, verifyHookReplay } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, expandResourceLeaves, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateResourceRegistry, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -719,6 +719,7 @@ test("C1-T.0 设计契约冻结资源、快照、计划和 Adapter receipt 的�
 
 test("C1-T.0.3/.0.4 分离受信任 hook、确定回放与运行时观察", () => {
   assert.equal(hookManifestSchema.properties.fallback_policy.properties.max_depth.const, 1);
+  assert.match(hookManifestSchema.properties.hooks.items.properties.artifact_sha256.pattern, /\{64\}/u);
   assert.equal(hookManifestSchema.properties.trust_boundary.properties.allow_third_party.const, false);
   assert.equal(replayEnvelopeSchema.properties.logical_tick.type, "integer");
   assert.equal(runtimeObservationSchema.properties.wall.type, "object");
@@ -1261,20 +1262,47 @@ test("C1-T.1.2 受信任 hook 按固定顺序执行并受 work budget/单级 fal
   assert.equal(primary.ok, true);
   assert.deepEqual(primary.value.trace.map((item) => item.hook_id), ["intent_resolver", "validator"]);
   assert.equal(primary.value.execution_authority, "candidate_only");
+  assert.equal((await verifyHookReplay(pipeline, { intent: "social.wave@1" })).value.deterministic, true);
+  const overBudget = new TrustedHookPipeline(hookManifestFixture, {
+    intent_resolver: (_input, context) => { context.consume(33); return {}; }, validator: (input) => input,
+  });
+  assert.equal((await overBudget.run({ intent: "social.wave@1" })).diagnostics[0].code, "HOOK_WORK_BUDGET_EXCEEDED");
   const failing = new TrustedHookPipeline(hookManifestFixture, {
     intent_resolver: () => { throw Object.assign(new Error("bad output"), { code: "HOOK_INVALID_OUTPUT" }); },
     validator: () => ({ valid: true })
   });
   const fallback = await runWithSingleFallback({
     pipeline: failing,
-    input: { resources: ["head@1"] },
+    input: { intent: "social.wave@1", resources: ["head@1"] },
     fallback: (input) => ({ ...input, fallback: true }),
+    validateFallback: (output, context) => ({ ok: output.fallback === true && context.resources[0] === "head@1" }),
     safetySignature: { envelope: "strict" },
     resources: ["head@1"],
     fallbackResources: ["head@1"]
   });
   assert.equal(fallback.ok, true);
   assert.equal(fallback.path, "fallback");
+  const unvalidated = await runWithSingleFallback({
+    pipeline: failing, input: { intent: "social.wave@1" }, fallback: (input) => input,
+    safetySignature: { envelope: "strict" }, resources: ["head@1"],
+  });
+  assert.equal(unvalidated.diagnostics[0].code, "FALLBACK_VALIDATOR_REQUIRED");
+  const coreRejected = await runWithSingleFallback({
+    pipeline: failing, input: { intent: "social.wave@1" }, fallback: (input) => input,
+    validateFallback: () => ({ ok: false, diagnostics: [{ code: "PLAN_CONTACT_REJECTED" }] }),
+    safetySignature: { envelope: "strict" }, resources: ["head@1"],
+  });
+  assert.equal(coreRejected.diagnostics[0].code, "FALLBACK_CORE_VALIDATION_FAILED");
+  const changedTarget = await runWithSingleFallback({
+    pipeline: failing, input: { intent: "social.wave@1" }, fallback: () => ({ intent: "social.run@1" }),
+    validateFallback: () => ({ ok: true }), safetySignature: { envelope: "strict" }, resources: ["head@1"],
+  });
+  assert.equal(changedTarget.diagnostics[0].code, "FALLBACK_SEMANTIC_TARGET_CHANGED");
+  const widenedOutput = await runWithSingleFallback({
+    pipeline: failing, input: { intent: "social.wave@1" }, fallback: () => ({ intent: "social.wave@1", resources: ["arm@1"] }),
+    validateFallback: () => ({ ok: true }), safetySignature: { envelope: "strict" }, resources: ["head@1"],
+  });
+  assert.equal(widenedOutput.diagnostics[0].code, "FALLBACK_OUTPUT_RESOURCE_WIDENED");
   const widened = await runWithSingleFallback({
     pipeline: failing,
     input: {},
@@ -1286,6 +1314,20 @@ test("C1-T.1.2 受信任 hook 按固定顺序执行并受 work budget/单级 fal
   });
   assert.equal(widened.ok, false);
   assert.equal(widened.diagnostics[0].code, "FALLBACK_POLICY_VIOLATION");
+  let replayNondeterminism = 0;
+  const stateful = new TrustedHookPipeline(hookManifestFixture, {
+    intent_resolver: (input) => ({ ...input, sequence: ++replayNondeterminism }),
+    validator: (input) => input,
+  });
+  const replayCheck = await verifyHookReplay(stateful, { intent: "social.wave@1" });
+  assert.equal(replayCheck.ok, false);
+  assert.equal(replayCheck.diagnostics[0].code, "HOOK_REPLAY_DIVERGED");
+  const timedManifest = structuredClone(hookManifestFixture);
+  timedManifest.hooks[0].wall_watchdog_ms = 5;
+  let timeoutAborted = false;
+  const hanging = new TrustedHookPipeline(timedManifest, { intent_resolver: (_input, context) => { context.signal.addEventListener("abort", () => { timeoutAborted = true; }); return new Promise(() => {}); }, validator: (input) => input });
+  assert.equal((await hanging.run({ intent: "social.wave@1" })).diagnostics[0].code, "HOOK_TIMEOUT");
+  assert.equal(timeoutAborted, true);
   const run = new TransitionRun();
   assert.equal(run.start(), true);
   assert.equal(run.ownerLost(), true);
