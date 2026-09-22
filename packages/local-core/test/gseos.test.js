@@ -298,8 +298,15 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
   const reference = adapter.receive(message("reference.1", "reference", 2, { representation: "segment", reference_ref: "ref.segment@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 4 }));
   assert.equal(reference.accepted, true);
   assert.equal(validateEmbodimentProtocolMessage(reference.response).ok, true);
+  const mode = adapter.receive(message("mode.1", "mode_request", 3, { controller_ref: "controller.position@1", mode_ref: "mode.contact@1", handoff_contract_ref: "handoff.contact@1" }, { lease_ref: "lease.actor@1", generation: 4 }));
+  assert.equal(mode.accepted, true);
+  assert.equal(mode.response.message_type, "transition_receipt");
+  assert.equal(validateEmbodimentProtocolMessage(mode.response).ok, true);
+  const handoff = adapter.receive(message("handoff.1", "handoff", 4, { handoff_contract_ref: "handoff.contact@1", incoming_controller_ref: "controller.contact@1", barrier_id: "barrier.contact.1" }, { lease_ref: "lease.actor@1", generation: 4 }));
+  assert.equal(handoff.accepted, true);
+  assert.equal(handoff.ledger.handoff_barrier.barrier_id, "barrier.contact.1");
   const beforeStale = adapter.snapshot();
-  const stale = adapter.receive(message("reference.stale", "reference", 3, { representation: "segment", reference_ref: "ref.next@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 5 }));
+  const stale = adapter.receive(message("reference.stale", "reference", 5, { representation: "segment", reference_ref: "ref.next@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 5 }));
   assert.equal(stale.accepted, false);
   assert.equal(stale.response.message_type, "reject");
   assert.equal(stale.response.payload.partial_write, false);

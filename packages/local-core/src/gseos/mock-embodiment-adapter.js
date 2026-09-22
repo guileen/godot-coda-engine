@@ -7,6 +7,8 @@ export class MockEmbodimentAdapter {
   #seenMessageIds = new Set();
   #lease = null;
   #reference = null;
+  #modeRef = null;
+  #handoffBarrier = null;
   #outSequence = 0;
 
   constructor({ adapter_ref = "mock.embodiment.adapter@1", capabilities = [], adapter_revision = "mock@1", profile_status = "available", clock_domain = "mock.clock" } = {}) {
@@ -18,12 +20,12 @@ export class MockEmbodimentAdapter {
   }
 
   snapshot() {
-    return structuredClone({ epoch: this.#epoch, last_sequence: this.#lastSequence, lease: this.#lease, reference: this.#reference });
+    return structuredClone({ epoch: this.#epoch, last_sequence: this.#lastSequence, lease: this.#lease, reference: this.#reference, mode_ref: this.#modeRef, handoff_barrier: this.#handoffBarrier });
   }
 
   receive(message, { now_tick = message?.clock?.tick } = {}) {
     const reject = (code) => ({ accepted: false, response: this.#rejectMessage(message, now_tick, code), ledger: this.snapshot() });
-    if (message?.message_type !== "capability_query" && message?.message_type !== "authority_lease" && message?.message_type !== "reference") return reject("MOCK_MESSAGE_TYPE_UNSUPPORTED");
+    if (!["capability_query", "authority_lease", "reference", "mode_request", "handoff"].includes(message?.message_type)) return reject("MOCK_MESSAGE_TYPE_UNSUPPORTED");
     const validation = validateEmbodimentProtocolMessage(message, {
       now_tick,
       clock_domain: message?.clock?.domain,
@@ -46,12 +48,22 @@ export class MockEmbodimentAdapter {
       this.#record(message);
       this.#lease = { lease_ref: leaseRef, generation: message.generation, valid_until_tick: message.payload.valid_until_tick, resources: [...message.payload.resources] };
       this.#reference = null;
+      this.#modeRef = null;
+      this.#handoffBarrier = null;
       return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
     }
     if (!this.#lease || message.lease_ref !== this.#lease.lease_ref || message.generation !== this.#lease.generation || now_tick > this.#lease.valid_until_tick) return reject("MOCK_LEASE_OR_GENERATION_MISMATCH");
-    if (message.payload.constraints_ref.length === 0 || !this.#lease.resources.length) return reject("MOCK_REFERENCE_CONSTRAINTS_MISSING");
     this.#record(message);
-    this.#reference = { representation: message.payload.representation, reference_ref: message.payload.reference_ref, constraints_ref: message.payload.constraints_ref, generation: message.generation };
+    if (message.message_type === "reference") {
+      if (!this.#lease.resources.length) return reject("MOCK_REFERENCE_RESOURCES_MISSING");
+      this.#reference = { representation: message.payload.representation, reference_ref: message.payload.reference_ref, constraints_ref: message.payload.constraints_ref, generation: message.generation };
+      return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
+    }
+    if (message.message_type === "mode_request") {
+      this.#modeRef = message.payload.mode_ref;
+      return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted", "transition_receipt"), ledger: this.snapshot() };
+    }
+    this.#handoffBarrier = { barrier_id: message.payload.barrier_id, incoming_controller_ref: message.payload.incoming_controller_ref, generation: message.generation };
     return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
   }
 
@@ -81,8 +93,8 @@ export class MockEmbodimentAdapter {
     });
   }
 
-  #barrierReceipt(message, nowTick, status) {
-    return this.#baseResponse(message, nowTick, "barrier_receipt", {
+  #barrierReceipt(message, nowTick, status, messageType = "barrier_receipt") {
+    return this.#baseResponse(message, nowTick, messageType, {
       receipt_id: `${message.message_id}.receipt`, status, partial_write: false,
     }, message.lease_ref, message.generation);
   }
