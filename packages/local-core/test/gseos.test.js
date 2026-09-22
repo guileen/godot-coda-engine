@@ -312,6 +312,16 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
   assert.equal(stale.response.payload.partial_write, false);
   assert.deepEqual(stale.ledger, beforeStale);
   assert.equal(validateEmbodimentProtocolMessage(stale.response).ok, true);
+  const terminal = adapter.settleLease({ lease_ref: "lease.actor@1", generation: 4, status: "completed", now_tick: 15 });
+  assert.equal(terminal.accepted, true);
+  assert.equal(validateEmbodimentProtocolMessage(terminal.response).ok, true);
+  const afterTerminal = adapter.snapshot();
+  const duplicateTerminal = adapter.settleLease({ lease_ref: "lease.actor@1", generation: 4, status: "failed", now_tick: 15 });
+  assert.equal(duplicateTerminal.accepted, false);
+  assert.deepEqual(duplicateTerminal.ledger, afterTerminal);
+  const postTerminalReference = adapter.receive(message("reference.late", "reference", 6, { representation: "segment", reference_ref: "ref.late@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 4 }), { now_tick: 16 });
+  assert.equal(postTerminalReference.accepted, false);
+  assert.deepEqual(postTerminalReference.ledger, afterTerminal);
 });
 
 test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子", () => {

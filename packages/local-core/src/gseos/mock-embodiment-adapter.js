@@ -9,6 +9,7 @@ export class MockEmbodimentAdapter {
   #reference = null;
   #modeRef = null;
   #handoffBarrier = null;
+  #terminal = false;
   #outSequence = 0;
 
   constructor({ adapter_ref = "mock.embodiment.adapter@1", capabilities = [], adapter_revision = "mock@1", profile_status = "available", clock_domain = "mock.clock" } = {}) {
@@ -20,7 +21,7 @@ export class MockEmbodimentAdapter {
   }
 
   snapshot() {
-    return structuredClone({ epoch: this.#epoch, last_sequence: this.#lastSequence, lease: this.#lease, reference: this.#reference, mode_ref: this.#modeRef, handoff_barrier: this.#handoffBarrier });
+    return structuredClone({ epoch: this.#epoch, last_sequence: this.#lastSequence, lease: this.#lease, reference: this.#reference, mode_ref: this.#modeRef, handoff_barrier: this.#handoffBarrier, terminal: this.#terminal });
   }
 
   receive(message, { now_tick = message?.clock?.tick } = {}) {
@@ -50,9 +51,11 @@ export class MockEmbodimentAdapter {
       this.#reference = null;
       this.#modeRef = null;
       this.#handoffBarrier = null;
+      this.#terminal = false;
       return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
     }
     if (!this.#lease || message.lease_ref !== this.#lease.lease_ref || message.generation !== this.#lease.generation || now_tick > this.#lease.valid_until_tick) return reject("MOCK_LEASE_OR_GENERATION_MISMATCH");
+    if (this.#terminal) return reject("MOCK_LEASE_ALREADY_TERMINAL");
     this.#record(message);
     if (message.message_type === "reference") {
       if (!this.#lease.resources.length) return reject("MOCK_REFERENCE_RESOURCES_MISSING");
@@ -65,6 +68,19 @@ export class MockEmbodimentAdapter {
     }
     this.#handoffBarrier = { barrier_id: message.payload.barrier_id, incoming_controller_ref: message.payload.incoming_controller_ref, generation: message.generation };
     return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
+  }
+
+  settleLease({ lease_ref, generation, status, now_tick = 0 } = {}) {
+    const source = { epoch: this.#epoch ?? 0, message_id: `mock.terminal.${this.#outSequence}`, lease_ref, generation };
+    const reject = (code) => ({ accepted: false, response: this.#rejectMessage(source, now_tick, code), ledger: this.snapshot() });
+    if (!this.#lease || lease_ref !== this.#lease.lease_ref || generation !== this.#lease.generation || now_tick > this.#lease.valid_until_tick) return reject("MOCK_TERMINAL_LEASE_OR_GENERATION_MISMATCH");
+    if (this.#terminal) return reject("MOCK_DUPLICATE_TERMINAL_RECEIPT");
+    if (!["completed", "failed", "owner_lost"].includes(status)) return reject("MOCK_TERMINAL_STATUS_UNSUPPORTED");
+    this.#terminal = true;
+    const response = this.#baseResponse(source, now_tick, "terminal_receipt", {
+      receipt_id: `${source.message_id}.receipt`, status, partial_write: false,
+    }, lease_ref, generation);
+    return { accepted: true, response, ledger: this.snapshot() };
   }
 
   #record(message) {
