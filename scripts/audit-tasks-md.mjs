@@ -88,6 +88,7 @@ const requiredFiles = [
   "tests/reports/c1p-reference-benchmark.json",
   "packages/local-core/src/gseos/continuation-viability.js",
   "packages/local-core/src/gseos/temporal-admission.js",
+  "packages/local-core/src/gseos/embodiment-conformance.js",
   "demos/launcher/index.html",
   "demos/d3-skeleton-transition/scripts/d3_skeleton_transition.gd",
   "demos/d3-skeleton-transition/scripts/d3_expression_adapter.gd",

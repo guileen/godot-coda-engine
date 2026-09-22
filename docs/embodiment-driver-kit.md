@@ -25,7 +25,7 @@ const report = runEmbodimentAdapterConformance(adapter);
 if (!report.ok) throw new Error(JSON.stringify(report.cases.filter((item) => !item.passed)));
 ```
 
-runner 检查能力查询、资源 lease 准入、reference/mode/handoff、资源不支持拒绝、handoff contract 错配、过期 lease、唯一终态、terminal 后迟到命令和 observation schema。所有拒绝用例都检查 `partial_write:false` 与 ledger 不变。项目内完整参考验证通过 `npm test` 执行。
+runner 检查能力查询、资源 lease 准入、reference/mode/handoff、资源不支持拒绝、handoff contract 错配、过期 lease、唯一终态、terminal 后迟到命令和 observation schema。接受响应必须通过协议 schema、匹配 Adapter 身份与请求 lease/generation，并且返回的 ledger 与实际快照一致；所有拒绝用例同时检查 `partial_write:false`、Adapter 实际快照不变以及返回 ledger 未伪报。项目内完整参考验证通过 `npm test` 执行。
 
 `recordMockEmbodimentSession` / `replayMockEmbodimentSession` 是 **MockEmbodimentAdapter 专用**的故障录制工具：封存输入操作、输出摘要和逐步状态 digest，并可稳定重放/报告 divergence。它不能拿来录制厂商设备或替代设备审计记录。当前不提供跨供应商二进制日志格式；设备时间戳/时钟映射和安全事件保留策略须由目标 Profile 与部署另行定义。
 

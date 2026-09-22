@@ -531,6 +531,27 @@ test("C1-M.1 reusable no-hardware conformance suite rejects partial writes and t
   const missingMethods = runEmbodimentAdapterConformance({});
   assert.equal(missingMethods.ok, false);
   assert.equal(missingMethods.cases[0].name, "adapter_interface");
+  const wrap = (delegate, alter) => ({
+    adapter_ref: delegate.adapter_ref,
+    capabilities: delegate.capabilities,
+    clock_domain: delegate.clock_domain,
+    snapshot: () => delegate.snapshot(),
+    publishObservation: (...args) => delegate.publishObservation(...args),
+    settleLease: (...args) => delegate.settleLease(...args),
+    receive(message, options) { return alter(message, delegate.receive(message, options)); },
+  });
+  const staleLedger = runEmbodimentAdapterConformance(wrap(
+    new MockEmbodimentAdapter({ adapter_ref: "conformance.stale-ledger@1", capabilities: ["arm@1"] }),
+    (message, outcome) => message.message_type === "reference" ? { ...outcome, ledger: { stale: true } } : outcome,
+  ));
+  assert.equal(staleLedger.ok, false);
+  assert.equal(staleLedger.cases.find((item) => item.name === "reference_admission").passed, false);
+  const falseAtomicity = runEmbodimentAdapterConformance(wrap(
+    new MockEmbodimentAdapter({ adapter_ref: "conformance.false-atomicity@1", capabilities: ["arm@1"] }),
+    (message, outcome) => message.message_id === "conformance.lease.unsupported" ? { ...outcome, response: { ...outcome.response, payload: { ...outcome.response.payload, partial_write: true } } } : outcome,
+  ));
+  assert.equal(falseAtomicity.ok, false);
+  assert.equal(falseAtomicity.cases.find((item) => item.name === "unsupported_resource").passed, false);
 });
 
 test("C1-M.0 lease generations cannot be reused after expiry and remain epoch-bound", () => {
