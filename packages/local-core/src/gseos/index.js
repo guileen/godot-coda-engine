@@ -11,6 +11,7 @@ export * from "./observation.js";
 export * from "./intent-backend.js";
 export * from "./task-graph.js";
 export * from "./guard-expression.js";
+export * from "./reactive-graph.js";
 export * from "./transition.js";
 export * from "./hooks.js";
 export * from "./transition-harness.js";

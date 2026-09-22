@@ -322,6 +322,8 @@ Guard 的部署由四项共同决定：所需信息来源、最坏响应 deadlin
 
 Guard 条件使用 `GuardExpression@1` 的封闭 AST：literal、版本化 ObservationContract 字段引用和白名单比较/逻辑运算；未知输入只能 reject 或交给预授权安全路径。任意条件字符串、源码片段和未绑定的 observation path 均不构成可执行 Guard。该结构与引用绑定校验不提供 deadline/WCET 或安全证明。
 
+`ReactiveExecutionGraph@1` 的结构校验还要求 entry/terminal 完整、节点可达、边闭合，且每条可达 `adapter_command` 路径必须经过 `execution_admission` 的 pass 边。此校验是静态授权顺序门，不替代资源租约、候选验证或设备安全准入。
+
 典型分层是：
 
 | Guard | 典型评估位置 |

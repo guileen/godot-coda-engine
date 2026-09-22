@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
+import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
@@ -337,6 +337,16 @@ test("C1-L.1 typed GuardExpression binds observations and fails closed on unknow
   const deep = structuredClone(guard);
   deep.expression = { node_type: "operation", operator: "not", operands: Array.from({ length: 3 }, () => ({ node_type: "operation", operator: "not", operands: [{ node_type: "literal", value: true }] })) };
   assert.ok(validateGuardExpression(deep, { known_observation_refs: known, max_depth: 1 }).diagnostics.some((item) => item.code === "GUARD_DEPTH_EXCEEDED"));
+});
+
+test("C1-L.1 reactive graph requires a passing admission on every Adapter path", () => {
+  const graph = c1tSharedContractPack.reactive_execution_graph;
+  assert.equal(validateReactiveExecutionGraph(graph).ok, true);
+  const bypass = structuredClone(graph);
+  bypass.nodes.push({ node_id: "unsafe_adapter", kind: "adapter_command", contract_ref: "adapter.command@1", source_ref: "skill:taiji.cloud_hands@1" });
+  bypass.edges.push({ from: "observe_current", to: "unsafe_adapter", outcome: "pass" });
+  bypass.edges.push({ from: "unsafe_adapter", to: "adapter_terminal", outcome: "pass" });
+  assert.ok(validateReactiveExecutionGraph(bypass).diagnostics.some((item) => item.code === "ADAPTER_COMMAND_BEFORE_ADMISSION"));
 });
 
 test("C1-T.0.7/.0.8 锁定四项边界合同、分离设备安全配置并冻结三组证伪规范", () => {
