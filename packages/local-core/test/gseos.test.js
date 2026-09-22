@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateContinuationViability, validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
+import { evaluateContinuationViability, evaluateTemporalCommandAdmission, validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
 import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, runEmbodimentAdapterConformance, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
@@ -987,6 +987,44 @@ test("R-C1T-14/15 continuation viability selects finite modes and rejects unsafe
   noneViable.candidates.forEach((candidate) => { candidate.admitted = false; });
   assert.equal(evaluateContinuationViability(contract, noneViable).diagnostics[0].code, "CONTINUATION_NO_VIABLE_CANDIDATE");
   assert.equal(evaluateContinuationViability(contract, context).claims_dynamics_certificate, false);
+});
+
+test("R-C1T-16 temporal admission rejects stale authority and applies buffer hysteresis without renewing", () => {
+  const contract = c1tSharedContractPack.temporal_command_contract;
+  const context = {
+    now: { clock_domain: "arm.controller.clock@1", tick: 100 },
+    lease: { id: "lease.7", generation: 7, active: true, expires_at_tick: 120, clock_domain: "arm.controller.clock@1" },
+    observation: { tick: 98, clock_domain: "arm.controller.clock@1" },
+    command: { lease_id: "lease.7", generation: 7, valid_from_tick: 90, valid_until_tick: 110, clock_domain: "arm.controller.clock@1" },
+    liveness: { last_heartbeat_tick: 99, clock_domain: "arm.controller.clock@1" },
+    buffer: { remaining_ticks: 20 },
+    profile: { max_observation_age_ticks: 4, heartbeat_timeout_ticks: 3, low_watermark_ticks: 5, recovery_watermark_ticks: 9 },
+  };
+  assert.equal(evaluateTemporalCommandAdmission(contract, context).decision, "active");
+  const low = structuredClone(context);
+  low.buffer.remaining_ticks = 5;
+  assert.equal(evaluateTemporalCommandAdmission(contract, low).decision, "hold");
+  const hysteresis = structuredClone(context);
+  hysteresis.previous_state = "hold";
+  hysteresis.buffer.remaining_ticks = 8;
+  assert.equal(evaluateTemporalCommandAdmission(contract, hysteresis).diagnostics[0].code, "TEMPORAL_HYSTERESIS_HOLD");
+  hysteresis.buffer.remaining_ticks = 9;
+  assert.equal(evaluateTemporalCommandAdmission(contract, hysteresis).decision, "active");
+  const skew = structuredClone(context);
+  skew.observation.clock_domain = "arm.adapter.clock@1";
+  assert.equal(evaluateTemporalCommandAdmission(contract, skew).diagnostics[0].code, "TEMPORAL_CLOCK_DOMAIN_MISMATCH");
+  const stale = structuredClone(context);
+  stale.observation.tick = 90;
+  assert.equal(evaluateTemporalCommandAdmission(contract, stale).diagnostics[0].code, "TEMPORAL_OBSERVATION_STALE");
+  const leaseExpired = structuredClone(context);
+  leaseExpired.lease.expires_at_tick = 99;
+  assert.equal(evaluateTemporalCommandAdmission(contract, leaseExpired).diagnostics[0].code, "TEMPORAL_AUTHORITY_LEASE_INVALID");
+  const heartbeat = structuredClone(context);
+  heartbeat.liveness.last_heartbeat_tick = 90;
+  assert.equal(evaluateTemporalCommandAdmission(contract, heartbeat).diagnostics[0].code, "TEMPORAL_LIVENESS_EXPIRED");
+  const noImplicitExtension = evaluateTemporalCommandAdmission(contract, context);
+  assert.equal(noImplicitExtension.renew_lease, false);
+  assert.equal(noImplicitExtension.emit_command, false);
 });
 
 test("C1-T.0.7/.0.8 锁定四项边界合同、分离设备安全配置并冻结三组证伪规范", () => {
