@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
-import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -479,6 +479,44 @@ test("C1-M.0 mode changes and handoffs require an active lease binding at protoc
     const condition = schema.allOf.find((item) => item.if.properties.message_type.const === type);
     assert.deepEqual(condition.then.required, ["lease_ref", "generation"]);
   }
+});
+
+test("C1-M.1 mock driver session records and deterministically replays faults and command lifecycle", () => {
+  const adapterRef = "mock.embodiment.adapter@1";
+  const build = (message_id, message_type, sequence, payload, lease = null) => ({
+    protocol: "EmbodimentProtocol", schema_version: 1, message_id, direction: "coda_to_adapter", message_type,
+    adapter_ref: adapterRef, epoch: 1, sequence,
+    clock: { domain: "coda.clock", tick: 10 + sequence, quality: "synchronized" },
+    validity: { valid_from_tick: 10, valid_until_tick: 40 }, payload,
+    ...(lease ? { lease_ref: lease.lease_ref, generation: lease.generation } : {}),
+  });
+  const lease = { lease_ref: "lease.wave@1", generation: 2 };
+  const recording = recordMockEmbodimentSession({
+    adapter_config: { adapter_ref: adapterRef, capabilities: ["arm@1"] },
+    actions: [
+      { action: "receive", message: build("query.1", "capability_query", 0, { profile_ref: "robot.profile@1", minimum_protocol_version: 1 }) },
+      { action: "receive", message: build("lease.1", "authority_lease", 1, { lease_id: "lease.wave", owner: "coda", resources: ["arm@1"], valid_until_tick: 35 }, lease) },
+      { action: "receive", message: build("mode.1", "mode_request", 2, { controller_ref: "controller.position@1", mode_ref: "mode.wave@1", handoff_contract_ref: "handoff.wave@1" }, lease) },
+      { action: "receive", message: build("handoff.bad", "handoff", 3, { handoff_contract_ref: "handoff.other@1", incoming_controller_ref: "controller.next@1", barrier_id: "barrier.1" }, lease) },
+      { action: "receive", message: build("reference.1", "reference", 3, { representation: "segment", reference_ref: "wave.segment@1", constraints_ref: "wave.constraints@1" }, lease) },
+      { action: "settle_lease", request: { ...lease, status: "completed", now_tick: 15 } },
+      { action: "receive", message: build("reference.late", "reference", 4, { representation: "segment", reference_ref: "late.segment@1", constraints_ref: "wave.constraints@1" }, lease) },
+      { action: "publish_observation", request: { snapshot_ref: "snapshot.15@1", tick: 15 } },
+    ],
+  });
+  assert.equal(recording.ok, true);
+  assert.equal(recording.steps[3].output.response.payload.code, "MOCK_HANDOFF_MODE_NOT_ADMITTED");
+  assert.equal(recording.steps[6].output.response.payload.code, "MOCK_LEASE_ALREADY_TERMINAL");
+  const firstReplay = replayMockEmbodimentSession(recording);
+  const secondReplay = replayMockEmbodimentSession(recording);
+  assert.equal(firstReplay.ok, true);
+  assert.deepEqual(firstReplay, secondReplay);
+  const changedFaultInput = structuredClone(recording);
+  changedFaultInput.steps[1].input.message.payload.resources = ["leg@1"];
+  const divergent = replayMockEmbodimentSession(changedFaultInput);
+  assert.equal(divergent.ok, false);
+  assert.ok(divergent.mismatches.some((item) => item.index === 1));
+  assert.equal(replayMockEmbodimentSession({ ...recording, schema_version: 99 }).code, "MOCK_REPLAY_ENVELOPE_INVALID");
 });
 
 test("C1-M.0 lease generations cannot be reused after expiry and remain epoch-bound", () => {

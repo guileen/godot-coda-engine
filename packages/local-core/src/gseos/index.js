@@ -15,6 +15,7 @@ export * from "./reactive-graph.js";
 export * from "./embodied-contract-validation.js";
 export * from "./intent-protocol.js";
 export * from "./mock-embodiment-adapter.js";
+export * from "./mock-embodiment-replay.js";
 export * from "./mock-safety-authority.js";
 export * from "./authoring-transaction.js";
 export * from "./transition.js";
