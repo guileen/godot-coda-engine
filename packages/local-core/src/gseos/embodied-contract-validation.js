@@ -72,3 +72,41 @@ export function validateControlContract(contract) {
   for (const key of ["input_observation_refs", "backup_refs", "handoff_refs"]) if (!Array.isArray(contract[key]) || contract[key].some((ref) => !versionedRef.test(String(ref)))) push(diagnostics, "INVALID_CONTROL_REFERENCE_LIST", key + " 必须是版本化引用数组。", "/" + key);
   return gseosReceipt(diagnostics);
 }
+
+export function validateContinuationContract(contract) {
+  const diagnostics = [];
+  if (!headerOk(contract, "ContinuationContract")) return gseosReceipt([gseosDiagnostic("INVALID_CONTINUATION_CONTRACT", "ContinuationContract 类型或版本无效。")]);
+  for (const key of ["phase_progress_ref", "capture_region_ref", "viability_gate_ref", "bridge_planner_ref", "commit_alignment_ref"]) if (!versionedRef.test(String(contract[key] ?? ""))) push(diagnostics, "INVALID_CONTINUATION_BINDING", key + " 必须是版本化引用。", "/" + key);
+  if (!Array.isArray(contract.resume_modes) || contract.resume_modes.length === 0 || !contract.resume_modes.includes("reject")) push(diagnostics, "CONTINUATION_MISSING_REJECT", "恢复策略必须包含确定的 reject 终态。", "/resume_modes");
+  if (!Array.isArray(contract.token_fields) || !contract.token_fields.includes("generation") || !contract.token_fields.includes("state_digest")) push(diagnostics, "CONTINUATION_TOKEN_IDENTITY_MISSING", "ContinuationToken 必须绑定 generation 与当前状态摘要。", "/token_fields");
+  if (contract.restore_old_generation !== false) push(diagnostics, "CONTINUATION_REACTIVATES_OLD_GENERATION", "Continuation 不得恢复旧 generation。", "/restore_old_generation");
+  if (!["recovery_skill_if_admitted", "replan", "reject", "yield_safety_authority"].includes(contract.on_no_solution)) push(diagnostics, "CONTINUATION_NO_SOLUTION_UNSAFE", "恢复无解时必须进入准入 RecoverySkill、重规划、拒绝或让出安全权威。", "/on_no_solution");
+  return gseosReceipt(diagnostics);
+}
+
+export function validateTemporalCommandContract(contract) {
+  const diagnostics = [];
+  if (!headerOk(contract, "TemporalCommandContract")) return gseosReceipt([gseosDiagnostic("INVALID_TEMPORAL_COMMAND_CONTRACT", "TemporalCommandContract 类型或版本无效。")]);
+  if (!Array.isArray(contract.clock_domains) || contract.clock_domains.length === 0 || contract.clock_domains.some((ref) => !versionedRef.test(String(ref)))) push(diagnostics, "INVALID_TEMPORAL_CLOCK_DOMAINS", "至少声明一个版本化 clock domain。", "/clock_domains");
+  for (const key of ["authority_lease_ref", "observation_freshness_ref", "command_validity_ref", "buffered_horizon_ref", "liveness_ref", "low_watermark_ref", "hysteresis_ref", "deadline_reserve_ref"]) if (!versionedRef.test(String(contract[key] ?? ""))) push(diagnostics, "INVALID_TEMPORAL_BINDING", key + " 必须是版本化引用。", "/" + key);
+  if (contract.lease_extension_policy !== "no_implicit_extension") push(diagnostics, "TEMPORAL_IMPLICIT_LEASE_EXTENSION", "TemporalCommand 禁止隐式续租。", "/lease_extension_policy");
+  if (contract.old_generation_reactivation !== false) push(diagnostics, "TEMPORAL_OLD_GENERATION_REACTIVATION", "过期 command 不得复活旧 generation。", "/old_generation_reactivation");
+  if (!["hold_if_valid", "enter_admitted_backup", "yield_safety_authority", "reject"].includes(contract.on_invalid)) push(diagnostics, "TEMPORAL_INVALID_COMMAND_POLICY", "无效或过期 command 必须进入显式安全策略。", "/on_invalid");
+  return gseosReceipt(diagnostics);
+}
+
+export function validateAuthorityClaimMatrix(matrix) {
+  const diagnostics = [];
+  if (!headerOk(matrix, "AuthorityClaimMatrix")) return gseosReceipt([gseosDiagnostic("INVALID_AUTHORITY_CLAIM_MATRIX", "AuthorityClaimMatrix 类型或版本无效。")]);
+  if (matrix.local_acceptance_implies_joint_feasible !== false) push(diagnostics, "LOCAL_ACCEPTANCE_OVERCLAIMS_COMPOSITION", "局部合同通过不能推出联合任务集可行。", "/local_acceptance_implies_joint_feasible");
+  if (matrix.unknown_conflict_policy !== "reject_or_preempt_by_lease_policy") push(diagnostics, "AUTHORITY_UNKNOWN_CONFLICT_POLICY", "未知冲突必须按租约策略拒绝或抢占。", "/unknown_conflict_policy");
+  if (!versionedRef.test(String(matrix.joint_admission_checker_ref ?? ""))) push(diagnostics, "JOINT_ADMISSION_CHECKER_MISSING", "AuthorityClaimMatrix 必须绑定联合准入 checker。", "/joint_admission_checker_ref");
+  for (const [index, claim] of (matrix.claims ?? []).entries()) {
+    const path = "/claims/" + index;
+    if (!versionedRef.test(String(claim?.skill_ref ?? "")) || !Array.isArray(claim?.resource_refs) || claim.resource_refs.length === 0 || claim.resource_refs.some((ref) => !versionedRef.test(String(ref)))) push(diagnostics, "INVALID_AUTHORITY_CLAIM_BINDING", "每项 claim 必须绑定版本化 skill/resource。", path);
+    const expected = { exclusive: "single_writer", composed: "composition_controller", nullspace: "composition_controller", observe_only: "none" }[claim?.claim_mode];
+    if (!expected || claim.write_authority !== expected) push(diagnostics, "AUTHORITY_CLAIM_WRITE_MISMATCH", "claim mode 与写权必须一一对应。", path + "/write_authority");
+    if (["composed", "nullspace"].includes(claim?.claim_mode) && !versionedRef.test(String(claim.composition_controller_ref ?? ""))) push(diagnostics, "AUTHORITY_COMPOSITION_CONTROLLER_MISSING", "composed/nullspace claim 必须绑定唯一 composition controller。", path + "/composition_controller_ref");
+  }
+  return gseosReceipt(diagnostics);
+}

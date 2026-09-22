@@ -324,7 +324,7 @@ Guard 条件使用 `GuardExpression@1` 的封闭 AST：literal、版本化 Obser
 
 `ReactiveExecutionGraph@1` 的结构校验还要求 entry/terminal 完整、节点可达、边闭合，且每条可达 `adapter_command` 路径必须经过 `execution_admission` 的 pass 边。此校验是静态授权顺序门，不替代资源租约、候选验证或设备安全准入。
 
-当前本地参考校验器还检查 ObservationContract 的主动观测准入绑定、HybridModeGraph 的模式/Guard 引用和 activation barrier、TrackingEnvelope 的 fail-closed/监督职责，以及 ControlContract 的单 writer 与版本化端口。其输入仍需来自已校准设备 Profile；这些检查不能证明传感器、模型或控制器在物理设备上正确。
+当前本地参考校验器还检查 ObservationContract 的主动观测准入绑定、HybridModeGraph 的模式/Guard 引用和 activation barrier、TrackingEnvelope 的 fail-closed/监督职责、ControlContract 的单 writer 与版本化端口、ContinuationContract 的当前 generation/状态绑定、TemporalCommandContract 的无隐式续租，以及 AuthorityClaimMatrix 的 claim/write-authority 对应和联合准入非蕴含。其输入仍需来自已校准设备 Profile；这些检查不能证明传感器、模型或控制器在物理设备上正确。
 
 典型分层是：
 

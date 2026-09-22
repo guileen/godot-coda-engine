@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateAuthorityClaimMatrix, validateContinuationContract, validateTemporalCommandContract } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -355,6 +356,9 @@ test("C1-L.1 shared observation, hybrid, tracking and control contracts fail clo
   assert.equal(validateHybridModeGraph(contracts.hybrid_mode_graph, { known_guard_refs: ["contact.confirmed@1"] }).ok, true);
   assert.equal(validateTrackingEnvelope(contracts.tracking_envelope).ok, true);
   assert.equal(validateControlContract(contracts.control_contract).ok, true);
+  assert.equal(validateContinuationContract(contracts.continuation_contract).ok, true);
+  assert.equal(validateTemporalCommandContract(contracts.temporal_command_contract).ok, true);
+  assert.equal(validateAuthorityClaimMatrix(contracts.authority_claim_matrix).ok, true);
 
   const unsafeTracking = { ...contracts.tracking_envelope, supervisor_role: "may_close_controller_loop" };
   assert.ok(validateTrackingEnvelope(unsafeTracking).diagnostics.some((item) => item.code === "TRACKING_SUPERVISOR_AUTHORITY_ESCALATION"));
@@ -362,6 +366,12 @@ test("C1-L.1 shared observation, hybrid, tracking and control contracts fail clo
   assert.ok(validateHybridModeGraph(missingMode, { known_guard_refs: ["contact.confirmed@1"] }).diagnostics.some((item) => item.code === "HYBRID_INITIAL_MODE_MISSING"));
   const competingWriter = { ...contracts.control_contract, authority: "supervisor_direct_writer" };
   assert.ok(validateControlContract(competingWriter).diagnostics.some((item) => item.code === "CONTROL_AUTHORITY_NOT_SINGLE_WRITER"));
+  const oldGeneration = { ...contracts.continuation_contract, restore_old_generation: true };
+  assert.ok(validateContinuationContract(oldGeneration).diagnostics.some((item) => item.code === "CONTINUATION_REACTIVATES_OLD_GENERATION"));
+  const implicitLease = { ...contracts.temporal_command_contract, lease_extension_policy: "extend_on_heartbeat" };
+  assert.ok(validateTemporalCommandContract(implicitLease).diagnostics.some((item) => item.code === "TEMPORAL_IMPLICIT_LEASE_EXTENSION"));
+  const overclaim = { ...contracts.authority_claim_matrix, local_acceptance_implies_joint_feasible: true };
+  assert.ok(validateAuthorityClaimMatrix(overclaim).diagnostics.some((item) => item.code === "LOCAL_ACCEPTANCE_OVERCLAIMS_COMPOSITION"));
   const optimisticUnknown = { ...contracts.observation_contract, on_unresolved: "assume_safe" };
   assert.ok(validateObservationContract(optimisticUnknown).diagnostics.some((item) => item.code === "OBSERVATION_UNKNOWN_NOT_FAIL_CLOSED"));
 });
