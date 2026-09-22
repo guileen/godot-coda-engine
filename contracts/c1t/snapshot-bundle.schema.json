@@ -10,7 +10,9 @@
     "physics_tick": { "type": "integer", "minimum": 0 },
     "revision": { "type": "string", "minLength": 1 },
     "unit_system": { "const": "SI" },
-    "quality": { "type": "object", "required": ["finite", "same_tick", "skew_ms"], "properties": { "finite": { "const": true }, "same_tick": { "const": true }, "skew_ms": { "type": "number", "maximum": 0.0 } } },
+    "quality": { "type": "object", "required": ["finite", "same_tick", "skew_ms"], "properties": { "finite": { "const": true }, "same_tick": { "const": true }, "skew_ms": { "type": "number", "minimum": 0, "maximum": 0.0 } }, "additionalProperties": false },
+    "channel_ticks": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+    "semantic_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
     "state": { "type": "object", "minProperties": 1 }
   },
   "additionalProperties": false

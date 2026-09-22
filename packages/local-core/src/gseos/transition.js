@@ -1,4 +1,4 @@
-import { stableStringify } from "./asset.js";
+import { assetFingerprint, stableStringify } from "./asset.js";
 
 const finite = (value) => typeof value === "number" && Number.isFinite(value);
 
@@ -176,29 +176,48 @@ export class TransitionLeaseArbiter {
   }
 }
 
-export function validateTransitionSnapshot(snapshot) {
+export function validateTransitionSnapshot(snapshot, binding = {}) {
   const diagnostics = [];
   if (!snapshot || typeof snapshot !== "object") return result(false, null, [diagnostic("INVALID_SNAPSHOT", "SnapshotBundle 必须是对象。")]);
+  if (snapshot.snapshot_type !== "SnapshotBundle" || snapshot.schema_version !== 1) diagnostics.push(diagnostic("INVALID_SNAPSHOT_HEADER", "快照必须使用 SnapshotBundle@1。"));
   if (!Number.isInteger(snapshot.physics_tick) || snapshot.physics_tick < 0) diagnostics.push(diagnostic("INVALID_PHYSICS_TICK", "physics_tick 必须是非负整数。"));
-  if ((typeof snapshot.revision !== "string" && !Number.isInteger(snapshot.revision)) || snapshot.revision === "") diagnostics.push(diagnostic("INVALID_SNAPSHOT_REVISION", "revision 必须是非空字符串或非负整数。"));
+  if (typeof snapshot.revision !== "string" || snapshot.revision.length === 0) diagnostics.push(diagnostic("INVALID_SNAPSHOT_REVISION", "revision 必须是非空字符串。"));
+  if (snapshot.unit_system !== "SI") diagnostics.push(diagnostic("INVALID_SNAPSHOT_UNIT_SYSTEM", "SnapshotBundle@1 必须使用 SI 单位。"));
   if (snapshot.quality?.same_tick !== true) diagnostics.push(diagnostic("SNAPSHOT_NOT_SAME_TICK", "快照必须来自同一 physics tick。"));
   if (snapshot.quality?.finite !== true) diagnostics.push(diagnostic("SNAPSHOT_NOT_FINITE", "快照质量必须明确声明 finite。"));
-  const values = snapshot.state ?? snapshot.values ?? {};
+  if (!Number.isFinite(snapshot.quality?.skew_ms) || snapshot.quality.skew_ms !== 0) diagnostics.push(diagnostic("INVALID_SNAPSHOT_SKEW", "同一 physics tick 的 SnapshotBundle 必须具有有限且为零的跨资源 skew_ms。"));
+  const values = snapshot.state ?? {};
+  if (!values || typeof values !== "object" || Array.isArray(values) || Object.keys(values).length === 0) diagnostics.push(diagnostic("INVALID_SNAPSHOT_STATE", "SnapshotBundle.state 必须是非空对象。"));
   const walk = (value, path = snapshot.state ? "/state" : "/values") => {
     if (typeof value === "number" && !Number.isFinite(value)) diagnostics.push(diagnostic("NON_FINITE_SNAPSHOT_VALUE", "快照不得含 NaN/Infinity。", { path }));
     else if (Array.isArray(value)) value.forEach((item, index) => walk(item, `${path}/${index}`));
     else if (value && typeof value === "object") Object.entries(value).forEach(([key, item]) => walk(item, `${path}/${key}`));
   };
   walk(values);
+  if (binding.now_tick !== undefined && (!Number.isInteger(binding.now_tick) || !Number.isInteger(binding.max_age_ticks) || binding.max_age_ticks < 0 || snapshot.physics_tick > binding.now_tick || binding.now_tick - snapshot.physics_tick > binding.max_age_ticks)) diagnostics.push(diagnostic("SNAPSHOT_STALE", "SnapshotBundle 超出绑定的最大新鲜度窗口。"));
+  if (binding.known_channels !== undefined && (!Array.isArray(binding.known_channels) || Object.keys(values).some((channel) => !binding.known_channels.includes(channel)))) diagnostics.push(diagnostic("UNKNOWN_SNAPSHOT_CHANNEL", "SnapshotBundle 包含未绑定的 observation channel。"));
+  if (binding.required_channels !== undefined && (!Array.isArray(binding.required_channels) || binding.required_channels.some((channel) => !Object.hasOwn(values, channel)))) diagnostics.push(diagnostic("SNAPSHOT_REQUIRED_CHANNEL_MISSING", "SnapshotBundle 缺少 profile 要求的 observation channel。"));
+  if (binding.require_channel_ticks === true && (!snapshot.channel_ticks || Object.keys(values).some((channel) => !Object.hasOwn(snapshot.channel_ticks, channel)))) diagnostics.push(diagnostic("SNAPSHOT_CHANNEL_TICKS_REQUIRED", "Profile 要求每个 observation channel 提供采样 physics tick。"));
+  if (snapshot.channel_ticks !== undefined) {
+    if (!snapshot.channel_ticks || typeof snapshot.channel_ticks !== "object" || Array.isArray(snapshot.channel_ticks)) diagnostics.push(diagnostic("INVALID_SNAPSHOT_CHANNEL_TICKS", "channel_ticks 必须是通道到 physics tick 的对象。"));
+    else for (const [channel, tick] of Object.entries(snapshot.channel_ticks)) {
+      if (!Object.hasOwn(values, channel) || !Number.isInteger(tick) || tick < 0) diagnostics.push(diagnostic("INVALID_SNAPSHOT_CHANNEL_TICK", "channel_ticks 必须只绑定有效通道与非负整数 tick。", { channel }));
+      else if (tick !== snapshot.physics_tick) diagnostics.push(diagnostic("SNAPSHOT_CHANNEL_TICK_MISMATCH", "所有资源通道必须与 SnapshotBundle.physics_tick 对齐。", { channel, channel_tick: tick, physics_tick: snapshot.physics_tick }));
+    }
+  }
+  const { semantic_digest: _semanticDigest, ...digestPayload } = snapshot;
+  const calculatedDigest = assetFingerprint(digestPayload);
+  if (snapshot.semantic_digest !== undefined && snapshot.semantic_digest !== calculatedDigest) diagnostics.push(diagnostic("SNAPSHOT_DIGEST_MISMATCH", "SnapshotBundle semantic_digest 与内容摘要不匹配。"));
+  if (binding.expected_digest !== undefined && binding.expected_digest !== (snapshot.semantic_digest ?? calculatedDigest)) diagnostics.push(diagnostic("SNAPSHOT_DIGEST_MISMATCH", "SnapshotBundle 摘要与预期绑定不匹配。"));
   return diagnostics.length ? result(false, null, diagnostics) : result(true, structuredClone(snapshot));
 }
 
-export function buildTransitionPlan({ plan_id, intent, lease, snapshot, segments, completion, resources }) {
+export function buildTransitionPlan({ plan_id, intent, lease, snapshot, segments, completion, resources, snapshot_binding }) {
   const diagnostics = [];
   if (typeof plan_id !== "string" || !plan_id) diagnostics.push(diagnostic("INVALID_PLAN_ID", "plan_id 必须是非空字符串。"));
   if (typeof intent !== "string" || !/@[0-9]+$/.test(intent)) diagnostics.push(diagnostic("INVALID_INTENT_VERSION", "intent 必须带版本后缀。"));
   if (!lease || lease.mode !== "all_or_reject" || !Number.isInteger(lease.generation)) diagnostics.push(diagnostic("INVALID_PLAN_LEASE", "TransitionPlan 必须绑定 all_or_reject lease。"));
-  const snapshotResult = validateTransitionSnapshot(snapshot);
+  const snapshotResult = validateTransitionSnapshot(snapshot, snapshot_binding);
   diagnostics.push(...snapshotResult.diagnostics);
   if (!Array.isArray(segments) || segments.length === 0) diagnostics.push(diagnostic("EMPTY_PLAN_SEGMENTS", "TransitionPlan 至少需要一个 segment。"));
   const owned = new Set(lease?.resources ?? []);
@@ -215,7 +234,7 @@ export function buildTransitionPlan({ plan_id, intent, lease, snapshot, segments
     plan_id,
     intent,
     lease: structuredClone(lease),
-    snapshot_ref: { revision: snapshot.revision, physics_tick: snapshot.physics_tick },
+    snapshot_ref: { revision: snapshot.revision, physics_tick: snapshot.physics_tick, digest: snapshot.semantic_digest ?? assetFingerprint(snapshot) },
     resources: normalizeIds(resources ?? lease.resources),
     segments: structuredClone(segments),
     completion: structuredClone(completion),

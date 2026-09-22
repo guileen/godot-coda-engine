@@ -81,6 +81,7 @@ const requiredFiles = [
   "gseos/fixtures/c1t/continuation-viability.json",
   "gseos/fixtures/c1t/resource-registry.json",
   "gseos/fixtures/c1t/shared-contract-pack.json",
+  "contracts/c1t/snapshot-bundle.schema.json",
   "packages/local-core/src/gseos/continuation-viability.js",
   "packages/local-core/src/gseos/temporal-admission.js",
   "demos/launcher/index.html",

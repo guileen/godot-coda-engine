@@ -1140,11 +1140,38 @@ test("C1-T.1.1 参考 planner 拒绝坏快照和未租资源且计划指纹可�
   const built = buildTransitionPlan(base);
   assert.equal(built.ok, true);
   assert.equal(built.value.execution_authority, "adapter_only");
+  assert.equal(typeof built.value.snapshot_ref.digest, "string");
   assert.equal(transitionDecisionFingerprint(built.value), transitionDecisionFingerprint(buildTransitionPlan(structuredClone(base)).value));
+  assert.equal(buildTransitionPlan({ ...base, snapshot_binding: { now_tick: 50, max_age_ticks: 1 } }).diagnostics[0].code, "SNAPSHOT_STALE");
   const badSnapshot = structuredClone(validSnapshot);
   badSnapshot.quality.finite = false;
   assert.equal(buildTransitionPlan({ ...base, snapshot: badSnapshot }).ok, false);
   assert.equal(buildTransitionPlan({ ...base, resources: ["arm@1"] }).ok, false);
+});
+
+test("R-C1T-04 SnapshotBundle 按 profile 绑定新鲜度、通道、采样 tick 与摘要", () => {
+  const binding = {
+    now_tick: 43,
+    max_age_ticks: 1,
+    known_channels: ["head.pitch_deg", "head.yaw_deg", "head.roll_deg"],
+    required_channels: ["head.pitch_deg", "head.yaw_deg"],
+    expected_digest: assetFingerprint(validSnapshot),
+  };
+  assert.equal(validateTransitionSnapshot(validSnapshot, binding).ok, true);
+  assert.equal(validateTransitionSnapshot(validSnapshot, { ...binding, now_tick: 44 }).diagnostics[0].code, "SNAPSHOT_STALE");
+  assert.equal(validateTransitionSnapshot(validSnapshot, { ...binding, known_channels: ["head.pitch_deg"] }).diagnostics[0].code, "UNKNOWN_SNAPSHOT_CHANNEL");
+  assert.equal(validateTransitionSnapshot(validSnapshot, { ...binding, required_channels: ["head.position"] }).diagnostics[0].code, "SNAPSHOT_REQUIRED_CHANNEL_MISSING");
+  assert.equal(validateTransitionSnapshot(validSnapshot, { ...binding, expected_digest: "sha256:" + "0".repeat(64) }).diagnostics[0].code, "SNAPSHOT_DIGEST_MISMATCH");
+  const skewed = structuredClone(validSnapshot);
+  skewed.channel_ticks = { "head.pitch_deg": 42, "head.yaw_deg": 41, "head.roll_deg": 42 };
+  assert.equal(validateTransitionSnapshot(skewed, { ...binding, require_channel_ticks: true }).diagnostics[0].code, "SNAPSHOT_CHANNEL_TICK_MISMATCH");
+  const missingTicks = structuredClone(validSnapshot);
+  assert.equal(validateTransitionSnapshot(missingTicks, { ...binding, require_channel_ticks: true }).diagnostics[0].code, "SNAPSHOT_CHANNEL_TICKS_REQUIRED");
+  const badSkew = structuredClone(validSnapshot);
+  badSkew.quality.skew_ms = 0.1;
+  assert.equal(validateTransitionSnapshot(badSkew).diagnostics[0].code, "INVALID_SNAPSHOT_SKEW");
+  const badDigest = { ...validSnapshot, semantic_digest: "sha256:" + "0".repeat(64) };
+  assert.equal(validateTransitionSnapshot(badDigest).diagnostics[0].code, "SNAPSHOT_DIGEST_MISMATCH");
 });
 
 test("C1-T.1.2 受信任 hook 按固定顺序执行并受 work budget/单级 fallback 约束", async () => {

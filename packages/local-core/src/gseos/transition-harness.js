@@ -25,12 +25,13 @@ export function evaluateTransitionCase(input) {
     sequence: request.sequence ?? 0
   });
   if (!leaseResult.ok) return reject(caseId, leaseResult.diagnostics[0]?.code ?? "LEASE_REJECTED", { diagnostics: leaseResult.diagnostics });
-  const snapshotResult = validateTransitionSnapshot(input.snapshot);
+  const snapshotResult = validateTransitionSnapshot(input.snapshot, input.snapshot_binding);
   if (!snapshotResult.ok) return reject(caseId, snapshotResult.diagnostics[0]?.code ?? "INVALID_SNAPSHOT", { diagnostics: snapshotResult.diagnostics });
   const planResult = buildTransitionPlan({
     ...(input.plan ?? {}),
     lease: leaseResult.value.lease,
     snapshot: input.snapshot,
+    snapshot_binding: input.snapshot_binding,
     resources: leaseResult.value.lease.resources
   });
   if (!planResult.ok) return reject(caseId, planResult.diagnostics[0]?.code ?? "INVALID_PLAN", { diagnostics: planResult.diagnostics });
