@@ -17,6 +17,7 @@ export * from "./intent-protocol.js";
 export * from "./mock-embodiment-adapter.js";
 export * from "./mock-embodiment-replay.js";
 export * from "./embodiment-conformance.js";
+export * from "./continuation-viability.js";
 export * from "./mock-safety-authority.js";
 export * from "./authoring-transaction.js";
 export * from "./transition.js";

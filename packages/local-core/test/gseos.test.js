@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
+import { evaluateContinuationViability, validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
 import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, runEmbodimentAdapterConformance, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
@@ -52,6 +52,7 @@ const c1tContractHardeningPack = JSON.parse(await readFile(resolve(root, "gseos/
 const contactHandoffBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/contact-handoff.spec.json"), "utf8"));
 const modelValidityBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/model-validity-detection.spec.json"), "utf8"));
 const jointCompositionBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"), "utf8"));
+const continuationViabilityFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/continuation-viability.json"), "utf8"));
 const c1pContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1p/contract-index.json"), "utf8"));
 const c1pContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1p/contract-pack.json"), "utf8"));
 const intentBackendProfileSchema = JSON.parse(await readFile(resolve(root, "contracts/gseos/intent-backend-profile.schema.json"), "utf8"));
@@ -957,6 +958,35 @@ test("C1-L.1 shared observation, hybrid, tracking and control contracts fail clo
   assert.ok(validateAuthorityClaimMatrix(overclaim).diagnostics.some((item) => item.code === "LOCAL_ACCEPTANCE_OVERCLAIMS_COMPOSITION"));
   const optimisticUnknown = { ...contracts.observation_contract, on_unresolved: "assume_safe" };
   assert.ok(validateObservationContract(optimisticUnknown).diagnostics.some((item) => item.code === "OBSERVATION_UNKNOWN_NOT_FAIL_CLOSED"));
+});
+
+test("R-C1T-14/15 continuation viability selects finite modes and rejects unsafe or stale re-entry", () => {
+  const { contract, context } = continuationViabilityFixture;
+  assert.equal(evaluateContinuationViability(contract, context).resume_mode, "exact_phase");
+  const compatible = structuredClone(context);
+  compatible.candidates[0].admitted = false;
+  assert.equal(evaluateContinuationViability(contract, compatible).resume_mode, "compatible_phase");
+  const checkpoint = structuredClone(context);
+  checkpoint.candidates[0].admitted = false;
+  checkpoint.candidates[1].admitted = false;
+  assert.equal(evaluateContinuationViability(contract, checkpoint).resume_mode, "checkpoint");
+  const replan = structuredClone(context);
+  replan.candidates.slice(0, 3).forEach((candidate) => { candidate.admitted = false; });
+  assert.equal(evaluateContinuationViability(contract, replan).resume_mode, "replan_remaining");
+
+  const outsideCapture = structuredClone(context);
+  outsideCapture.gates.capture_region = false;
+  assert.equal(evaluateContinuationViability(contract, outsideCapture).diagnostics[0].code, "CONTINUATION_VIABILITY_GATE_FAILED");
+  const oldWriter = structuredClone(context);
+  oldWriter.current.lease_id = oldWriter.token.lease_id;
+  assert.equal(evaluateContinuationViability(contract, oldWriter).diagnostics[0].code, "CONTINUATION_OLD_LEASE_REUSED");
+  const staleController = structuredClone(context);
+  staleController.current.controller_revision = "controller@3";
+  assert.equal(evaluateContinuationViability(contract, staleController).diagnostics[0].code, "CONTINUATION_CONTROLLER_REVISION_CHANGED");
+  const noneViable = structuredClone(context);
+  noneViable.candidates.forEach((candidate) => { candidate.admitted = false; });
+  assert.equal(evaluateContinuationViability(contract, noneViable).diagnostics[0].code, "CONTINUATION_NO_VIABLE_CANDIDATE");
+  assert.equal(evaluateContinuationViability(contract, context).claims_dynamics_certificate, false);
 });
 
 test("C1-T.0.7/.0.8 锁定四项边界合同、分离设备安全配置并冻结三组证伪规范", () => {

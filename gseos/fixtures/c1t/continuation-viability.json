@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "contract": {
+    "contract_type": "ContinuationContract",
+    "schema_version": 1,
+    "contract_id": "taiji.resume@1",
+    "resume_modes": ["exact_phase", "compatible_phase", "checkpoint", "replan_remaining", "reject"],
+    "checkpoint_refs": ["taiji.checkpoint.shift@1"]
+  },
+  "context": {
+    "evidence_level": "heuristic",
+    "token": { "skill_ref": "taiji.cloud_hands@1", "phase_id": "weight_shift", "progress": 0.42, "state_digest": "digest.interruption", "generation": 4, "controller_revision": "controller@2", "constraint_revision": "constraints@3", "lease_id": "lease.old" },
+    "interruption": { "state_digest": "digest.interruption" },
+    "current": { "skill_ref": "taiji.cloud_hands@1", "phase_id": "weight_shift", "progress": 0.42, "generation": 5, "controller_revision": "controller@2", "constraint_revision": "constraints@3", "lease_id": "lease.new" },
+    "gates": { "model_valid": true, "contact_valid": true, "inputs_bounded": true, "controller_valid": true, "capture_region": true, "bridge_residual_ok": true, "deadline_ok": true },
+    "candidates": [
+      { "mode": "exact_phase", "admitted": true, "bridge_ref": "taiji.bridge.exact@1" },
+      { "mode": "compatible_phase", "admitted": true, "compatible_phase_refs": ["weight_shift"], "bridge_ref": "taiji.bridge.compatible@1" },
+      { "mode": "checkpoint", "admitted": true, "checkpoint_ref": "taiji.checkpoint.shift@1", "checkpoint_complete": true, "bridge_ref": "taiji.bridge.checkpoint@1" },
+      { "mode": "replan_remaining", "admitted": true, "remaining_task_set_ref": "taiji.resume@1", "bridge_ref": "taiji.bridge.replan@1" }
+    ]
+  }
+}
