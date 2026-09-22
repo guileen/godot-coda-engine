@@ -1,0 +1,59 @@
+{
+  "page": "CODA Demo Suite Launcher",
+  "user_task": "Choose a demo and inspect report-backed evidence and boundary",
+  "semantic_hierarchy": [
+    "six demo selector cards",
+    "scene screenshot or report-data diagram",
+    "timeline/evidence path",
+    "decision facts",
+    "evidence selector and source report",
+    "proof boundary"
+  ],
+  "states": {
+    "initial": "D1 selected; report-derived diagram visible",
+    "screenshot": "D2/D3 selected; static report screenshot visible",
+    "diagram": "D1/D4/D5/D6 selected; report-derived diagram visible",
+    "evidence_detail": "evidence item selected; report detail appended"
+  },
+  "actions": [
+    "activate a demo card by pointer or keyboard",
+    "activate evidence item",
+    "open source report"
+  ],
+  "invariants": [
+    "six cards map to generated reports",
+    "only D2/D3 display demo screenshots",
+    "D1/D4/D5/D6 display report data diagrams",
+    "no horizontal overflow at 390/768/1440 CSS px",
+    "no browser console/page errors"
+  ],
+  "scroll_model": "document scroll; full-page initial capture at scrollTop zero",
+  "comparison_contract": {
+    "type": "single-sided diagnostic; no approved reference",
+    "functional_anchor": "report-bound demo catalog and evidence zones",
+    "scroll_anchor": "document top",
+    "viewports_css": [
+      {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844
+      },
+      {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000
+      }
+    ],
+    "dpr": 1,
+    "device_mode": "desktop emulation; touch disabled",
+    "language": "zh-CN",
+    "theme": "dark",
+    "data_fixture": "generated six-report manifest",
+    "action_sequence": "load D1 and capture, then activate D1-D6 and check report/evidence bindings"
+  }
+}

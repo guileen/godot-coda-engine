@@ -71,6 +71,77 @@ try {
   launcherDataCheck.error = error.message;
 }
 
+const launcherVisualCheck = { directory: "tests/reports/demos/launcher-visual", passes: false, cases: [], errors: [] };
+try {
+  const base = launcherVisualCheck.directory;
+  const report = JSON.parse(await readFile(resolve(root, `${base}/capture-report.json`), "utf8"));
+  const pageModel = JSON.parse(await readFile(resolve(root, `${base}/page_model.json`), "utf8"));
+  launcherVisualCheck.report_type = report.report_type;
+  launcherVisualCheck.verdict = report.verdict;
+  launcherVisualCheck.source_fingerprints = report.source_fingerprints ?? [];
+  launcherVisualCheck.single_sided_diagnostic = report.evidence_role === "diagnostic"
+    && report.verdict === "PARTIAL"
+    && pageModel.comparison_contract?.type === "single-sided diagnostic; no approved reference";
+  if (!launcherVisualCheck.single_sided_diagnostic) launcherVisualCheck.errors.push("visual evidence must remain explicitly diagnostic without an approved reference");
+  for (const source of report.source_fingerprints ?? []) {
+    if (await sha256(source.file) !== source.sha256) launcherVisualCheck.errors.push(`${source.file} changed after visual capture`);
+  }
+  if (!report.source_fingerprints?.some((source) => source.file === "demos/launcher/index.html")
+    || !report.source_fingerprints?.some((source) => source.file === "demos/launcher/demo-data.js")) {
+    launcherVisualCheck.errors.push("capture is not bound to the current launcher and report manifest");
+  }
+  if (report.environment?.errors?.length) launcherVisualCheck.errors.push("browser errors are recorded");
+  const expectedCases = [
+    { name: "mobile-390", width: 390, height: 844, columns: 1 },
+    { name: "tablet-768", width: 768, height: 1024, columns: 2 },
+    { name: "desktop-1440", width: 1440, height: 1000, columns: 3 },
+  ];
+  const reportedCases = new Map((report.captures ?? []).map((item) => [item.case_id, item]));
+  if (reportedCases.size !== expectedCases.length) launcherVisualCheck.errors.push("expected exactly three viewport cases");
+  for (const expected of expectedCases) {
+    const id = `launcher-${expected.name}`;
+    const item = reportedCases.get(id);
+    const check = { case_id: id, viewport_css: { width: expected.width, height: expected.height }, screenshot_valid: false, state_valid: false, computed_style_valid: false };
+    if (!item) {
+      launcherVisualCheck.cases.push(check);
+      launcherVisualCheck.errors.push(`${id} is missing`);
+      continue;
+    }
+    const screenshotPath = `${base}/${expected.name}.png`;
+    const statePath = `${base}/${expected.name}.state.json`;
+    const stylePath = `${base}/${expected.name}.computed-style.json`;
+    const png = await readFile(resolve(root, screenshotPath)).catch(() => null);
+    const state = JSON.parse(await readFile(resolve(root, statePath), "utf8").catch(() => "{}"));
+    const computed = JSON.parse(await readFile(resolve(root, stylePath), "utf8").catch(() => "{}"));
+    const pngWidth = png?.readUInt32BE(16);
+    const pngHeight = png?.readUInt32BE(20);
+    check.screenshot_valid = Boolean(png && png.toString("hex", 0, 8) === "89504e470d0a1a0a"
+      && pngWidth === expected.width
+      && pngHeight === item.screenshot_pixels?.height
+      && createHash("sha256").update(png).digest("hex") === item.sha256);
+    check.state_valid = state.evidence_role === "diagnostic"
+      && state.viewport_css?.width === expected.width
+      && state.viewport_css?.height === expected.height
+      && state.grid_columns === expected.columns
+      && state.horizontal_overflow === false
+      && state.interaction_checks?.length === 6
+      && item.interaction_check_count === 6;
+    check.computed_style_valid = computed.viewport_observed?.innerWidth === expected.width
+      && computed.viewport_observed?.innerHeight === expected.height
+      && Array.isArray(computed.elements)
+      && ["main", ".grid", ".zones", ".zone.scene", ".card", "#scene-copy", "#decision", "#evidence"].every((selector) => computed.elements.some((element) => element.selector === selector));
+    launcherVisualCheck.cases.push(check);
+    if (!check.screenshot_valid) launcherVisualCheck.errors.push(`${id} screenshot dimensions or digest mismatch`);
+    if (!check.state_valid) launcherVisualCheck.errors.push(`${id} state/interaction evidence is incomplete`);
+    if (!check.computed_style_valid) launcherVisualCheck.errors.push(`${id} computed-style evidence is incomplete`);
+  }
+  launcherVisualCheck.passes = launcherVisualCheck.errors.length === 0
+    && launcherVisualCheck.cases.length === expectedCases.length
+    && report.status === "PASS_DOM_INTERACTION_AND_THREE_VIEWPORT_CAPTURE; VISUAL_REFERENCE_COMPARISON_PENDING";
+} catch (error) {
+  launcherVisualCheck.errors.push(error.message);
+}
+
 // Only D2/D3 contain actual demo captures. The other legacy PNGs are launcher previews.
 const visualFiles = {
   D2: ["d2-idle.png", "d2-interrupted.png"],
@@ -111,6 +182,8 @@ const requiredFiles = [
   "demos/launcher/index.html",
   "demos/launcher/demo-data.js",
   "demos/launcher/README.md",
+  "tests/reports/demos/launcher-visual/capture-report.json",
+  "tests/reports/demos/launcher-visual/page_model.json",
   "demos/d3-skeleton-transition/scripts/d3_skeleton_transition.gd",
   "demos/d3-skeleton-transition/scripts/d3_expression_adapter.gd",
   "tests/reports/demos/d3-skeleton-transition-smoke.json",
@@ -139,6 +212,7 @@ const externalGates = [
 
 const localEvidencePass = reportChecks.every((item) => item.report_exists && item.replay_exists)
   && launcherDataCheck.exists && launcherDataCheck.parses && launcherDataCheck.matches_reports
+  && launcherVisualCheck.passes
   && requiredFileChecks.every((item) => item.exists)
   && visualChecks.every((item) => item.exists)
   && visualDistinction.captured_demo_states_have_unique_hashes
@@ -151,7 +225,7 @@ const report = {
   schema_version: 1,
   source: "tasks.md",
   status: localEvidencePass ? "LOCAL_INDEX_AND_EVIDENCE_PASS_EXTERNAL_GATES_PENDING" : "LOCAL_INDEX_INCOMPLETE",
-  local_evidence: { demo_reports_and_replays: reportChecks, launcher_data: launcherDataCheck, visual_files: visualChecks, visual_distinction: visualDistinction, required_files: requiredFileChecks, tasks_md_links: linkChecks },
+  local_evidence: { demo_reports_and_replays: reportChecks, launcher_data: launcherDataCheck, launcher_visual_evidence: launcherVisualCheck, visual_files: visualChecks, visual_distinction: visualDistinction, required_files: requiredFileChecks, tasks_md_links: linkChecks },
   pending_unchecked_task_rows: pendingTaskLines,
   external_gates: externalGates,
   interpretation: "This audit verifies the index and locally available evidence only. It never upgrades an external, perception, calibration, hardware, or owner-decision gate.",

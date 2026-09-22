@@ -11,9 +11,10 @@
     .badge { border:1px solid #386486; padding:7px 11px; border-radius:99px; color:var(--blue); white-space:nowrap; }
     .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; } .card { background:linear-gradient(145deg,#142640,#0d1929); border:1px solid var(--line); border-radius:14px; padding:18px; min-height:190px; box-shadow:0 12px 30px #0003; } .card.active { border-color:#4e9c7a; }
     .card-head { display:flex; justify-content:space-between; gap:12px; } .id { color:var(--blue); font-weight:700; } .status { font-size:12px; color:var(--green); } .status.pending { color:var(--yellow); } .status.blocked { color:var(--red); } .card h3 { margin:13px 0 6px; font-size:18px; } .card ul { padding-left:18px; color:var(--muted); }
-    .zones { display:grid; grid-template-columns:1.15fr 1fr 1fr 1fr; gap:12px; margin-top:22px; } .zone { min-height:150px; background:#0c1929d9; border:1px solid var(--line); border-radius:12px; padding:15px; } .zone.scene { grid-row:span 2; } .zone h3 { margin:0 0 8px; font-size:14px; color:var(--blue); text-transform:uppercase; letter-spacing:.08em; } .metric { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid #ffffff0b; } .metric span:last-child { text-align:right; overflow-wrap:anywhere; } #decision { display:block; } .ok { color:var(--green); } .warn { color:var(--yellow); } .fail { color:var(--red); }
+    .zones { display:grid; grid-template-columns:1.15fr 1fr 1fr 1fr; gap:12px; margin-top:22px; } .zone { min-height:150px; background:#0c1929d9; border:1px solid var(--line); border-radius:12px; padding:15px; } .zone.scene { grid-row:span 2; } .zone h3 { margin:0 0 8px; font-size:14px; color:var(--blue); text-transform:uppercase; letter-spacing:.08em; } .metric { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid #ffffff0b; } .metric span { min-width:0; } .metric span:last-child { text-align:right; overflow-wrap:anywhere; } #decision { display:block; } .ok { color:var(--green); } .warn { color:var(--yellow); } .fail { color:var(--red); }
     img { width:100%; border-radius:8px; border:1px solid #3a5575; margin-top:6px; } .scene-diagram { display:grid; gap:8px; margin-top:12px; } .scene-diagram[hidden],img[hidden] { display:none; } .diagram-node { padding:10px 12px; border:1px solid #3a5575; border-radius:8px; color:var(--text); background:linear-gradient(120deg,#18304c,#101d30); overflow-wrap:anywhere; } .diagram-node small { display:block; margin-top:3px; color:var(--muted); } .chips { display:flex; flex-wrap:wrap; gap:6px; } .chip { padding:4px 7px; border-radius:5px; background:#18304c; color:var(--muted); font-size:12px; } button.chip { min-height:44px; border:1px solid transparent; font:inherit; text-align:left; cursor:pointer; } button.chip:hover { border-color:#5b83a8; color:var(--text); } button.chip:focus-visible,.card:focus-visible { outline:3px solid #f1c56b; outline-offset:3px; } button.chip[aria-pressed="true"] { border-color:var(--blue); color:var(--text); background:#234566; } .scenario-list { display:grid; gap:6px; margin-top:8px; } .status-line { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; } .source-link { display:inline-flex; align-items:center; min-height:44px; color:var(--blue); } footer { margin-top:20px; color:var(--muted); font-size:12px; }
-    @media (max-width:900px) { .grid,.zones { grid-template-columns:1fr; } .zone.scene { grid-row:auto; } header { display:block; } .badge { display:inline-block; margin-top:12px; } }
+    @media (max-width:900px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .zones { grid-template-columns:1fr; } .zone.scene { grid-row:auto; } header { display:block; } .badge { display:inline-block; margin-top:12px; } }
+    @media (max-width:560px) { .grid { grid-template-columns:1fr; } main { padding:22px; } }
   </style>
 </head>
 <body>
@@ -41,6 +42,7 @@ const catalog = [
 const reports = window.CODA_DEMO_REPORTS || {};
 const cards = document.querySelector('#cards');
 const nodes = Object.fromEntries(['scene-copy','scene-image','scene-diagram','timeline','decision','scenarios','evidence','boundary'].map(id => [id, document.getElementById(id)]));
+const compactFingerprint = value => typeof value === 'string' && value.length > 24 ? `${value.slice(0, 18)}…` : value;
 const row = (label, value, tone = '') => {
   const el = document.createElement('div'); el.className = 'metric';
   const left = document.createElement('span'); left.textContent = label;
@@ -50,12 +52,12 @@ const row = (label, value, tone = '') => {
 function evidenceItems(id, evidence) {
   if (id === 'D1') return [
     { label:'Source → plan → generated', value:evidence.source_to_plan_to_generated ? 'verified' : 'missing', detail:`source map entries: ${evidence.source_map_entries}` },
-    { label:'Plan fingerprint', value:evidence.plan_fingerprint || 'not recorded', detail:`asset: ${evidence.event_asset || 'not recorded'}` },
-    { label:'Replay evidence', value:evidence.replay?.sha256 || 'not recorded', detail:evidence.replay?.file || 'no replay file' },
+    { label:'Plan fingerprint', value:compactFingerprint(evidence.plan_fingerprint || 'not recorded'), detail:`full: ${evidence.plan_fingerprint || 'not recorded'}; asset: ${evidence.event_asset || 'not recorded'}` },
+    { label:'Replay evidence', value:compactFingerprint(evidence.replay?.sha256 || 'not recorded'), detail:`${evidence.replay?.file || 'no replay file'}; full digest: ${evidence.replay?.sha256 || 'not recorded'}` },
   ];
   if (id === 'D2') return [
     { label:'Final state', value:evidence.final_state || 'not recorded', detail:`cancelled effects: ${(evidence.cancelled_effects || []).join(', ') || 'none'}` },
-    { label:'Stale completions rejected', value:evidence.stale_completion_rejections ?? 'not recorded', detail:evidence.replay_trace_fingerprint || 'no replay fingerprint' },
+    { label:'Stale completions rejected', value:evidence.stale_completion_rejections ?? 'not recorded', detail:compactFingerprint(evidence.replay_trace_fingerprint || 'no replay fingerprint') },
     ...(evidence.visual_states || []).map(item => ({ label:`Visual: ${item.state}`, value:`generation ${item.generation}`, detail:item.file })),
   ];
   if (id === 'D3') return [
@@ -117,7 +119,10 @@ function selectDemo(demo) {
   nodes.timeline.replaceChildren(...items.slice(0, 5).map((item, index) => row(`${index + 1}. ${item.label}`, item.value, item.tone || '')));
   nodes.decision.replaceChildren(...decisionFacts(demo.id, evidence).map(([label, value]) => row(label, value)));
   const reportLink = document.createElement('a'); reportLink.className = 'source-link'; reportLink.href = `../../tests/reports/demos/${demo.report}`; reportLink.target = '_blank'; reportLink.rel = 'noreferrer'; reportLink.textContent = `打开 ${demo.report}`;
-  nodes.evidence.replaceChildren(row('status', report.status, report.status.startsWith('PASS') ? 'ok' : 'warn'), row('evidence mode', isSmoke ? 'Godot headless smoke' : 'offline report'), reportLink);
+  const statusSummary = report.status.startsWith('PASS') ? `PASS · ${isSmoke ? 'Godot smoke' : report.status.includes('GODOT_SMOKE') ? 'offline + Godot smoke' : 'offline'}` : report.status;
+  const statusRow = row('status', statusSummary, report.status.startsWith('PASS') ? 'ok' : 'warn');
+  statusRow.lastElementChild.title = `source report status: ${report.status}`;
+  nodes.evidence.replaceChildren(statusRow, row('evidence mode', isSmoke ? 'Godot headless smoke' : report.status.includes('GODOT_SMOKE') ? 'offline report + Godot smoke' : 'offline report'), reportLink);
   nodes.scenarios.replaceChildren(...items.map((item, index) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = `chip ${item.tone || ''}`; button.textContent = item.label; button.setAttribute('aria-pressed', String(index === 0));
     button.addEventListener('click', () => {
@@ -133,10 +138,11 @@ cards.replaceChildren(...catalog.map(demo => {
   const article = document.createElement('article'); article.className = 'card'; article.dataset.id = demo.id; article.tabIndex = 0; article.setAttribute('role','button'); article.setAttribute('aria-pressed','false');
   const head = document.createElement('div'); head.className = 'card-head';
   const id = document.createElement('span'); id.className='id'; id.textContent=demo.id;
-  const status = document.createElement('span'); status.className=`status ${report?.status?.startsWith('PASS') ? '' : 'pending'}`; status.textContent=report ? `${report.status?.startsWith('PASS') ? 'PASS' : 'CHECK'} · ${report.report_type === 'CODA_DemoSmokeReport' ? 'Godot smoke' : 'offline'}` : '报告缺失';
+  const hasGodotSmoke = report?.report_type === 'CODA_DemoSmokeReport' || report?.status?.includes('GODOT_SMOKE');
+  const status = document.createElement('span'); status.className=`status ${report?.status?.startsWith('PASS') ? '' : 'pending'}`; status.textContent=report ? `${report.status?.startsWith('PASS') ? 'PASS' : 'CHECK'} · ${hasGodotSmoke && report.report_type !== 'CODA_DemoSmokeReport' ? 'offline + Godot smoke' : hasGodotSmoke ? 'Godot smoke' : 'offline'}` : '报告缺失';
   const title = document.createElement('h3'); title.textContent=demo.title;
   const summary = document.createElement('p'); summary.textContent=demo.summary;
-  const mode = document.createElement('p'); mode.textContent=report?.report_type === 'CODA_DemoSmokeReport' ? 'Godot headless smoke' : '离线报告';
+  const mode = document.createElement('p'); mode.textContent=report?.report_type === 'CODA_DemoSmokeReport' ? 'Godot headless smoke' : report?.status?.includes('GODOT_SMOKE') ? '离线报告 + Godot smoke' : '离线报告';
   head.append(id,status); article.append(head,title,summary,mode);
   article.addEventListener('click', () => selectDemo(demo));
   article.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectDemo(demo); } });

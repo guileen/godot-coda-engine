@@ -1,0 +1,87 @@
+{
+  "report_type": "CODA_LauncherVisualDiagnostic",
+  "schema_version": 1,
+  "status": "PASS_DOM_INTERACTION_AND_THREE_VIEWPORT_CAPTURE; VISUAL_REFERENCE_COMPARISON_PENDING",
+  "source_revision": "working tree based on 801303d; pre-commit",
+  "source_fingerprints": [
+    {
+      "file": "demos/launcher/index.html",
+      "sha256": "45ac884b5838e0de5f4388c44c20f64c6300140cdafd6425f125f8bbdb721da5"
+    },
+    {
+      "file": "demos/launcher/demo-data.js",
+      "sha256": "aa3100dc182705016aa999bceb809154166fcfe0099e900a29b5fdd4a7bfd86d"
+    }
+  ],
+  "source_of_truth": "implementation only; no approved reference supplied",
+  "evidence_role": "diagnostic",
+  "verdict": "PARTIAL",
+  "visual_review_status": "single-sided diagnostic; not a reference-based visual pass",
+  "page_model_artifact": "page_model.json",
+  "route": "demos/launcher/index.html",
+  "environment": {
+    "browser": "Google Chrome headless via Playwright",
+    "language": "zh-CN",
+    "color_scheme": "dark",
+    "reduced_motion": "reduce",
+    "device_scale_factor": 1,
+    "capture_time": "2026-09-22T23:25:34.197Z",
+    "errors": []
+  },
+  "captures": [
+    {
+      "case_id": "launcher-mobile-390",
+      "screenshot": "mobile-390.png",
+      "screenshot_pixels": {
+        "width": 390,
+        "height": 2586
+      },
+      "sha256": "3fb0937ad374aecb9eb1886f26e4c37175113735ebde63abd741808fa1452902",
+      "state": "mobile-390.state.json",
+      "computed_style": "mobile-390.computed-style.json",
+      "viewport_css": {
+        "width": 390,
+        "height": 844
+      },
+      "grid_columns": 1,
+      "horizontal_overflow": false,
+      "interaction_check_count": 6
+    },
+    {
+      "case_id": "launcher-tablet-768",
+      "screenshot": "tablet-768.png",
+      "screenshot_pixels": {
+        "width": 768,
+        "height": 1882
+      },
+      "sha256": "26479d2f143fc20f5309cbcff79102fefb7538b48cb9971f04788c5713c697c3",
+      "state": "tablet-768.state.json",
+      "computed_style": "tablet-768.computed-style.json",
+      "viewport_css": {
+        "width": 768,
+        "height": 1024
+      },
+      "grid_columns": 2,
+      "horizontal_overflow": false,
+      "interaction_check_count": 6
+    },
+    {
+      "case_id": "launcher-desktop-1440",
+      "screenshot": "desktop-1440.png",
+      "screenshot_pixels": {
+        "width": 1440,
+        "height": 1004
+      },
+      "sha256": "0b1e2ebf007183f2e48751d518aa1f06d74a2b961bd4168759fced4a114711b6",
+      "state": "desktop-1440.state.json",
+      "computed_style": "desktop-1440.computed-style.json",
+      "viewport_css": {
+        "width": 1440,
+        "height": 1000
+      },
+      "grid_columns": 3,
+      "horizontal_overflow": false,
+      "interaction_check_count": 6
+    }
+  ]
+}

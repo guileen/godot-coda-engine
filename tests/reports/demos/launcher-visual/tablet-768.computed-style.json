@@ -1,0 +1,190 @@
+{
+  "viewport_observed": {
+    "innerWidth": 768,
+    "innerHeight": 1024,
+    "visualViewport": {
+      "width": 768,
+      "height": 1024,
+      "scale": 1
+    },
+    "devicePixelRatio": 1
+  },
+  "elements": [
+    {
+      "selector": "main",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 768,
+        "height": 1882.1875
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(234, 243, 255)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "border": "0px none rgb(234, 243, 255)",
+        "borderRadius": "0px",
+        "padding": "34px",
+        "display": "block",
+        "gridTemplateColumns": "none"
+      }
+    },
+    {
+      "selector": ".grid",
+      "rect": {
+        "x": 34,
+        "y": 182.984375,
+        "width": 700,
+        "height": 598
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(234, 243, 255)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "border": "0px none rgb(234, 243, 255)",
+        "borderRadius": "0px",
+        "padding": "0px",
+        "display": "grid",
+        "gridTemplateColumns": "343px 343px"
+      }
+    },
+    {
+      "selector": ".zones",
+      "rect": {
+        "x": 34,
+        "y": 802.984375,
+        "width": 700,
+        "height": 1007.8125
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(234, 243, 255)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "border": "0px none rgb(234, 243, 255)",
+        "borderRadius": "0px",
+        "padding": "0px",
+        "display": "grid",
+        "gridTemplateColumns": "700px"
+      }
+    },
+    {
+      "selector": ".zone.scene",
+      "rect": {
+        "x": 34,
+        "y": 802.984375,
+        "width": 700,
+        "height": 295.25
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(234, 243, 255)",
+        "backgroundColor": "rgba(12, 25, 41, 0.85)",
+        "border": "1px solid rgb(40, 64, 93)",
+        "borderRadius": "12px",
+        "padding": "15px",
+        "display": "block",
+        "gridTemplateColumns": "none"
+      }
+    },
+    {
+      "selector": ".card",
+      "rect": {
+        "x": 34,
+        "y": 182.984375,
+        "width": 343,
+        "height": 190
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(234, 243, 255)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "border": "1px solid rgb(78, 156, 122)",
+        "borderRadius": "14px",
+        "padding": "18px",
+        "display": "block",
+        "gridTemplateColumns": "none"
+      }
+    },
+    {
+      "selector": "#scene-copy",
+      "rect": {
+        "x": 50,
+        "y": 847.28125,
+        "width": 668,
+        "height": 20.296875
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(155, 177, 202)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "border": "0px none rgb(155, 177, 202)",
+        "borderRadius": "0px",
+        "padding": "0px",
+        "display": "block",
+        "gridTemplateColumns": "none"
+      }
+    },
+    {
+      "selector": "#decision",
+      "rect": {
+        "x": 50,
+        "y": 1332.71875,
+        "width": 668,
+        "height": 70.59375
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(234, 243, 255)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "border": "0px none rgb(234, 243, 255)",
+        "borderRadius": "0px",
+        "padding": "0px",
+        "display": "block",
+        "gridTemplateColumns": "none"
+      }
+    },
+    {
+      "selector": "#evidence",
+      "rect": {
+        "x": 50,
+        "y": 1649.90625,
+        "width": 668,
+        "height": 114.59375
+      },
+      "visible": true,
+      "computed": {
+        "fontFamily": "ui-sans-serif, system-ui, -apple-system, \"PingFang SC\", sans-serif",
+        "fontSize": "14px",
+        "lineHeight": "20.3px",
+        "color": "rgb(234, 243, 255)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "border": "0px none rgb(234, 243, 255)",
+        "borderRadius": "0px",
+        "padding": "0px",
+        "display": "block",
+        "gridTemplateColumns": "none"
+      }
+    }
+  ]
+}

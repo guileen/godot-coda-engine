@@ -1,0 +1,89 @@
+{
+  "case_id": "launcher-tablet-768",
+  "evidence_role": "diagnostic",
+  "source_of_truth": "implementation only; no approved visual baseline",
+  "route": "demos/launcher/index.html",
+  "viewport_css": {
+    "width": 768,
+    "height": 1024
+  },
+  "observed_viewport": {
+    "innerWidth": 768,
+    "innerHeight": 1024,
+    "visualViewport": {
+      "width": 768,
+      "height": 1024,
+      "scale": 1
+    },
+    "devicePixelRatio": 1
+  },
+  "device_mode": "desktop emulation; touch disabled",
+  "language": "zh-CN",
+  "theme": "dark",
+  "fixture": "generated six-report manifest",
+  "scroll_top_at_capture": 0,
+  "trigger_actions": [
+    "load and settle at initial D1",
+    "capture full page",
+    "select D1-D6 and validate report/screenshot/diagram binding"
+  ],
+  "screenshot": "tablet-768.png",
+  "screenshot_pixels": {
+    "width": 768,
+    "height": 1882
+  },
+  "artifact_coordinate_space": "device-pixels; DPR=1",
+  "sha256": "26479d2f143fc20f5309cbcff79102fefb7538b48cb9971f04788c5713c697c3",
+  "grid_columns": 2,
+  "horizontal_overflow": false,
+  "interaction_checks": [
+    {
+      "demo": "D1",
+      "report": "d1-semantic-authoring.json",
+      "selected": true,
+      "image_visible": false,
+      "diagram_nodes": 3,
+      "horizontal_overflow": false
+    },
+    {
+      "demo": "D2",
+      "report": "d2-interruptible-behavior.json",
+      "selected": true,
+      "image_visible": true,
+      "diagram_nodes": 0,
+      "horizontal_overflow": false
+    },
+    {
+      "demo": "D3",
+      "report": "d3-skeleton-transition-smoke.json",
+      "selected": true,
+      "image_visible": true,
+      "diagram_nodes": 0,
+      "horizontal_overflow": false
+    },
+    {
+      "demo": "D4",
+      "report": "d4-multifidelity-planning.json",
+      "selected": true,
+      "image_visible": false,
+      "diagram_nodes": 4,
+      "horizontal_overflow": false
+    },
+    {
+      "demo": "D5",
+      "report": "d5-anytime-safety-boundary.json",
+      "selected": true,
+      "image_visible": false,
+      "diagram_nodes": 4,
+      "horizontal_overflow": false
+    },
+    {
+      "demo": "D6",
+      "report": "d6-failure-boundary-gallery.json",
+      "selected": true,
+      "image_visible": false,
+      "diagram_nodes": 3,
+      "horizontal_overflow": false
+    }
+  ]
+}
