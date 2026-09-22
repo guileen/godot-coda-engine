@@ -5,7 +5,7 @@ extends RefCounted
 const ASSET_EXTENSION := ".gse.json"
 
 func load_asset(path: String) -> Dictionary:
-	if FileAccess.file_exists(ProjectSettings.globalize_path(path + ".bak")) or FileAccess.file_exists(ProjectSettings.globalize_path(path + ".ownership.json.bak")):
+	if _transaction_artifacts_exist(path) or FileAccess.file_exists(ProjectSettings.globalize_path(path + ".bak")) or FileAccess.file_exists(ProjectSettings.globalize_path(path + ".ownership.json.bak")):
 		return {"asset": {}, "receipt": _receipt("ASSET_TRANSACTION_RECOVERY_REQUIRED", "检测到未完成的资产/owner 替换；恢复备份前拒绝读取。"), "ownership": {}, "ownership_receipt": _receipt("ASSET_TRANSACTION_RECOVERY_REQUIRED", "检测到未完成的资产/owner 替换。"), "ownership_persisted": true}
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -48,7 +48,7 @@ func load_ownership(path: String, asset: Dictionary) -> Dictionary:
 			return {"record": parsed, "receipt": _receipt("AUTHORING_OWNERSHIP_SOURCE_MISMATCH", "owner sidecar 与当前 EventAsset 不匹配；拒绝写入。"), "persisted": true}
 	else:
 		var source_ref := String(source.get("source_ref", ""))
-		if source_ref.is_empty() or source_ref.begins_with("/") or source_ref.split("/").has("..") or source_ref.contains("\\"):
+		if source_ref.is_empty() or source_ref.begins_with("/") or source_ref.split("/").has("..") or source_ref.contains("\\") or source_ref != path.trim_prefix("res://").trim_suffix(ASSET_EXTENSION) + ".coda":
 			return {"record": parsed, "receipt": _receipt("INVALID_AUTHORING_SOURCE_REF", "text_owned source_ref 必须是项目内相对路径。"), "persisted": true}
 		var owned_source_path := "res://" + source_ref
 		if FileAccess.file_exists(ProjectSettings.globalize_path(owned_source_path + ".bak")) or not FileAccess.file_exists(owned_source_path):
@@ -104,69 +104,25 @@ func save_asset(path: String, asset: Dictionary, expected_asset: Variant = null,
 	var owner_mode := String(previous_ownership.get("authoring_mode", authoring_mode))
 	var next_revision := int(previous_ownership.get("owner_revision", -1)) + 1
 	var owner := _make_ownership(path, checker.data, owner_mode, next_revision)
-	var temp_path := path + ".tmp"
-	var owner_temp_path := ownership_path + ".tmp"
-	var asset_file := FileAccess.open(temp_path, FileAccess.WRITE)
-	if asset_file == null:
-		return {"receipt": _receipt("ASSET_WRITE_FAILED", "无法写入临时 EventAsset。"), "saved": false}
-	asset_file.store_string(JSON.stringify(checker.data, "  ") + "\n")
-	asset_file.close()
-	var owner_file := FileAccess.open(owner_temp_path, FileAccess.WRITE)
-	if owner_file == null:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
-		return {"receipt": _receipt("AUTHORING_OWNERSHIP_WRITE_FAILED", "无法暂存 AuthoringOwnership sidecar。"), "saved": false}
-	owner_file.store_string(JSON.stringify(owner, "  ") + "\n")
-	owner_file.close()
-	var absolute_temp_path := ProjectSettings.globalize_path(temp_path)
-	var absolute_owner_temp_path := ProjectSettings.globalize_path(owner_temp_path)
-	var backup_path := absolute_path + ".bak"
-	var owner_backup_path := absolute_ownership_path + ".bak"
-	if FileAccess.file_exists(backup_path) or FileAccess.file_exists(owner_backup_path):
-		DirAccess.remove_absolute(absolute_temp_path)
-		DirAccess.remove_absolute(absolute_owner_temp_path)
-		return {"receipt": _receipt("ASSET_BACKUP_EXISTS", "检测到未完成的 EventAsset/ownership 替换；请先恢复或移走 .bak。"), "saved": false}
+	if _transaction_artifacts_exist(path) or FileAccess.file_exists(ProjectSettings.globalize_path(path + ".bak")) or FileAccess.file_exists(ProjectSettings.globalize_path(ownership_path + ".bak")):
+		return {"receipt": _receipt("ASSET_TRANSACTION_RECOVERY_REQUIRED", "检测到待恢复事务；请先在 Event Dock 执行恢复。"), "saved": false}
 	if expected_asset != null and create_expected:
 		if FileAccess.file_exists(absolute_path) or FileAccess.file_exists(absolute_ownership_path):
-			DirAccess.remove_absolute(absolute_temp_path)
-			DirAccess.remove_absolute(absolute_owner_temp_path)
 			return {"receipt": _receipt("ASSET_SOURCE_CHANGED", "新 EventAsset 路径已被占用；本次事务未写入。"), "saved": false}
 	elif expected_asset != null:
 		var latest := load_asset(path)
 		if not latest.receipt.ok or latest.asset != expected_asset or not latest.ownership_receipt.ok or int(latest.ownership.get("owner_revision", -1)) != int(previous_ownership.get("owner_revision", -1)):
-			DirAccess.remove_absolute(absolute_temp_path)
-			DirAccess.remove_absolute(absolute_owner_temp_path)
 			return {"receipt": _receipt("ASSET_SOURCE_CHANGED", "EventAsset 或 owner revision 在事务准备期间已变化；本次事务未写入。"), "saved": false}
 	if existed_before:
 		var latest_state := load_asset(path)
 		if not latest_state.receipt.ok or not latest_state.ownership_receipt.ok or latest_state.asset != previous_asset or int(latest_state.ownership.get("owner_revision", -1)) != int(previous_ownership.get("owner_revision", -1)):
-			DirAccess.remove_absolute(absolute_temp_path)
-			DirAccess.remove_absolute(absolute_owner_temp_path)
 			return {"receipt": _receipt("AUTHORING_SOURCE_CHANGED", "EventAsset 或 owner revision 已变化；本次事务未写入。"), "saved": false}
-	var had_owner := FileAccess.file_exists(absolute_ownership_path)
-	if existed_before and DirAccess.rename_absolute(absolute_path, backup_path) != OK:
-		DirAccess.remove_absolute(absolute_temp_path)
-		DirAccess.remove_absolute(absolute_owner_temp_path)
-		return {"receipt": _receipt("ASSET_BACKUP_FAILED", "无法保护原始 EventAsset，未执行替换。"), "saved": false}
-	if had_owner and DirAccess.rename_absolute(absolute_ownership_path, owner_backup_path) != OK:
-		if existed_before:
-			DirAccess.rename_absolute(backup_path, absolute_path)
-		DirAccess.remove_absolute(absolute_temp_path)
-		DirAccess.remove_absolute(absolute_owner_temp_path)
-		return {"receipt": _receipt("AUTHORING_OWNERSHIP_BACKUP_FAILED", "无法保护原 owner sidecar，资产已恢复。"), "saved": false}
-	if DirAccess.rename_absolute(absolute_temp_path, absolute_path) != OK or DirAccess.rename_absolute(absolute_owner_temp_path, absolute_ownership_path) != OK:
-		if FileAccess.file_exists(absolute_path): DirAccess.remove_absolute(absolute_path)
-		if FileAccess.file_exists(absolute_ownership_path): DirAccess.remove_absolute(absolute_ownership_path)
-		if existed_before and FileAccess.file_exists(backup_path): DirAccess.rename_absolute(backup_path, absolute_path)
-		if had_owner and FileAccess.file_exists(owner_backup_path): DirAccess.rename_absolute(owner_backup_path, absolute_ownership_path)
-		DirAccess.remove_absolute(absolute_temp_path)
-		DirAccess.remove_absolute(absolute_owner_temp_path)
-		return {"receipt": _receipt("ASSET_RENAME_FAILED", "无法完成 EventAsset/ownership 替换；已尝试恢复原版本。"), "saved": false}
-	var cleanup_ok := true
-	if existed_before and DirAccess.remove_absolute(backup_path) != OK: cleanup_ok = false
-	if had_owner and DirAccess.remove_absolute(owner_backup_path) != OK: cleanup_ok = false
-	if not cleanup_ok:
-		return {"receipt": receipt, "saved": true, "ownership": owner, "asset": checker.data, "cleanup_pending": true}
-	return {"receipt": receipt, "saved": true, "ownership": owner, "asset": checker.data}
+	var writes := _commit_file_set(
+		[path, ownership_path],
+		[JSON.stringify(checker.data, "  ") + "\n", JSON.stringify(owner, "  ") + "\n"],
+	)
+	if not writes.ok: return {"receipt": writes.receipt, "saved": false}
+	return {"receipt": receipt, "saved": true, "ownership": owner, "asset": checker.data, "cleanup_pending": writes.cleanup_pending}
 
 func save_text_owned_asset(asset_path: String, source_path: String, source_text: String, asset: Dictionary, expected_owner_revision: int, expected_source_fingerprint: String) -> Dictionary:
 	if asset_path == source_path or asset_path + ".ownership.json" == source_path:
@@ -174,6 +130,8 @@ func save_text_owned_asset(asset_path: String, source_path: String, source_text:
 	var source_ref := source_path.trim_prefix("res://")
 	if not source_path.begins_with("res://") or source_ref.is_empty() or source_ref.begins_with("/") or source_ref.split("/").has("..") or source_ref.contains("\\"):
 		return {"receipt": _receipt("INVALID_AUTHORING_SOURCE_REF", "text_owned 源必须位于项目内并使用相对路径。"), "saved": false}
+	if not asset_path.ends_with(ASSET_EXTENSION) or source_path != asset_path.trim_suffix(ASSET_EXTENSION) + ".coda":
+		return {"receipt": _receipt("INVALID_AUTHORING_SOURCE_REF", "text_owned 源必须是派生 EventAsset 同路径的 canonical .coda 源。"), "saved": false}
 	var checker := GSEOS_EventAsset.new()
 	var receipt: Dictionary = checker.from_dictionary(asset)
 	if not receipt.ok: return {"receipt": receipt, "saved": false}
@@ -229,44 +187,205 @@ func save_text_owned_asset(asset_path: String, source_path: String, source_text:
 	return {"receipt": receipt, "saved": true, "ownership": owner, "asset": checker.data, "cleanup_pending": writes.cleanup_pending}
 
 func _commit_file_set(paths: Array[String], contents: Array[String]) -> Dictionary:
-	var targets: Array[String] = []
-	var temporaries: Array[String] = []
-	var backups: Array[String] = []
-	var existed: Array[bool] = []
+	if paths.size() < 2 or paths.size() > 3 or paths.size() != contents.size():
+		return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "文件事务路径与内容数量无效。")}
+	var transaction_path := paths[0] + ".transaction.json"
+	var committed_path := paths[0] + ".transaction.commit.json"
+	if _transaction_artifacts_exist(paths[0]):
+		return {"ok": false, "receipt": _receipt("ASSET_TRANSACTION_RECOVERY_REQUIRED", "检测到待恢复事务；请先在 Event Dock 执行恢复。")}
+	var files: Array[Dictionary] = []
 	for index in paths.size():
+		if not paths[index].begins_with("res://") or paths[index].trim_prefix("res://").split("/").has("..") or paths.count(paths[index]) > 1:
+			return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "文件事务仅支持项目内、无重复的规范路径。")}
 		var absolute_target := ProjectSettings.globalize_path(paths[index])
 		var absolute_temp := ProjectSettings.globalize_path(paths[index] + ".tmp")
 		var absolute_backup := absolute_target + ".bak"
 		if FileAccess.file_exists(absolute_backup):
-			for temp in temporaries: DirAccess.remove_absolute(temp)
-			return {"ok": false, "receipt": _receipt("ASSET_TRANSACTION_RECOVERY_REQUIRED", "检测到待恢复备份；三文件事务未启动。")}
+			for staged in files: DirAccess.remove_absolute(ProjectSettings.globalize_path(String(staged.path) + ".tmp"))
+			return {"ok": false, "receipt": _receipt("ASSET_TRANSACTION_RECOVERY_REQUIRED", "检测到待恢复暂存或备份；事务未启动。")}
 		var file := FileAccess.open(paths[index] + ".tmp", FileAccess.WRITE)
 		if file == null:
-			for temp in temporaries: DirAccess.remove_absolute(temp)
-			return {"ok": false, "receipt": _receipt("AUTHORING_STAGE_WRITE_FAILED", "无法暂存 text_owned 三文件事务。")}
+			for staged in files: DirAccess.remove_absolute(ProjectSettings.globalize_path(String(staged.path) + ".tmp"))
+			return {"ok": false, "receipt": _receipt("AUTHORING_STAGE_WRITE_FAILED", "无法暂存 authoring 文件事务。")}
 		file.store_string(contents[index])
 		file.close()
-		targets.append(absolute_target)
-		temporaries.append(absolute_temp)
-		backups.append(absolute_backup)
-		existed.append(FileAccess.file_exists(absolute_target))
-	for index in targets.size():
-		if existed[index] and DirAccess.rename_absolute(targets[index], backups[index]) != OK:
-			for restore_index in range(index - 1, -1, -1):
-				if existed[restore_index]: DirAccess.rename_absolute(backups[restore_index], targets[restore_index])
-			for temp in temporaries: DirAccess.remove_absolute(temp)
-			return {"ok": false, "receipt": _receipt("AUTHORING_BACKUP_FAILED", "无法备份三文件事务的旧版本；已尝试恢复。")}
-	for index in targets.size():
-		if DirAccess.rename_absolute(temporaries[index], targets[index]) != OK:
-			for rollback_index in targets.size():
-				if FileAccess.file_exists(targets[rollback_index]): DirAccess.remove_absolute(targets[rollback_index])
-				if existed[rollback_index] and FileAccess.file_exists(backups[rollback_index]): DirAccess.rename_absolute(backups[rollback_index], targets[rollback_index])
-			for temp in temporaries: DirAccess.remove_absolute(temp)
-			return {"ok": false, "receipt": _receipt("AUTHORING_RENAME_FAILED", "无法提交完整的 text_owned 事务；已尝试恢复旧版本。")}
+		var existed := FileAccess.file_exists(absolute_target)
+		files.append({
+			"path": paths[index], "existed": existed,
+			"before_fingerprint": _fingerprint(FileAccess.get_file_as_string(paths[index])) if existed else "",
+			"after_fingerprint": _fingerprint(contents[index]),
+		})
+	var manifest := {"contract_type": "AuthoringFileSetTransaction", "schema_version": 1, "state": "prepared", "files": files}
+	var manifest_text := JSON.stringify(manifest, "  ") + "\n"
+	var journal_temp_path := transaction_path + ".tmp"
+	var journal_file := FileAccess.open(journal_temp_path, FileAccess.WRITE)
+	if journal_file == null:
+		for entry in files: DirAccess.remove_absolute(ProjectSettings.globalize_path(String(entry.path) + ".tmp"))
+		return {"ok": false, "receipt": _receipt("AUTHORING_JOURNAL_WRITE_FAILED", "无法写入事务恢复日志；尚未替换任何源文件。")}
+	journal_file.store_string(manifest_text)
+	journal_file.close()
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(journal_temp_path), ProjectSettings.globalize_path(transaction_path)) != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(journal_temp_path))
+		for entry in files: DirAccess.remove_absolute(ProjectSettings.globalize_path(String(entry.path) + ".tmp"))
+		return {"ok": false, "receipt": _receipt("AUTHORING_JOURNAL_WRITE_FAILED", "无法安装事务恢复日志；尚未替换任何源文件。")}
+	for entry in files:
+		if not entry.existed: continue
+		var target := ProjectSettings.globalize_path(String(entry.path))
+		if DirAccess.rename_absolute(target, target + ".bak") != OK:
+			var rolled_back := recover_transaction(paths[0])
+			return {"ok": false, "receipt": rolled_back.receipt if not rolled_back.ok else _receipt("AUTHORING_BACKUP_FAILED", "无法备份文件事务；已恢复旧版本。")}
+	for entry in files:
+		var target := ProjectSettings.globalize_path(String(entry.path))
+		var temporary := target + ".tmp"
+		if DirAccess.rename_absolute(temporary, target) != OK:
+			var rolled_back := recover_transaction(paths[0])
+			return {"ok": false, "receipt": rolled_back.receipt if not rolled_back.ok else _receipt("AUTHORING_RENAME_FAILED", "无法提交完整的文件事务；已恢复旧版本。")}
+	var commit_temp := committed_path + ".tmp"
+	var commit_file := FileAccess.open(commit_temp, FileAccess.WRITE)
+	if commit_file == null:
+		var rolled_back := recover_transaction(paths[0])
+		return {"ok": false, "receipt": rolled_back.receipt if not rolled_back.ok else _receipt("AUTHORING_COMMIT_MARKER_FAILED", "无法标记事务完成；已恢复旧版本。")}
+	var committed_manifest := manifest.duplicate(true)
+	committed_manifest.state = "committed"
+	commit_file.store_string(JSON.stringify(committed_manifest, "  ") + "\n")
+	commit_file.close()
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(commit_temp), ProjectSettings.globalize_path(committed_path)) != OK:
+		var rolled_back := recover_transaction(paths[0])
+		return {"ok": false, "receipt": rolled_back.receipt if not rolled_back.ok else _receipt("AUTHORING_COMMIT_MARKER_FAILED", "无法标记事务完成；已恢复旧版本。")}
 	var cleanup_pending := false
-	for index in backups.size():
-		if existed[index] and DirAccess.remove_absolute(backups[index]) != OK: cleanup_pending = true
+	for entry in files:
+		var target := ProjectSettings.globalize_path(String(entry.path))
+		if FileAccess.file_exists(target + ".bak") and DirAccess.remove_absolute(target + ".bak") != OK: cleanup_pending = true
+		if FileAccess.file_exists(target + ".tmp") and DirAccess.remove_absolute(target + ".tmp") != OK: cleanup_pending = true
+	if not cleanup_pending:
+		var journal_absolute := ProjectSettings.globalize_path(transaction_path)
+		if FileAccess.file_exists(journal_absolute) and DirAccess.remove_absolute(journal_absolute) != OK:
+			cleanup_pending = true
+		else:
+			var committed_absolute := ProjectSettings.globalize_path(committed_path)
+			if FileAccess.file_exists(committed_absolute) and DirAccess.remove_absolute(committed_absolute) != OK: cleanup_pending = true
 	return {"ok": true, "cleanup_pending": cleanup_pending, "receipt": {"ok": true, "diagnostics": []}}
+
+func recover_transaction(asset_path: String) -> Dictionary:
+	var transaction_path := asset_path + ".transaction.json"
+	var committed_path := asset_path + ".transaction.commit.json"
+	var manifest_path := committed_path if FileAccess.file_exists(ProjectSettings.globalize_path(committed_path)) else transaction_path
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(manifest_path)) and FileAccess.file_exists(ProjectSettings.globalize_path(transaction_path + ".tmp")):
+		manifest_path = transaction_path + ".tmp"
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(manifest_path)):
+		return {"ok": false, "receipt": _receipt("AUTHORING_TRANSACTION_NOT_FOUND", "没有可恢复的 authoring 事务日志。")}
+	var manifest = JSON.parse_string(FileAccess.get_file_as_string(manifest_path))
+	if not manifest is Dictionary or manifest.get("contract_type") != "AuthoringFileSetTransaction" or manifest.get("schema_version") != 1 or manifest.get("state") not in ["prepared", "committed"] or not manifest.get("files", null) is Array:
+		return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "事务恢复日志无效；未更改任何文件。")}
+	var files: Array = manifest.files
+	if files.size() < 2 or files.size() > 3:
+		return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "事务恢复日志中的文件数量无效。")}
+	var seen := {}
+	var contains_asset := false
+	var source_count := 0
+	for entry in files:
+		if not entry is Dictionary or not entry.get("path", null) is String:
+			return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "事务恢复日志含无效路径。")}
+		var path := String(entry.path)
+		var relative := path.trim_prefix("res://")
+		if not path.begins_with("res://") or relative.is_empty() or relative.split("/").has("..") or path.contains("\\") or seen.has(path):
+			return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "事务恢复日志路径越界或重复。")}
+		seen[path] = true
+		contains_asset = contains_asset or path == asset_path
+		if path != asset_path and path != asset_path + ".ownership.json":
+			source_count += 1
+			if path != asset_path.trim_suffix(ASSET_EXTENSION) + ".coda":
+				return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "第三个事务文件必须是对应的 canonical CODA 源。")}
+		var before_fingerprint := String(entry.get("before_fingerprint", ""))
+		var after_fingerprint := String(entry.get("after_fingerprint", ""))
+		if not entry.get("existed", null) is bool or after_fingerprint.length() != 71 or not after_fingerprint.begins_with("sha256:") or (entry.existed and (before_fingerprint.length() != 71 or not before_fingerprint.begins_with("sha256:"))) or (not entry.existed and not before_fingerprint.is_empty()):
+			return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "事务恢复日志缺少文件指纹。")}
+	if not asset_path.ends_with(ASSET_EXTENSION) or not contains_asset or not seen.has(asset_path + ".ownership.json") or source_count != files.size() - 2:
+		return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "事务恢复日志不匹配 EventAsset 与 owner/source 文件集合。")}
+	var committed := manifest_path == committed_path
+	if committed != (manifest.state == "committed"):
+		return {"ok": false, "receipt": _receipt("INVALID_AUTHORING_TRANSACTION", "事务状态与恢复日志位置不一致；未更改任何文件。")}
+	if committed:
+		for entry in files:
+			var target := ProjectSettings.globalize_path(String(entry.path))
+			var target_is_new: bool = FileAccess.file_exists(target) and _fingerprint(FileAccess.get_file_as_string(String(entry.path))) == entry.after_fingerprint
+			if target_is_new: continue
+			var temporary := target + ".tmp"
+			if not FileAccess.file_exists(temporary) or _fingerprint(FileAccess.get_file_as_string(String(entry.path) + ".tmp")) != entry.after_fingerprint:
+				return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_AMBIGUOUS", "已提交事务缺少可验证的新文件或暂存文件；未执行清理。")}
+		for entry in files:
+			var target := ProjectSettings.globalize_path(String(entry.path))
+			var target_is_new: bool = FileAccess.file_exists(target) and _fingerprint(FileAccess.get_file_as_string(String(entry.path))) == entry.after_fingerprint
+			if target_is_new: continue
+			if FileAccess.file_exists(target) and DirAccess.remove_absolute(target) != OK:
+				return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_WRITE_FAILED", "无法完成已提交事务恢复。")}
+			if DirAccess.rename_absolute(target + ".tmp", target) != OK:
+				return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_WRITE_FAILED", "无法从暂存文件完成已提交事务恢复。")}
+		for entry in files:
+			var target := ProjectSettings.globalize_path(String(entry.path))
+			for suffix in [".bak", ".tmp"]:
+				var artifact: String = target + suffix
+				if FileAccess.file_exists(artifact) and DirAccess.remove_absolute(artifact) != OK:
+					return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "已恢复新版本，但残留备份暂未清理。")}
+		for suffix in [transaction_path + ".tmp", committed_path + ".tmp"]:
+			var artifact: String = ProjectSettings.globalize_path(suffix)
+			if FileAccess.file_exists(artifact) and DirAccess.remove_absolute(artifact) != OK:
+				return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "已恢复新版本，但恢复日志暂存文件未清理。")}
+		var journal_absolute := ProjectSettings.globalize_path(transaction_path)
+		if FileAccess.file_exists(journal_absolute) and DirAccess.remove_absolute(journal_absolute) != OK:
+			return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "新版本完整，但准备日志暂未清理；提交标记仍保留。")}
+		var committed_absolute := ProjectSettings.globalize_path(committed_path)
+		if FileAccess.file_exists(committed_absolute) and DirAccess.remove_absolute(committed_absolute) != OK:
+			return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "新版本完整，但提交日志暂未清理。")}
+		return {"ok": true, "recovery": "completed", "receipt": {"ok": true, "diagnostics": []}}
+	var rollback_cleanup_failed := false
+	for entry in files:
+		var target_path := String(entry.path)
+		var target := ProjectSettings.globalize_path(target_path)
+		var backup := target + ".bak"
+		var exists_now := FileAccess.file_exists(target)
+		var is_old: bool = exists_now and _fingerprint(FileAccess.get_file_as_string(target_path)) == entry.before_fingerprint
+		if entry.existed:
+			if is_old: continue
+			if not FileAccess.file_exists(backup) or _fingerprint(FileAccess.get_file_as_string(target_path + ".bak")) != entry.before_fingerprint:
+				return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_AMBIGUOUS", "旧版本备份缺失或指纹不符；未更改任何目标文件。")}
+		else:
+			if not exists_now: continue
+			if _fingerprint(FileAccess.get_file_as_string(target_path)) != entry.after_fingerprint:
+				return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_AMBIGUOUS", "新建目标文件与事务指纹不符；未更改任何目标文件。")}
+	for entry in files:
+		var target_path := String(entry.path)
+		var target := ProjectSettings.globalize_path(target_path)
+		var backup := target + ".bak"
+		var exists_now := FileAccess.file_exists(target)
+		var is_old: bool = exists_now and entry.existed and _fingerprint(FileAccess.get_file_as_string(target_path)) == entry.before_fingerprint
+		if not is_old and exists_now and DirAccess.remove_absolute(target) != OK:
+			return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_WRITE_FAILED", "无法移除不完整事务产生的混合文件。")}
+		if entry.existed and not is_old and DirAccess.rename_absolute(backup, target) != OK:
+			return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_WRITE_FAILED", "无法从备份恢复旧版本。")}
+		for suffix in [".tmp", ".bak"]:
+			var artifact: String = target + suffix
+			if FileAccess.file_exists(artifact) and DirAccess.remove_absolute(artifact) != OK: rollback_cleanup_failed = true
+	if rollback_cleanup_failed:
+		return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "旧版本已恢复，但备份暂未清理；恢复日志仍保留。")}
+	var commit_temp := ProjectSettings.globalize_path(committed_path + ".tmp")
+	if FileAccess.file_exists(commit_temp) and DirAccess.remove_absolute(commit_temp) != OK:
+		return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "旧版本已恢复，但提交标记暂未清理；恢复日志仍保留。")}
+	var journal_temp := ProjectSettings.globalize_path(transaction_path + ".tmp")
+	if FileAccess.file_exists(journal_temp) and DirAccess.remove_absolute(journal_temp) != OK:
+		return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "旧版本已恢复，但暂存恢复日志未能清理。")}
+	var journal_absolute := ProjectSettings.globalize_path(transaction_path)
+	if FileAccess.file_exists(journal_absolute) and DirAccess.remove_absolute(journal_absolute) != OK:
+		return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "旧版本已恢复，但事务日志暂未清理。")}
+	var committed_absolute := ProjectSettings.globalize_path(committed_path)
+	if FileAccess.file_exists(committed_absolute) and DirAccess.remove_absolute(committed_absolute) != OK:
+		return {"ok": false, "receipt": _receipt("AUTHORING_RECOVERY_CLEANUP_FAILED", "旧版本已恢复，但提交日志暂未清理。")}
+	return {"ok": true, "recovery": "rolled_back", "receipt": {"ok": true, "diagnostics": []}}
+
+func _transaction_artifacts_exist(asset_path: String) -> bool:
+	for suffix in [".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
+		if FileAccess.file_exists(ProjectSettings.globalize_path(asset_path + suffix)): return true
+	return false
 
 func _make_ownership(path: String, asset: Dictionary, mode: String, revision: int) -> Dictionary:
 	var ids: Array[String] = []

@@ -64,8 +64,10 @@ func _ready() -> void:
 	toolbar.add_child(_button("刷新", _reload))
 	toolbar.add_child(_button("新建", _new_event))
 	toolbar.add_child(_button("外部重载", _reload_selected_from_disk))
+	toolbar.add_child(_button("恢复 authoring 事务", _recover_selected_transaction))
 	toolbar.add_child(_button("文本导入", _open_text_import))
 	toolbar.add_child(_button("迁移到 CODA 源", _migrate_selected_to_text_owned))
+	toolbar.add_child(_button("新建具身事件（CODA）", _new_embodied_event))
 	toolbar.add_child(_button("确认草稿", _confirm_draft))
 	toolbar.add_child(_button("取消草稿", _cancel_draft))
 	toolbar.add_child(_button("确认投影写回", _commit_projection_preview))
@@ -623,6 +625,27 @@ func _new_event() -> void:
 		return
 	_reload()
 
+func _new_embodied_event() -> void:
+	var index := 1
+	var asset_path := "res://gseos/events/embodied-event.gse.json"
+	var source_path := "res://gseos/events/embodied-event.coda"
+	while FileAccess.file_exists(asset_path) or FileAccess.file_exists(source_path) or FileAccess.file_exists(asset_path + ".ownership.json"):
+		index += 1
+		asset_path = "res://gseos/events/embodied-event-%d.gse.json" % index
+		source_path = "res://gseos/events/embodied-event-%d.coda" % index
+	var event_id := "embodied.event.%d" % index
+	var asset := {"asset_type": "EventAsset", "schema_version": 1, "event_id": event_id, "display_name": "具身事件", "args": [], "recovery": "E0", "root": []}
+	var source_text := _asset_to_gse_text(asset)
+	var saved := _store.save_text_owned_asset(asset_path, source_path, source_text, asset, -1, "")
+	if not saved.saved:
+		_status.text = _format_diagnostics(saved.receipt.get("diagnostics", []))
+		return
+	_selected_path = asset_path
+	_reload()
+	var selected_index := _asset_paths.find(asset_path)
+	if selected_index >= 0: _on_event_selected(selected_index)
+	_status.text = "已创建 text_owned 具身事件；CODA 源是唯一作者。"
+
 func _rename_selected() -> void:
 	if _selected_path.is_empty() or _selected_asset.is_empty():
 		return
@@ -929,6 +952,21 @@ func _reload_selected_from_disk() -> void:
 	_refresh_slot_options()
 	_status.text = "已从磁盘重载 %s；树、摘要、选择和诊断已重建。" % _selected_asset.get("event_id", "")
 
+func _recover_selected_transaction() -> void:
+	if _selected_path.is_empty():
+		_status.text = "请先选择发生事务中断的 EventAsset。"
+		return
+	var recovered := _store.recover_transaction(_selected_path)
+	if not recovered.ok:
+		_status.text = _format_diagnostics(recovered.receipt.get("diagnostics", []))
+		return
+	var index := _asset_paths.find(_selected_path)
+	if index >= 0: _on_event_selected(index)
+	if recovered.recovery == "completed":
+		_status.text = "已完成中断前已提交的 authoring 事务，并清理恢复日志。"
+	else:
+		_status.text = "已回滚未完成的 authoring 事务并恢复其上一致版本。"
+
 func _process(_delta: float) -> void:
 	if _selected_path.is_empty() or not _draft_asset.is_empty() or not FileAccess.file_exists(_selected_path):
 		return
@@ -1118,7 +1156,11 @@ func _asset_to_gse_text(asset: Dictionary) -> String:
 		argument_names.append(String(argument.get("id", "")))
 	var display_name := String(asset.get("display_name", asset.get("event_id", "event")))
 	var event_id := String(asset.get("event_id", display_name))
-	var header := "event %s(%s) [id: %s]:" % [display_name, ", ".join(argument_names), event_id] if not argument_names.is_empty() else "event %s [id: %s]:" % [display_name, event_id]
+	var attributes: Array[String] = ["id: " + event_id]
+	if asset.has("reentry"): attributes.append("reentry: " + String(asset.reentry))
+	if asset.has("recovery"): attributes.append("recovery: " + String(asset.recovery))
+	var header_attributes := " [%s]" % ", ".join(attributes)
+	var header := "event %s(%s)%s:" % [display_name, ", ".join(argument_names), header_attributes] if not argument_names.is_empty() else "event %s%s:" % [display_name, header_attributes]
 	var lines: Array[String] = [header]
 	_append_asset_text(asset.get("root", []), 1, lines)
 	return "\n".join(lines) + "\n"

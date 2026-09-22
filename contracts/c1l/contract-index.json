@@ -8,6 +8,7 @@
     "authoring-ownership@1",
     "authoring-transaction@1",
     "authoring-transaction-receipt@1",
+    "authoring-file-set-recovery@1",
     "embodied-skill@1",
     "intent-protocol@1",
     "intent-receipt@1",

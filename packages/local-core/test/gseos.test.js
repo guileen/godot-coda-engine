@@ -99,6 +99,10 @@ test("双语 lexer/parser 归一为同一结构并保留可诊断 source span", 
   assert.equal(parseGse(namedChinese).asset.event_id, "ui.reward.claim");
   assert.deepEqual(parseGse(namedChinese).asset.args.map((item) => item.id), ["积分", "奖励"]);
   assert.equal(parseGse(namedChinese).asset.root[0].params.capability, "ui.animate_number@1");
+  const eventPolicy = parseGse("event body.wave [id: embodied.wave, reentry: reject, recovery: checkpoint]:\n");
+  assert.equal(eventPolicy.asset.event_id, "embodied.wave");
+  assert.equal(eventPolicy.asset.reentry, "reject");
+  assert.equal(eventPolicy.asset.recovery, "checkpoint");
   assert.equal(left.asset.root[0].command_id, right.asset.root[0].command_id);
   assert.equal(left.asset.root[0].params.condition.op, right.asset.root[0].params.condition.op);
   assert.equal(parseGse("event bad:\n\tawait x()").receipt.ok, false);
@@ -212,6 +216,8 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.deepEqual(schema("intent-protocol").properties.operation.enum, ["invoke", "amend", "interrupt", "pause", "resume", "cancel"]);
   assert.equal(schema("intent-protocol").properties.generation.minimum, 0);
   assert.equal(schema("intent-receipt").properties.terminal.type, "boolean");
+  assert.deepEqual(schema("authoring-file-set-recovery").properties.state.enum, ["prepared", "committed"]);
+  assert.equal(schema("authoring-file-set-recovery").properties.files.maxItems, 3);
   assert.ok(schema("embodiment-protocol").allOf.length >= 8);
   assert.deepEqual(schema("safety-authority-port").properties.action.enum, ["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"]);
   assert.deepEqual(schema("embodiment-dynamics-profile").properties.guarantee_level.enum, ["visual_plausibility", "model_admissible", "calibrated_envelope", "hardware_safety_reviewed"]);

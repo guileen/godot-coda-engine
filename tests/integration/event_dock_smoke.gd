@@ -6,6 +6,8 @@ var failures: Array[String] = []
 var new_event_path := "res://gseos/events/new-event.gse.json"
 var generated_path := "res://.gseos/generated/ui_reward_apply.gd"
 var reward_owner_path := "res://gseos/events/ui.reward.apply.gse.json.ownership.json"
+var embodied_asset_path := "res://gseos/events/embodied-event.gse.json"
+var embodied_source_path := "res://gseos/events/embodied-event.coda"
 
 func _initialize() -> void:
 	call_deferred("_start")
@@ -13,6 +15,11 @@ func _initialize() -> void:
 func _start() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_asset_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_source_path))
+	for suffix in [".ownership.json", ".bak", ".tmp", ".ownership.json.bak", ".ownership.json.tmp", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_asset_path + suffix))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_source_path + suffix))
 	var reward_asset_path := "res://gseos/events/ui.reward.apply.gse.json"
 	var reward_asset_raw := FileAccess.get_file_as_string(reward_asset_path)
 	var reward_owner_existed := FileAccess.file_exists(reward_owner_path)
@@ -25,6 +32,11 @@ func _start() -> void:
 	var reward_index: int = dock._asset_paths.find("res://gseos/events/ui.reward.apply.gse.json")
 	if reward_index < 0:
 		failures.append("Event Dock did not index the reward EventAsset path")
+	dock._new_embodied_event()
+	var created_embodied := STORE.new().load_asset(embodied_asset_path)
+	if not created_embodied.receipt.ok or created_embodied.ownership.authoring_mode != "text_owned" or not FileAccess.file_exists(embodied_source_path):
+		failures.append("new embodied event did not default to a canonical text-owned CODA source")
+	reward_index = dock._asset_paths.find("res://gseos/events/ui.reward.apply.gse.json")
 	dock._on_event_selected(reward_index)
 	if dock._tree.get_root() == null or dock._tree.get_root().get_child_count() < 1:
 		failures.append("Event Dock did not rebuild the asset tree")
@@ -139,6 +151,30 @@ func _start() -> void:
 			var edited_migration := STORE.new().load_asset(new_event_path)
 			if not edited_migration.receipt.ok or edited_migration.asset.display_name != "迁移后的文本作者" or not FileAccess.get_file_as_string(migrated_source_path).contains("迁移后的文本作者"):
 				failures.append("Event Dock text-owned edit did not update canonical source, projection and owner")
+			else:
+				var stable_asset_text := FileAccess.get_file_as_string(new_event_path)
+				var stable_source_text := FileAccess.get_file_as_string(migrated_source_path)
+				var stable_owner_text := FileAccess.get_file_as_string(new_event_path + ".ownership.json")
+				var interrupted_source_text := stable_source_text + "# incomplete write\n"
+				var fingerprints := STORE.new()
+				var recovery_manifest := {
+					"contract_type": "AuthoringFileSetTransaction", "schema_version": 1, "state": "prepared",
+					"files": [
+						{"path": new_event_path, "existed": true, "before_fingerprint": fingerprints._fingerprint(stable_asset_text), "after_fingerprint": fingerprints._fingerprint(stable_asset_text)},
+						{"path": migrated_source_path, "existed": true, "before_fingerprint": fingerprints._fingerprint(stable_source_text), "after_fingerprint": fingerprints._fingerprint(interrupted_source_text)},
+						{"path": new_event_path + ".ownership.json", "existed": true, "before_fingerprint": fingerprints._fingerprint(stable_owner_text), "after_fingerprint": fingerprints._fingerprint(stable_owner_text)},
+					]
+				}
+				DirAccess.rename_absolute(ProjectSettings.globalize_path(migrated_source_path), ProjectSettings.globalize_path(migrated_source_path + ".bak"))
+				var interrupted_file := FileAccess.open(migrated_source_path, FileAccess.WRITE)
+				interrupted_file.store_string(interrupted_source_text)
+				interrupted_file.close()
+				var manifest_file := FileAccess.open(new_event_path + ".transaction.json", FileAccess.WRITE)
+				manifest_file.store_string(JSON.stringify(recovery_manifest, "  ") + "\n")
+				manifest_file.close()
+				dock._recover_selected_transaction()
+				if FileAccess.get_file_as_string(migrated_source_path) != stable_source_text or not dock._status.text.contains("已回滚") or not STORE.new().load_asset(new_event_path).receipt.ok:
+					failures.append("Event Dock recovery action did not restore the last consistent text-owned file set")
 
 	var reward_backup: Dictionary = JSON.parse_string(reward_asset_raw)
 	dock._selected_path = "res://gseos/events/ui.reward.apply.gse.json"
@@ -214,9 +250,14 @@ func _start() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("res://gseos/events/new-event.coda"))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".tmp"))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json.tmp"))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("res://gseos/events/new-event.coda.tmp"))
+	for suffix in [".bak", ".tmp", ".ownership.json.bak", ".ownership.json.tmp", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + suffix))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("res://gseos/events/new-event.coda" + suffix))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_asset_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_source_path))
+	for suffix in [".ownership.json", ".bak", ".tmp", ".ownership.json.bak", ".ownership.json.tmp", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_asset_path + suffix))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_source_path + suffix))
 	if failures.is_empty():
 		print("GSEOS Event Dock smoke integration passed")
 		quit(0)

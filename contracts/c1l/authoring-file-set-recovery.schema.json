@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1l/authoring-file-set-recovery@1",
+  "title": "AuthoringFileSetTransaction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_type", "schema_version", "state", "files"],
+  "properties": {
+    "contract_type": { "const": "AuthoringFileSetTransaction" },
+    "schema_version": { "const": 1 },
+    "state": { "enum": ["prepared", "committed"] },
+    "files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "existed", "before_fingerprint", "after_fingerprint"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^res://[^\\\\]*$" },
+          "existed": { "type": "boolean" },
+          "before_fingerprint": { "type": "string", "pattern": "^(|sha256:[a-f0-9]{64})$" },
+          "after_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "existed": { "const": true } }, "required": ["existed"] },
+            "then": { "properties": { "before_fingerprint": { "pattern": "^sha256:[a-f0-9]{64}$" } } }
+          },
+          {
+            "if": { "properties": { "existed": { "const": false } }, "required": ["existed"] },
+            "then": { "properties": { "before_fingerprint": { "const": "" } } }
+          }
+        ]
+      }
+    }
+  }
+}

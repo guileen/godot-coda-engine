@@ -129,11 +129,100 @@ func _start() -> void:
 	if graph_write_to_text_owner.saved:
 		failures.append("graph-owned EventAsset store wrote a text-owned projection")
 
+	var old_asset_text := FileAccess.get_file_as_string(test_path)
+	var old_owner_text := FileAccess.get_file_as_string(ownership_path)
+	var partial_asset: Dictionary = JSON.parse_string(old_asset_text)
+	partial_asset["display_name"] = "中断中的新版本"
+	var partial_asset_text := JSON.stringify(partial_asset, "  ") + "\n"
+	var partial_owner_text := "uncommitted owner version\n"
+	var rollback_manifest := {
+		"contract_type": "AuthoringFileSetTransaction", "schema_version": 1, "state": "prepared",
+		"files": [
+			{"path": test_path, "existed": true, "before_fingerprint": store._fingerprint(old_asset_text), "after_fingerprint": store._fingerprint(partial_asset_text)},
+			{"path": ownership_path, "existed": true, "before_fingerprint": store._fingerprint(old_owner_text), "after_fingerprint": store._fingerprint(partial_owner_text)},
+		]
+	}
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(test_path), ProjectSettings.globalize_path(test_path + ".bak"))
+	_write_text(test_path, partial_asset_text)
+	_write_text(test_path + ".transaction.json", JSON.stringify(rollback_manifest, "  ") + "\n")
+	if store.load_asset(test_path).receipt.ok:
+		failures.append("interrupted authoring transaction exposed a mixed-version asset")
+	_write_text(test_path + ".bak", "untrusted backup\n")
+	var ambiguous_recovery := store.recover_transaction(test_path)
+	if ambiguous_recovery.ok or FileAccess.get_file_as_string(test_path) != partial_asset_text:
+		failures.append("recovery modified a transaction whose backup fingerprint did not match")
+	_write_text(test_path + ".bak", old_asset_text)
+	var rolled_back := store.recover_transaction(test_path)
+	if not rolled_back.ok or rolled_back.recovery != "rolled_back" or FileAccess.get_file_as_string(test_path) != old_asset_text or not store.load_asset(test_path).receipt.ok:
+		failures.append("recovery did not restore a verifiable previous file set")
+
+	old_asset_text = FileAccess.get_file_as_string(test_path)
+	old_owner_text = FileAccess.get_file_as_string(ownership_path)
+	var committed_asset: Dictionary = JSON.parse_string(old_asset_text)
+	committed_asset["display_name"] = "已提交的新版本"
+	var committed_asset_text := JSON.stringify(committed_asset, "  ") + "\n"
+	var committed_owner := store._make_ownership(test_path, committed_asset, "graph_owned", int(JSON.parse_string(old_owner_text).owner_revision) + 1)
+	var committed_owner_text := JSON.stringify(committed_owner, "  ") + "\n"
+	var committed_manifest := {
+		"contract_type": "AuthoringFileSetTransaction", "schema_version": 1, "state": "prepared",
+		"files": [
+			{"path": test_path, "existed": true, "before_fingerprint": store._fingerprint(old_asset_text), "after_fingerprint": store._fingerprint(committed_asset_text)},
+			{"path": ownership_path, "existed": true, "before_fingerprint": store._fingerprint(old_owner_text), "after_fingerprint": store._fingerprint(committed_owner_text)},
+		]
+	}
+	_write_text(test_path + ".bak", old_asset_text)
+	_write_text(ownership_path + ".bak", old_owner_text)
+	_write_text(test_path, committed_asset_text)
+	_write_text(ownership_path, committed_owner_text)
+	var committed_manifest_text := JSON.stringify(committed_manifest, "  ") + "\n"
+	_write_text(test_path + ".transaction.json", committed_manifest_text)
+	committed_manifest.state = "committed"
+	_write_text(test_path + ".transaction.commit.json", JSON.stringify(committed_manifest, "  ") + "\n")
+	var completed := store.recover_transaction(test_path)
+	if not completed.ok or completed.recovery != "completed" or not store.load_asset(test_path).receipt.ok or store.load_asset(test_path).asset.display_name != "已提交的新版本":
+		failures.append("recovery did not retain a fully committed file set")
+
+	var text_asset_before_commit := FileAccess.get_file_as_string(text_asset_path)
+	var text_source_before_commit := FileAccess.get_file_as_string(text_source_path)
+	var text_owner_before_commit := FileAccess.get_file_as_string(text_asset_path + ".ownership.json")
+	var third_source := edited_source.replace("score = 2", "score = 3")
+	_write_text(edited_source_path, third_source)
+	parse_output.clear()
+	OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(edited_source_path)], parse_output, true)
+	parsed_text = JSON.parse_string("\n".join(parse_output))
+	var third_asset: Dictionary = parsed_text.asset
+	var text_owner_before: Dictionary = store.load_asset(text_asset_path).ownership
+	var third_save := store.save_text_owned_asset(text_asset_path, text_source_path, third_source, third_asset, 1, String(text_owner_before.source.fingerprint))
+	if not third_save.saved:
+		failures.append("text-owned three-file transaction failed before forward-recovery fixture")
+	var text_asset_after_commit := FileAccess.get_file_as_string(text_asset_path)
+	var text_source_after_commit := FileAccess.get_file_as_string(text_source_path)
+	var text_owner_after_commit := FileAccess.get_file_as_string(text_asset_path + ".ownership.json")
+	var text_manifest := {
+		"contract_type": "AuthoringFileSetTransaction", "schema_version": 1, "state": "prepared",
+		"files": [
+			{"path": text_asset_path, "existed": true, "before_fingerprint": store._fingerprint(text_asset_before_commit), "after_fingerprint": store._fingerprint(text_asset_after_commit)},
+			{"path": text_source_path, "existed": true, "before_fingerprint": store._fingerprint(text_source_before_commit), "after_fingerprint": store._fingerprint(text_source_after_commit)},
+			{"path": text_asset_path + ".ownership.json", "existed": true, "before_fingerprint": store._fingerprint(text_owner_before_commit), "after_fingerprint": store._fingerprint(text_owner_after_commit)},
+		]
+	}
+	_write_text(text_asset_path + ".bak", text_asset_before_commit)
+	_write_text(text_source_path + ".bak", text_source_before_commit)
+	_write_text(text_asset_path + ".ownership.json.bak", text_owner_before_commit)
+	var text_manifest_text := JSON.stringify(text_manifest, "  ") + "\n"
+	_write_text(text_asset_path + ".transaction.json", text_manifest_text)
+	text_manifest.state = "committed"
+	_write_text(text_asset_path + ".transaction.commit.json", JSON.stringify(text_manifest, "  ") + "\n")
+	var text_forward_recovery := store.recover_transaction(text_asset_path)
+	var text_forward_loaded := store.load_asset(text_asset_path)
+	if not text_forward_recovery.ok or text_forward_recovery.recovery != "completed" or not text_forward_loaded.receipt.ok or text_forward_loaded.asset.root[0].params.value != 3 or FileAccess.get_file_as_string(text_source_path) != third_source:
+		failures.append("three-file source/projection/owner recovery did not preserve the committed version")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".ownership.json"))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".tmp"))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".ownership.json.tmp"))
-	for suffix in ["", ".ownership.json", ".coda", ".gse.json", ".gse.json.ownership.json", ".tmp", ".ownership.json.tmp", ".coda.tmp", ".coda.bak", ".gse.json.bak", ".gse.json.ownership.json.bak", ".coda.candidate"]:
+	for suffix in [".tmp", ".ownership.json.tmp", ".bak", ".ownership.json.bak", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + suffix))
+	for suffix in ["", ".ownership.json", ".coda", ".gse.json", ".gse.json.ownership.json", ".tmp", ".ownership.json.tmp", ".coda.tmp", ".coda.bak", ".gse.json.bak", ".gse.json.ownership.json.bak", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp", ".coda.candidate"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("res://.gseos/text-owned-transaction" + suffix))
 	if failures.is_empty():
 		print("GSEOS editor asset transaction integration passed")
@@ -142,3 +231,11 @@ func _start() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+func _write_text(path: String, value: String) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		failures.append("could not write recovery fixture: " + path)
+		return
+	file.store_string(value)
+	file.close()

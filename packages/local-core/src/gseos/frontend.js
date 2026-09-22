@@ -72,8 +72,8 @@ export function parseGse(text) {
   for (let index = 0; index < lines.length; index += 1) {
     const raw = lines[index]; let trimmed = raw.trim(); if (!trimmed || trimmed.startsWith("#")) continue; const indent = indentOf(raw);
     const moduleMatch = trimmed.match(/^(?:module|模块)\s+([\w.]+)/u); if (moduleMatch) { moduleId = moduleMatch[1]; continue; }
-    const eventMatch = trimmed.match(/^(?:event|事件)\s+([\p{L}\w.]+)(?:\s*[（(]([^）)]*)[）)])?(?:\s*\[\s*(?:id|标识)\s*[:：]\s*([\w.]+)\s*\])?/u);
-    if (eventMatch) { event = { display_name: eventMatch[1], event_id: eventMatch[3] ?? eventMatch[1], args: parseEventArguments(eventMatch[2]), root }; continue; }
+    const eventMatch = trimmed.match(/^(?:event|事件)\s+([\p{L}\w.]+)(?:\s*[（(]([^）)]*)[）)])?(?:\s*\[\s*(?:id|标识)\s*[:：]\s*([\w.]+)(?:\s*,\s*reentry\s*[:：]\s*([\w.-]+))?(?:\s*,\s*recovery\s*[:：]\s*([\w.-]+))?\s*\])?/u);
+    if (eventMatch) { event = { display_name: eventMatch[1], event_id: eventMatch[3] ?? eventMatch[1], reentry: eventMatch[4], recovery: eventMatch[5] ?? "E0", args: parseEventArguments(eventMatch[2]), root }; continue; }
     if (!event) { diagnostics.push(gseosDiagnostic("STATEMENT_OUTSIDE_EVENT", "语句必须位于事件中。", { line: index + 1 })); continue; }
     while (stack.length > 1 && indent <= stack.at(-1).indent) stack.pop(); const parent = stack.at(-1).nodes;
     if (/^(?:else|否则)\s*[:：]?$/u.test(trimmed)) {
@@ -96,7 +96,7 @@ export function parseGse(text) {
     if (node) parent.push(node);
   }
   if (!event) diagnostics.push(gseosDiagnostic("MISSING_EVENT", "文本必须包含事件声明。", { line: 1 }));
-  const asset = event ? { asset_type: "EventAsset", schema_version: 1, event_id: event.event_id, display_name: event.display_name, args: event.args, recovery: "E0", root } : null; return { module_id: moduleId, asset, receipt: gseosReceipt(diagnostics) };
+  const asset = event ? { asset_type: "EventAsset", schema_version: 1, event_id: event.event_id, display_name: event.display_name, args: event.args, recovery: event.recovery, ...(event.reentry ? { reentry: event.reentry } : {}), root } : null; return { module_id: moduleId, asset, receipt: gseosReceipt(diagnostics) };
 }
 
 function parseArguments(text) { const args = {}; for (const item of text.split(/[,，]/u).map((part) => part.trim()).filter(Boolean)) { const match = item.match(/^([\p{L}_][\p{L}\p{N}_]*)\s*[:：]\s*(.+)$/u); if (match) args[match[1]] = expressionFromText(match[2]); } return args; }
