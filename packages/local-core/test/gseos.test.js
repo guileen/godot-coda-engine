@@ -298,6 +298,8 @@ test("C1-L.1 TaskGraph 与 source reference 固定类型和作者源定位", () 
   const sourceSchema = c1lSchemas.find((item) => item.$id.endsWith("/source-ref@1"));
   assert.deepEqual(graphSchema.properties.nodes.items.properties.kind.enum, ["task", "guard", "observation", "mode_transition", "tracking", "control", "intent", "reactive"]);
   assert.equal(graphSchema.properties.nodes.items.properties.contract_ref.pattern, "^[a-z][a-z0-9_.-]*@\\d+$");
+  assert.deepEqual(graphSchema.properties.nodes.items.allOf[0].then.required, ["branch_entries"]);
+  assert.equal(graphSchema.properties.nodes.items.allOf[0].else.properties.branch_entries, false);
   assert.deepEqual(sourceSchema.required, ["event_id", "node_id", "path"]);
   assert.equal(taskGraphFixture.graph_type, "TaskGraph");
   assert.equal(taskGraphFixture.nodes[1].depends_on[0], taskGraphFixture.nodes[0].node_id);

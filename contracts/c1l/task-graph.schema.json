@@ -30,6 +30,13 @@
             "additionalProperties": false
           }
         },
+        "allOf": [
+          {
+            "if": { "properties": { "kind": { "const": "guard" } }, "required": ["kind"] },
+            "then": { "required": ["branch_entries"] },
+            "else": { "properties": { "branch_entries": false } }
+          }
+        ],
         "additionalProperties": false
       }
     },
