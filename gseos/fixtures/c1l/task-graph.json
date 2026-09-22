@@ -1,0 +1,32 @@
+{
+  "graph_type": "TaskGraph",
+  "graph_version": 1,
+  "event_id": "robot.acknowledge_user",
+  "source_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "nodes": [
+    {
+      "node_id": "observe-user",
+      "kind": "observation",
+      "contract_ref": "user.pose@1",
+      "source_ref": {
+        "event_id": "robot.acknowledge_user",
+        "node_id": "observe-user",
+        "path": "/root/0"
+      }
+    },
+    {
+      "node_id": "acknowledge",
+      "kind": "intent",
+      "contract_ref": "social.acknowledge@1",
+      "source_ref": {
+        "event_id": "robot.acknowledge_user",
+        "node_id": "acknowledge",
+        "path": "/root/1"
+      },
+      "depends_on": ["observe-user"]
+    }
+  ],
+  "edges": [
+    { "from": "observe-user", "to": "acknowledge", "relation": "requires" }
+  ]
+}

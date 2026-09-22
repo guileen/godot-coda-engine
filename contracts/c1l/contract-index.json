@@ -13,7 +13,9 @@
     "intent-receipt@1",
     "embodiment-protocol@1",
     "safety-authority-port@1",
-    "embodiment-dynamics-profile@1"
+    "embodiment-dynamics-profile@1",
+    "task-graph@1",
+    "source-ref@1"
   ],
   "hard_boundaries": [
     "one authoring owner per skill asset",

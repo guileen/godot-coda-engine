@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1l/task-graph@1",
+  "title": "CODA backend-neutral task graph",
+  "type": "object",
+  "required": ["graph_type", "graph_version", "event_id", "source_fingerprint", "nodes", "edges"],
+  "properties": {
+    "graph_type": { "const": "TaskGraph" },
+    "graph_version": { "const": 1 },
+    "event_id": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*$" },
+    "source_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "kind", "contract_ref", "source_ref"],
+        "properties": {
+          "node_id": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["task", "observation", "mode_transition", "tracking", "control", "intent", "reactive"] },
+          "contract_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*@\\d+$" },
+          "source_ref": { "$ref": "source-ref@1" },
+          "depends_on": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "relation"],
+        "properties": {
+          "from": { "type": "string", "minLength": 1 },
+          "to": { "type": "string", "minLength": 1 },
+          "relation": { "enum": ["requires", "observes", "guards", "hands_off", "completes"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

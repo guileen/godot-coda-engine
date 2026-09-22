@@ -57,6 +57,7 @@ const c1lContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1l/
 const c1lContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1l/contract-pack.json"), "utf8"));
 const c1lSchemas = await Promise.all(c1lContractIndex.schemas.map(async (name) => JSON.parse(await readFile(resolve(root, `contracts/c1l/${name.replace(/@\d+$/, "")}.schema.json`), "utf8"))));
 const authoringOwnershipPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1l/authoring-ownership-pack.json"), "utf8"));
+const taskGraphFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1l/task-graph.json"), "utf8"));
 
 test("EventAsset 保留未知字段并稳定排序", () => {
   const extended = { ...asset, z_unknown: { b: 2, a: 1 }, a_unknown: true };
@@ -225,6 +226,17 @@ test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子
   assert.equal(authoringOwnershipPack.migration_transaction.target_mode, "text_owned");
   assert.equal(authoringOwnershipPack.stale_owner_receipt.status, "conflict");
   assert.deepEqual(authoringOwnershipPack.stale_owner_receipt.changed_node_ids, []);
+});
+
+test("C1-L.1 TaskGraph 与 source reference 固定类型和作者源定位", () => {
+  const graphSchema = c1lSchemas.find((item) => item.$id.endsWith("/task-graph@1"));
+  const sourceSchema = c1lSchemas.find((item) => item.$id.endsWith("/source-ref@1"));
+  assert.deepEqual(graphSchema.properties.nodes.items.properties.kind.enum, ["task", "observation", "mode_transition", "tracking", "control", "intent", "reactive"]);
+  assert.equal(graphSchema.properties.nodes.items.properties.contract_ref.pattern, "^[a-z][a-z0-9_.-]*@\\d+$");
+  assert.deepEqual(sourceSchema.required, ["event_id", "node_id", "path"]);
+  assert.equal(taskGraphFixture.graph_type, "TaskGraph");
+  assert.equal(taskGraphFixture.nodes[1].depends_on[0], taskGraphFixture.nodes[0].node_id);
+  assert.equal(taskGraphFixture.edges[0].relation, "requires");
 });
 
 test("C1-L 独立 contract schema 与 TransitionPlan fixture 保持后端中立", () => {
