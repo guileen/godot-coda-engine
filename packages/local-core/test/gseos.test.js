@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
-import { applyIntentProtocolRequest, createIntentProtocolState, validateIntentProtocolRequest } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, settleIntentProtocolInstance, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -262,6 +262,11 @@ test("C1-L.0.3 IntentProtocol reference isolates 100 instances and rejects stale
   assert.equal(cancelled.state.instances["actor.17.wave"].terminal, true);
   assert.equal(applyIntentProtocolRequest(cancelled.state, makeRequest("cancel.17", "actor.17.wave", "cancel", 1)).receipt.status, "stale");
   assert.equal(cancelled.state.instances["actor.18.wave"].status, "running");
+  const completed = settleIntentProtocolInstance(cancelled.state, { request_id: "complete.18", instance_id: "actor.18.wave", generation: 0, status: "completed" });
+  assert.equal(completed.receipt.status, "completed");
+  const duplicateTerminal = settleIntentProtocolInstance(completed.state, { request_id: "late.failure.18", instance_id: "actor.18.wave", generation: 0, status: "failed" });
+  assert.equal(duplicateTerminal.receipt.status, "stale");
+  assert.equal(duplicateTerminal.state.instances["actor.18.wave"].status, "completed");
 });
 
 test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子", () => {

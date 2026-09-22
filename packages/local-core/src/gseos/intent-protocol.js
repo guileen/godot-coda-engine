@@ -84,3 +84,28 @@ export function applyIntentProtocolRequest(state, request) {
   const status = request.operation === "invoke" ? "admitted" : request.operation === "resume" ? "resumed" : request.operation === "amend" ? "running" : request.operation === "pause" ? "paused" : request.operation === "interrupt" ? "preempted" : "cancelled";
   return { state: baseState, receipt: receipt(status, terminalStatuses.has(status)) };
 }
+
+/** Accept exactly one generation-bound terminal Adapter receipt per active instance. */
+export function settleIntentProtocolInstance(state, { request_id, instance_id, generation, status } = {}) {
+  const validState = state?.state_type === "IntentProtocolState" && state.schema_version === 1 && state.instances && typeof state.instances === "object" && state.request_ids && typeof state.request_ids === "object";
+  const nextState = validState ? structuredClone(state) : createIntentProtocolState();
+  const diagnostic = (code) => [gseosDiagnostic(code, "终态 receipt 与当前实例 generation 或终态不兼容。")];
+  const makeReceipt = (receiptStatus, codes = []) => ({
+    receipt_type: "IntentReceipt", schema_version: 1, request_id: request_id ?? "invalid", instance_id: instance_id ?? "invalid",
+    generation: Number.isInteger(generation) && generation >= 0 ? generation : 0, status: receiptStatus, terminal: true,
+    diagnostics: codes.map((item) => ({ code: item.code })),
+    ...(nextState.instances[instance_id]?.skill_ref ? { source_ref: nextState.instances[instance_id].skill_ref } : {}),
+  });
+  if (!validState) return { state: nextState, receipt: makeReceipt("rejected", diagnostic("INVALID_INTENT_PROTOCOL_STATE")) };
+  if (typeof request_id !== "string" || request_id.length === 0 || typeof instance_id !== "string" || instance_id.length === 0 || !Number.isInteger(generation) || generation < 0 || !["completed", "failed"].includes(status)) return { state: nextState, receipt: makeReceipt("rejected", diagnostic("INVALID_INTENT_TERMINAL_RECEIPT")) };
+  if (Object.hasOwn(nextState.request_ids, request_id)) return { state: nextState, receipt: makeReceipt("stale", diagnostic("INTENT_TERMINAL_RECEIPT_REPLAY")) };
+  const instance = nextState.instances[instance_id];
+  if (!instance || instance.generation !== generation || instance.terminal) {
+    nextState.request_ids[request_id] = { instance_id, generation };
+    return { state: nextState, receipt: makeReceipt("stale", diagnostic(instance?.terminal ? "INTENT_INSTANCE_ALREADY_TERMINAL" : "INTENT_GENERATION_STALE")) };
+  }
+  instance.status = status;
+  instance.terminal = true;
+  nextState.request_ids[request_id] = { instance_id, generation };
+  return { state: nextState, receipt: makeReceipt(status) };
+}
