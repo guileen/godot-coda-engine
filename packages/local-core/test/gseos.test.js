@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
-import { applyIntentProtocolRequest, createIntentProtocolState, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -277,6 +277,34 @@ test("C1-L.0.3 IntentProtocol reference isolates 100 instances and rejects stale
   assert.equal(duplicateTerminal.receipt.status, "stale");
   assert.equal(validateIntentProtocolReceipt(duplicateTerminal.receipt).ok, true);
   assert.equal(duplicateTerminal.state.instances["actor.18.wave"].status, "completed");
+});
+
+test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admission without partial writes", () => {
+  const adapter = new MockEmbodimentAdapter({ adapter_ref: "mock.embodiment.adapter@1", capabilities: ["arm@1"] });
+  const message = (message_id, message_type, sequence, payload, extras = {}) => ({
+    protocol: "EmbodimentProtocol", schema_version: 1, message_id, direction: "coda_to_adapter", message_type,
+    adapter_ref: "mock.embodiment.adapter@1", epoch: 1, sequence,
+    clock: { domain: "coda.clock", tick: 10 + sequence, quality: "synchronized" },
+    validity: { valid_from_tick: 10, valid_until_tick: 30 }, payload, ...extras,
+  });
+  const query = adapter.receive(message("query.1", "capability_query", 0, { profile_ref: "test.profile@1", minimum_protocol_version: 1 }));
+  assert.equal(query.accepted, true);
+  assert.equal(query.response.message_type, "capability_report");
+  assert.equal(validateEmbodimentProtocolMessage(query.response).ok, true);
+  const lease = adapter.receive(message("lease.1", "authority_lease", 1, { lease_id: "lease.1", owner: "coda", resources: ["arm@1"], valid_until_tick: 25 }, { lease_ref: "lease.actor@1", generation: 4 }));
+  assert.equal(lease.accepted, true);
+  assert.equal(lease.response.payload.partial_write, false);
+  assert.equal(validateEmbodimentProtocolMessage(lease.response).ok, true);
+  const reference = adapter.receive(message("reference.1", "reference", 2, { representation: "segment", reference_ref: "ref.segment@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 4 }));
+  assert.equal(reference.accepted, true);
+  assert.equal(validateEmbodimentProtocolMessage(reference.response).ok, true);
+  const beforeStale = adapter.snapshot();
+  const stale = adapter.receive(message("reference.stale", "reference", 3, { representation: "segment", reference_ref: "ref.next@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 5 }));
+  assert.equal(stale.accepted, false);
+  assert.equal(stale.response.message_type, "reject");
+  assert.equal(stale.response.payload.partial_write, false);
+  assert.deepEqual(stale.ledger, beforeStale);
+  assert.equal(validateEmbodimentProtocolMessage(stale.response).ok, true);
 });
 
 test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子", () => {
