@@ -931,6 +931,9 @@ func _open_text_import() -> void:
 	if _selected_asset.is_empty():
 		_status.text = "请先选择 EventAsset。"
 		return
+	if not _can_format_asset_to_gse(_selected_asset.get("root", [])):
+		_status.text = "此资产包含当前文本投影器不支持的节点/分支；为避免丢失语义，不能打开文本事务。"
+		return
 	_text_import_edit.text = _asset_to_gse_text(_selected_asset)
 	_text_import_status.text = "编辑文本后预览；失败只保留 draft 和诊断，不改资产。"
 	_text_import_diff.text = ""
@@ -989,41 +992,92 @@ func _commit_text_import() -> void:
 	_rebuild_tree()
 	_refresh_slot_options()
 
-func _rebase_imported_node_ids(candidate: Dictionary, original: Dictionary) -> void:
-	var old_ids: Array[String] = []
-	_collect_node_ids(original.get("root", []), old_ids)
-	var imported_index := 0
-	_rebase_nodes(candidate.get("root", []), old_ids, imported_index)
+func _rebase_imported_node_ids(candidate: Dictionary, _original: Dictionary) -> void:
+	var used_ids := {}
+	_collect_node_ids(candidate.get("root", []), used_ids)
+	_rebase_nodes(candidate.get("root", []), used_ids, 1)
 
-func _collect_node_ids(nodes: Array, result: Array[String]) -> void:
+func _collect_node_ids(nodes: Array, result: Dictionary) -> void:
 	for node in nodes:
-		result.append(String(node.get("node_id", "")))
+		if not String(node.get("node_id", "")).begins_with("imported-"):
+			result[String(node.get("node_id", ""))] = true
 		for children in node.get("children", {}).values():
 			_collect_node_ids(children, result)
 
-func _rebase_nodes(nodes: Array, old_ids: Array[String], imported_index: int) -> int:
+func _rebase_nodes(nodes: Array, used_ids: Dictionary, imported_index: int) -> int:
 	for node in nodes:
-		if imported_index < old_ids.size():
-			node["node_id"] = old_ids[imported_index]
-		else:
-			node["node_id"] = "%s.imported.%d" % [_selected_asset.get("event_id", "event"), imported_index + 1]
-		imported_index += 1
+		if String(node.get("node_id", "")).begins_with("imported-"):
+			var candidate_id := "%s.imported.%d" % [_selected_asset.get("event_id", "event"), imported_index]
+			while used_ids.has(candidate_id):
+				imported_index += 1
+				candidate_id = "%s.imported.%d" % [_selected_asset.get("event_id", "event"), imported_index]
+			node["node_id"] = candidate_id
+			used_ids[candidate_id] = true
+			imported_index += 1
 		for children in node.get("children", {}).values():
-			imported_index = _rebase_nodes(children, old_ids, imported_index)
+			imported_index = _rebase_nodes(children, used_ids, imported_index)
 	return imported_index
 
 func _asset_to_gse_text(asset: Dictionary) -> String:
-	var lines: Array[String] = ["event %s:" % asset.get("event_id", "event")]
+	var argument_names: Array[String] = []
+	for argument in asset.get("args", []):
+		argument_names.append(String(argument.get("id", "")))
+	var display_name := String(asset.get("display_name", asset.get("event_id", "event")))
+	var event_id := String(asset.get("event_id", display_name))
+	var header := "event %s(%s) [id: %s]:" % [display_name, ", ".join(argument_names), event_id] if not argument_names.is_empty() else "event %s [id: %s]:" % [display_name, event_id]
+	var lines: Array[String] = [header]
 	_append_asset_text(asset.get("root", []), 1, lines)
 	return "\n".join(lines) + "\n"
+
+func _can_format_asset_to_gse(nodes: Array) -> bool:
+	for node in nodes:
+		var command := String(node.get("command_id", ""))
+		if command not in ["if", "let", "do", "await", "motion_intent", "publish"]:
+			return false
+		var children: Dictionary = node.get("children", {})
+		if command == "if":
+			if children.keys().any(func(slot): return slot != "then"):
+				return false
+			if not _can_format_asset_to_gse(children.get("then", [])):
+				return false
+		elif not children.is_empty():
+			return false
+	return true
 
 func _append_asset_text(nodes: Array, indent: int, lines: Array[String]) -> void:
 	for node in nodes:
 		var pad := "  ".repeat(indent)
+		var anchor := " # @node_id=%s" % node.get("node_id", "")
 		match String(node.get("command_id", "")):
 			"if":
-				lines.append("%sif (%s):" % [pad, JSON.stringify(node.get("params", {}).get("condition", {}))])
+				lines.append("%sif (%s):%s" % [pad, _format_source_expression(node.get("params", {}).get("condition", {})), anchor])
 				_append_asset_text(node.get("children", {}).get("then", []), indent + 1, lines)
-			"let": lines.append("%slet %s = %s" % [pad, node.get("params", {}).get("name", "value"), JSON.stringify(node.get("params", {}).get("value", {}))])
-			"do", "await": lines.append("%s%s %s()" % [pad, node.get("command_id", "do"), node.get("params", {}).get("capability", "")])
-			"publish": lines.append("%spublish %s(%s)" % [pad, node.get("params", {}).get("topic", ""), JSON.stringify(node.get("params", {}).get("payload", {}))])
+			"let": lines.append("%slet %s = %s%s" % [pad, node.get("params", {}).get("name", "value"), _format_source_expression(node.get("params", {}).get("value", {})), anchor])
+			"do", "await": lines.append("%s%s %s(%s)%s" % [pad, node.get("command_id", "do"), node.get("params", {}).get("capability", ""), _format_source_arguments(node.get("params", {}).get("args", {})), anchor])
+			"motion_intent":
+				var arguments: Array[String] = []
+				for key in node.get("params", {}).get("args", {}).keys():
+					arguments.append("%s: %s" % [key, _format_source_expression(node.params.args[key])])
+				lines.append("%sintent %s(%s)%s" % [pad, node.get("params", {}).get("intent", ""), ", ".join(arguments), anchor])
+			"publish": lines.append("%spublish %s(%s)%s" % [pad, node.get("params", {}).get("topic", ""), _format_source_expression(node.get("params", {}).get("payload", {})), anchor])
+
+func _format_source_arguments(arguments: Dictionary) -> String:
+	var formatted: Array[String] = []
+	for key in arguments.keys():
+		formatted.append("%s: %s" % [key, _format_source_expression(arguments[key])])
+	return ", ".join(formatted)
+
+func _format_source_expression(value: Variant) -> String:
+	if value is Dictionary:
+		if value.has("ref"):
+			return String(value.ref)
+		if value.has("op"):
+			var operator := String(value.op)
+			var left := _format_source_expression(value.get("left", value.get("value", null)))
+			var right := _format_source_expression(value.get("right", null))
+			if operator == "not":
+				return "not %s" % left
+			if operator == "negate":
+				return "-%s" % left
+			return "%s %s %s" % [left, operator, right]
+	return JSON.stringify(value)

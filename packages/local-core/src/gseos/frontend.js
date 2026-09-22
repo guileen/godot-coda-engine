@@ -70,12 +70,15 @@ function parseEventArguments(text) {
 export function parseGse(text) {
   const lexed = lexGse(text); const diagnostics = [...lexed.receipt.diagnostics]; const lines = lexed.source.split("\n"); let moduleId = null; let event = null; const root = []; const stack = [{ indent: -1, nodes: root }];
   for (let index = 0; index < lines.length; index += 1) {
-    const raw = lines[index]; const trimmed = raw.trim(); if (!trimmed || trimmed.startsWith("#")) continue; const indent = indentOf(raw);
+    const raw = lines[index]; let trimmed = raw.trim(); if (!trimmed || trimmed.startsWith("#")) continue; const indent = indentOf(raw);
     const moduleMatch = trimmed.match(/^(?:module|模块)\s+([\w.]+)/u); if (moduleMatch) { moduleId = moduleMatch[1]; continue; }
     const eventMatch = trimmed.match(/^(?:event|事件)\s+([\p{L}\w.]+)(?:\s*[（(]([^）)]*)[）)])?(?:\s*\[\s*(?:id|标识)\s*[:：]\s*([\w.]+)\s*\])?/u);
     if (eventMatch) { event = { display_name: eventMatch[1], event_id: eventMatch[3] ?? eventMatch[1], args: parseEventArguments(eventMatch[2]), root }; continue; }
     if (!event) { diagnostics.push(gseosDiagnostic("STATEMENT_OUTSIDE_EVENT", "语句必须位于事件中。", { line: index + 1 })); continue; }
-    while (stack.length > 1 && indent <= stack.at(-1).indent) stack.pop(); const parent = stack.at(-1).nodes; const nodeId = `imported-${index + 1}`; const span = { start: { line: index + 1, column: indent + 1 }, end: { line: index + 1, column: raw.length + 1 } };
+    while (stack.length > 1 && indent <= stack.at(-1).indent) stack.pop(); const parent = stack.at(-1).nodes;
+    const nodeAnchor = trimmed.match(/\s+#\s*@node_id=([a-z0-9][a-z0-9._-]*)$/u);
+    if (nodeAnchor) trimmed = trimmed.slice(0, nodeAnchor.index).trimEnd();
+    const nodeId = nodeAnchor?.[1] ?? `imported-${index + 1}`; const span = { start: { line: index + 1, column: indent + 1 }, end: { line: index + 1, column: raw.length + 1 } };
     const ifMatch = trimmed.match(/^(?:if|若)\s*[（(](.+?)[）)]\s*[:：]?$/u); const letMatch = trimmed.match(/^(?:let|令)\s+([\p{L}_][\p{L}\p{N}_]*)\s*(?:=|为)\s*(.+)$/u); const callMatch = trimmed.match(/^(do|执行|await|等待)\s+([\w.]+)(@\d+)?\s*[(（](.*)[)）]/u); const intentMatch = trimmed.match(/^(?:intent|意图)\s+([\w.]+)(@\d+)?\s*[(（](.*)[)）]\s*$/u); const publishMatch = trimmed.match(/^(?:publish|发出)\s+([\w.]+)(@\d+)?\s*[(（](.*)[)）]/u); let node = null;
     if (ifMatch) { node = { node_id: nodeId, command_id: "if", params: { condition: expressionFromText(ifMatch[1]) }, children: { then: [] }, source_span: span }; parent.push(node); stack.push({ indent, nodes: node.children.then }); continue; }
     if (letMatch) node = { node_id: nodeId, command_id: "let", params: { name: letMatch[1], value: expressionFromText(letMatch[2]) }, source_span: span };

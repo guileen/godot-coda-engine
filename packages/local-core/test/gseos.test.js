@@ -104,6 +104,11 @@ test("双语 lexer/parser 归一为同一结构并保留可诊断 source span", 
   assert.equal(parseExpressionText("a + b * c").expression.op, "+");
   assert.equal(parseExpressionText("a + b * c").expression.right.op, "*");
   assert.equal(parseCst("# comment\n\nif (a):\n  let b = 1").children[0].kind, "comment");
+  const anchored = parseGse("event demo:\n  let first = 1 # @node_id=stable.first\n  let second = 2 # @node_id=stable.second");
+  const anchoredAfterInsert = parseGse("event demo:\n  let inserted = 0\n  let first = 1 # @node_id=stable.first\n  let second = 2 # @node_id=stable.second");
+  assert.deepEqual(anchored.asset.root.map((node) => node.node_id), ["stable.first", "stable.second"]);
+  assert.equal(anchoredAfterInsert.asset.root[1].node_id, "stable.first");
+  assert.equal(anchoredAfterInsert.asset.root[2].node_id, "stable.second");
   assert.equal(formatGse(right.asset, "zh").startsWith("事件"), true);
   const englishFormatted = formatGse(left.asset, "en");
   assert.equal(formatGse(englishFormatted, "en"), englishFormatted);
