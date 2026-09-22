@@ -212,31 +212,68 @@ export function validateTransitionSnapshot(snapshot, binding = {}) {
   return diagnostics.length ? result(false, null, diagnostics) : result(true, structuredClone(snapshot));
 }
 
-export function buildTransitionPlan({ plan_id, intent, lease, snapshot, segments, completion, resources, snapshot_binding }) {
+export function buildTransitionPlan({ plan_id, intent, lease, snapshot, segments, completion, resources, snapshot_binding, plan_constraints }) {
   const diagnostics = [];
   if (typeof plan_id !== "string" || !plan_id) diagnostics.push(diagnostic("INVALID_PLAN_ID", "plan_id 必须是非空字符串。"));
-  if (typeof intent !== "string" || !/@[0-9]+$/.test(intent)) diagnostics.push(diagnostic("INVALID_INTENT_VERSION", "intent 必须带版本后缀。"));
-  if (!lease || lease.mode !== "all_or_reject" || !Number.isInteger(lease.generation)) diagnostics.push(diagnostic("INVALID_PLAN_LEASE", "TransitionPlan 必须绑定 all_or_reject lease。"));
+  if (typeof intent !== "string" || !/@1$/.test(intent)) diagnostics.push(diagnostic("INVALID_INTENT_VERSION", "intent 必须绑定支持的版本化引用。"));
+  if (!lease || lease.mode !== "all_or_reject" || typeof lease.lease_id !== "string" || !lease.lease_id || !Number.isInteger(lease.generation) || lease.generation < 0 || !Array.isArray(lease.resources) || lease.resources.length === 0) diagnostics.push(diagnostic("INVALID_PLAN_LEASE", "TransitionPlan 必须绑定有效 all_or_reject lease 与非空资源集。"));
   const snapshotResult = validateTransitionSnapshot(snapshot, snapshot_binding);
   diagnostics.push(...snapshotResult.diagnostics);
   if (!Array.isArray(segments) || segments.length === 0) diagnostics.push(diagnostic("EMPTY_PLAN_SEGMENTS", "TransitionPlan 至少需要一个 segment。"));
+  if (plan_constraints !== undefined && (!plan_constraints || !Number.isSafeInteger(plan_constraints.max_horizon_ticks) || plan_constraints.max_horizon_ticks <= 0 || !plan_constraints.max_delta_by_field || typeof plan_constraints.max_delta_by_field !== "object" || Array.isArray(plan_constraints.max_delta_by_field) || Object.values(plan_constraints.max_delta_by_field).some((value) => !finite(value) || value < 0))) diagnostics.push(diagnostic("INVALID_PLAN_CONSTRAINTS", "plan_constraints 必须提供正整数 horizon 与非负有限的 field delta 上限。"));
+  if (plan_constraints?.state_channel_by_field !== undefined && (!plan_constraints.state_channel_by_field || typeof plan_constraints.state_channel_by_field !== "object" || Array.isArray(plan_constraints.state_channel_by_field))) diagnostics.push(diagnostic("INVALID_PLAN_STATE_BINDING", "state_channel_by_field 必须是 plan field 到 snapshot channel 的映射。"));
   const owned = new Set(lease?.resources ?? []);
-  for (const resource of resources ?? []) if (!owned.has(resource)) diagnostics.push(diagnostic("PLAN_RESOURCE_NOT_LEASED", `计划资源未被租约持有：${resource}。`, { resource }));
+  if (resources !== undefined && !Array.isArray(resources)) diagnostics.push(diagnostic("INVALID_PLAN_RESOURCES", "计划 resources 必须是数组。"));
+  const planResources = Array.isArray(resources) ? resources : Array.isArray(lease?.resources) ? lease.resources : [];
+  if (!planResources.length || new Set(planResources).size !== planResources.length || planResources.some((resource) => !/^[-\w.]+@1$/u.test(resource))) diagnostics.push(diagnostic("INVALID_PLAN_RESOURCES", "计划 resources 必须是非空、唯一的版本化资源引用。"));
+  for (const resource of planResources) if (!owned.has(resource)) diagnostics.push(diagnostic("PLAN_RESOURCE_NOT_LEASED", `计划资源未被租约持有：${resource}。`, { resource }));
+  const segmentIds = new Set();
+  let nextTick = 0;
+  let previousEnd = null;
+  const admittedSegments = [];
   for (const [index, segment] of (segments ?? []).entries()) {
-    if (!segment || !Number.isInteger(segment.duration_ticks) || segment.duration_ticks <= 0) diagnostics.push(diagnostic("INVALID_SEGMENT_DURATION", "segment duration_ticks 必须是正整数。", { index }));
-    if (segment?.start && segment?.end && stableStringify(segment.start) !== stableStringify(segment.end) && index === 0 && segment.start_tick !== 0) diagnostics.push(diagnostic("INVALID_SEGMENT_START", "首个 segment 必须从声明的当前状态边界开始。", { index }));
+    if (!segment || typeof segment.segment_id !== "string" || !segment.segment_id || segmentIds.has(segment.segment_id)) diagnostics.push(diagnostic("INVALID_SEGMENT_ID", "每个 segment 必须有唯一非空 segment_id。", { index }));
+    else segmentIds.add(segment.segment_id);
+    if (segment && Object.keys(segment).some((key) => !["segment_id", "start_tick", "duration_ticks", "end_tick", "start", "end"].includes(key))) diagnostics.push(diagnostic("UNKNOWN_SEGMENT_FIELD", "TransitionPlan segment 含未定义字段。", { index }));
+    if (!Number.isSafeInteger(segment?.duration_ticks) || segment.duration_ticks <= 0) diagnostics.push(diagnostic("INVALID_SEGMENT_DURATION", "segment duration_ticks 必须是正安全整数。", { index }));
+    if (!Number.isSafeInteger(segment?.start_tick) || segment.start_tick !== nextTick) diagnostics.push(diagnostic("SEGMENT_TIME_DISCONTINUITY", "segment start_tick 必须连续且从 0 开始。", { index, expected_start_tick: nextTick }));
+    const validState = (state) => state && typeof state === "object" && !Array.isArray(state) && Object.keys(state).length > 0 && Object.values(state).every(finite);
+    if (!validState(segment?.start) || !validState(segment?.end)) diagnostics.push(diagnostic("INVALID_SEGMENT_STATE", "segment start/end 必须是非空有限数值映射。", { index }));
+    else {
+      if (stableStringify(Object.keys(segment.start).sort()) !== stableStringify(Object.keys(segment.end).sort())) diagnostics.push(diagnostic("SEGMENT_STATE_FIELDS_MISMATCH", "segment start 与 end 必须包含相同字段。", { index }));
+      if (previousEnd && stableStringify(previousEnd) !== stableStringify(segment.start)) diagnostics.push(diagnostic("SEGMENT_STATE_DISCONTINUITY", "相邻 segment 必须从前一段 end 状态连续开始。", { index }));
+      for (const field of Object.keys(segment.start)) {
+        const hasLimit = plan_constraints?.max_delta_by_field && Object.hasOwn(plan_constraints.max_delta_by_field, field);
+        const limit = hasLimit ? plan_constraints.max_delta_by_field[field] : undefined;
+        const delta = Math.abs(segment.end[field] - segment.start[field]);
+        if (plan_constraints && !hasLimit) diagnostics.push(diagnostic("PLAN_DELTA_BOUND_MISSING", "Profile 必须为每个 segment field 声明幅度上限。", { index, field }));
+        if (limit !== undefined && delta > limit) diagnostics.push(diagnostic("SEGMENT_DELTA_EXCEEDED", "segment 超出 Profile 声明的 field delta 上限。", { index, field, delta, limit }));
+      }
+      if (index === 0 && plan_constraints?.state_channel_by_field) for (const [field, channel] of Object.entries(plan_constraints.state_channel_by_field)) {
+        if (!Object.hasOwn(segment.start, field) || !Object.hasOwn(snapshot?.state ?? {}, channel) || segment.start[field] !== snapshot.state[channel]) diagnostics.push(diagnostic("PLAN_START_STATE_MISMATCH", "首段起始值必须匹配显式绑定的 SnapshotBundle channel。", { field, channel }));
+      }
+      previousEnd = segment.end;
+    }
+    if (Number.isSafeInteger(segment?.duration_ticks) && segment.duration_ticks > 0) {
+      nextTick += segment.duration_ticks;
+      if (!Number.isSafeInteger(nextTick)) diagnostics.push(diagnostic("PLAN_HORIZON_OVERFLOW", "TransitionPlan 总时域超过安全整数范围。", { index }));
+      if (plan_constraints && nextTick > plan_constraints.max_horizon_ticks) diagnostics.push(diagnostic("PLAN_HORIZON_EXCEEDED", "TransitionPlan 超出 Profile 声明的最大 planning horizon。", { index, horizon_ticks: nextTick, max_horizon_ticks: plan_constraints.max_horizon_ticks }));
+      if (segment.end_tick !== undefined && segment.end_tick !== nextTick) diagnostics.push(diagnostic("SEGMENT_END_TICK_MISMATCH", "segment end_tick 必须等于 start_tick + duration_ticks。", { index, expected_end_tick: nextTick }));
+      admittedSegments.push({ ...structuredClone(segment), end_tick: nextTick });
+    } else admittedSegments.push(structuredClone(segment));
   }
-  if (!completion || !Array.isArray(completion.terminal_states) || !Number.isInteger(completion.dwell_ticks) || completion.dwell_ticks < 0) diagnostics.push(diagnostic("INVALID_COMPLETION", "completion 必须声明 terminal_states 和非负 dwell_ticks。"));
+  if (!completion || !Array.isArray(completion.terminal_states) || completion.terminal_states.length === 0 || completion.terminal_states.some((status) => typeof status !== "string" || !status) || new Set(completion.terminal_states).size !== completion.terminal_states.length || !Number.isInteger(completion.dwell_ticks) || completion.dwell_ticks < 0) diagnostics.push(diagnostic("INVALID_COMPLETION", "completion 必须声明唯一的终态集合和非负 dwell_ticks。"));
+  if (completion && Object.keys(completion).some((key) => !["terminal_states", "dwell_ticks"].includes(key))) diagnostics.push(diagnostic("UNKNOWN_COMPLETION_FIELD", "completion 含未定义字段。"));
   if (diagnostics.length) return result(false, null, diagnostics);
   return result(true, {
     plan_type: "TransitionPlan",
     schema_version: 1,
     plan_id,
     intent,
-    lease: structuredClone(lease),
+    lease: { lease_id: lease.lease_id, generation: lease.generation, resources: [...lease.resources], mode: lease.mode },
     snapshot_ref: { revision: snapshot.revision, physics_tick: snapshot.physics_tick, digest: snapshot.semantic_digest ?? assetFingerprint(snapshot) },
     resources: normalizeIds(resources ?? lease.resources),
-    segments: structuredClone(segments),
+    segments: admittedSegments,
     completion: structuredClone(completion),
     execution_authority: "adapter_only"
   });

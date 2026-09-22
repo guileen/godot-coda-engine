@@ -3,16 +3,18 @@
   "$id": "coda://contracts/c1t/transition-plan@1",
   "title": "C1-T TransitionPlan",
   "type": "object",
-  "required": ["plan_type", "schema_version", "plan_id", "intent", "lease", "snapshot_ref", "segments", "completion"],
+  "required": ["plan_type", "schema_version", "plan_id", "intent", "lease", "snapshot_ref", "resources", "segments", "completion", "execution_authority"],
   "properties": {
     "plan_type": { "const": "TransitionPlan" },
     "schema_version": { "const": 1 },
     "plan_id": { "type": "string", "minLength": 1 },
     "intent": { "type": "string", "pattern": "@1$" },
-    "lease": { "type": "object", "required": ["lease_id", "generation", "resources", "mode"], "properties": { "lease_id": { "type": "string" }, "generation": { "type": "integer", "minimum": 0 }, "resources": { "type": "array", "minItems": 1 }, "mode": { "const": "all_or_reject" } } },
-    "snapshot_ref": { "type": "object", "required": ["revision", "physics_tick"] },
-    "segments": { "type": "array", "minItems": 1 },
-    "completion": { "type": "object", "required": ["terminal_states", "dwell_ticks"] }
+    "lease": { "type": "object", "required": ["lease_id", "generation", "resources", "mode"], "properties": { "lease_id": { "type": "string", "minLength": 1 }, "generation": { "type": "integer", "minimum": 0 }, "resources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[-\\w.]+@1$" } }, "mode": { "const": "all_or_reject" } }, "additionalProperties": false },
+    "snapshot_ref": { "type": "object", "required": ["revision", "physics_tick", "digest"], "properties": { "revision": { "type": "string", "minLength": 1 }, "physics_tick": { "type": "integer", "minimum": 0 }, "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" } }, "additionalProperties": false },
+    "resources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[-\\w.]+@1$" } },
+    "segments": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["segment_id", "start_tick", "duration_ticks", "start", "end"], "properties": { "segment_id": { "type": "string", "minLength": 1 }, "start_tick": { "type": "integer", "minimum": 0 }, "duration_ticks": { "type": "integer", "minimum": 1 }, "end_tick": { "type": "integer", "minimum": 1 }, "start": { "type": "object", "minProperties": 1, "additionalProperties": { "type": "number" } }, "end": { "type": "object", "minProperties": 1, "additionalProperties": { "type": "number" } } }, "additionalProperties": false } },
+    "completion": { "type": "object", "required": ["terminal_states", "dwell_ticks"], "properties": { "terminal_states": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }, "dwell_ticks": { "type": "integer", "minimum": 0 } }, "additionalProperties": false },
+    "execution_authority": { "const": "adapter_only" }
   },
   "additionalProperties": false
 }

@@ -1149,6 +1149,47 @@ test("C1-T.1.1 参考 planner 拒绝坏快照和未租资源且计划指纹可�
   assert.equal(buildTransitionPlan({ ...base, resources: ["arm@1"] }).ok, false);
 });
 
+test("R-C1T-05 plans enforce finite continuous segments and explicit profile time/amplitude bounds", () => {
+  const base = {
+    plan_id: "plan.continuous@1",
+    intent: "social.wave@1",
+    lease: { lease_id: "lease.wave", generation: 3, resources: ["head@1"], mode: "all_or_reject", owner_id: "run.wave", status: "active" },
+    snapshot: validSnapshot,
+    resources: ["head@1"],
+    segments: [
+      { segment_id: "s1", start_tick: 0, duration_ticks: 2, start: { yaw: 0 }, end: { yaw: 0.4 } },
+      { segment_id: "s2", start_tick: 2, duration_ticks: 2, start: { yaw: 0.4 }, end: { yaw: 0.6 } },
+    ],
+    completion: { terminal_states: ["completed"], dwell_ticks: 1 },
+    plan_constraints: { max_horizon_ticks: 4, max_delta_by_field: { yaw: 0.5 } },
+  };
+  const admitted = buildTransitionPlan(base);
+  assert.equal(admitted.ok, true);
+  assert.deepEqual(admitted.value.segments.map((segment) => segment.end_tick), [2, 4]);
+  const discontinuous = structuredClone(base);
+  discontinuous.segments[1].start.yaw = 0.3;
+  assert.equal(buildTransitionPlan(discontinuous).diagnostics[0].code, "SEGMENT_STATE_DISCONTINUITY");
+  const timeGap = structuredClone(base);
+  timeGap.segments[1].start_tick = 3;
+  assert.equal(buildTransitionPlan(timeGap).diagnostics[0].code, "SEGMENT_TIME_DISCONTINUITY");
+  const horizon = structuredClone(base);
+  horizon.plan_constraints.max_horizon_ticks = 3;
+  assert.ok(buildTransitionPlan(horizon).diagnostics.some((item) => item.code === "PLAN_HORIZON_EXCEEDED"));
+  const delta = structuredClone(base);
+  delta.plan_constraints.max_delta_by_field.yaw = 0.3;
+  assert.ok(buildTransitionPlan(delta).diagnostics.some((item) => item.code === "SEGMENT_DELTA_EXCEEDED"));
+  const missingBound = structuredClone(base);
+  missingBound.plan_constraints.max_delta_by_field = {};
+  assert.ok(buildTransitionPlan(missingBound).diagnostics.some((item) => item.code === "PLAN_DELTA_BOUND_MISSING"));
+  const nonFinite = structuredClone(base);
+  nonFinite.segments[0].end.yaw = Number.NaN;
+  assert.equal(buildTransitionPlan(nonFinite).diagnostics[0].code, "INVALID_SEGMENT_STATE");
+  const startMismatch = structuredClone(base);
+  startMismatch.plan_constraints.state_channel_by_field = { yaw: "head.yaw_deg" };
+  startMismatch.snapshot.state["head.yaw_deg"] = 0.1;
+  assert.equal(buildTransitionPlan(startMismatch).diagnostics[0].code, "PLAN_START_STATE_MISMATCH");
+});
+
 test("R-C1T-04 SnapshotBundle 按 profile 绑定新鲜度、通道、采样 tick 与摘要", () => {
   const binding = {
     now_tick: 43,
