@@ -286,6 +286,11 @@ test("C1-L.0.1 reference authoring transaction applies atomically with owner rev
   assert.equal(applyAuthoringTransaction(staleIdentity, source, transaction).receipt.diagnostics[0].code, "AUTHORING_NODE_IDENTITY_MISMATCH");
   const changedNode = { ...transaction, operations: [{ ...transaction.operations[0], expected_node_fingerprint: "sha256:" + "0".repeat(64) }] };
   assert.equal(applyAuthoringTransaction(ownership, source, changedNode).receipt.status, "conflict");
+  const duplicateSubtreeIds = {
+    ...transaction,
+    operations: [{ operation: "add_node", node_id: "new.parent", field_path: "/root", value: { node_id: "new.parent", children: { body: [{ node_id: "nested.same" }, { node_id: "nested.same" }] } } }],
+  };
+  assert.equal(applyAuthoringTransaction(ownership, source, duplicateSubtreeIds).receipt.diagnostics[0].code, "INVALID_AUTHORING_NODE_ADDITION");
 });
 
 test("C1-L.1 TaskGraph 与 source reference 固定类型和作者源定位", () => {

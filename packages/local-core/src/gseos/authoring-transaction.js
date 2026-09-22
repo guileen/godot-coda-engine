@@ -68,6 +68,17 @@ function collectAllNodeIds(source) {
   return ids;
 }
 
+function collectSubtreeNodeIds(node) {
+  const ids = [];
+  const walk = (current) => {
+    if (!current || typeof current !== "object" || Array.isArray(current)) return;
+    if (typeof current.node_id === "string") ids.push(current.node_id);
+    for (const children of Object.values(current.children ?? {})) if (Array.isArray(children)) children.forEach(walk);
+  };
+  walk(node);
+  return ids;
+}
+
 function makeReceipt(transaction, ownership, status, codes = [], changed = []) {
   return {
     receipt_type: "AuthoringTransactionReceipt",
@@ -113,8 +124,9 @@ export function applyAuthoringTransaction(ownership, sourceDocument, transaction
     if (operation.operation === "add_node") {
       const segments = pointerSegments(operation.field_path);
       const targetArray = segments ? resolveContainer(sourceDocument, segments) : null;
-      if (!Array.isArray(targetArray) || !operation.value || operation.value.node_id !== operation.node_id || originalIds.includes(operation.node_id) || addedIds.has(operation.node_id)) return reject("INVALID_AUTHORING_NODE_ADDITION");
-      addedIds.add(operation.node_id);
+      const subtreeIds = collectSubtreeNodeIds(operation.value);
+      if (!Array.isArray(targetArray) || !operation.value || operation.value.node_id !== operation.node_id || subtreeIds.length === 0 || new Set(subtreeIds).size !== subtreeIds.length || subtreeIds.some((id) => !/^[\w.-]+$/u.test(id) || originalIds.includes(id) || addedIds.has(id))) return reject("INVALID_AUTHORING_NODE_ADDITION");
+      subtreeIds.forEach((id) => addedIds.add(id));
       continue;
     }
     const found = findNode(sourceDocument, operation.node_id);
