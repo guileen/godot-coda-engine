@@ -27,6 +27,7 @@ export * from "./transition-harness.js";
 export * from "./physics-reference.js";
 export * from "./hybrid-reference.js";
 export * from "./transition-comparison.js";
+export * from "./replay-reference.js";
 export * from "./field-reference.js";
 export * from "./latent-reference.js";
 export * from "./expression-reference.js";
