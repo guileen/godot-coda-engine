@@ -78,6 +78,10 @@ const requiredFiles = [
   "docs/demos/asset-register.md",
   "docs/c1-owner-input-packet.md",
   "docs/coda-embodied-language-runtime-boundary.md",
+  "gseos/fixtures/c1t/continuation-viability.json",
+  "gseos/fixtures/c1t/shared-contract-pack.json",
+  "packages/local-core/src/gseos/continuation-viability.js",
+  "packages/local-core/src/gseos/temporal-admission.js",
   "demos/launcher/index.html",
   "demos/d3-skeleton-transition/scripts/d3_skeleton_transition.gd",
   "demos/d3-skeleton-transition/scripts/d3_expression_adapter.gd",
@@ -96,7 +100,7 @@ const uniqueLinks = [...new Set(markdownLinks)];
 const linkChecks = await Promise.all(uniqueLinks.map(async (target) => ({ target, exists: await exists(target) })));
 
 const externalGates = [
-  { id: "G-C1-L", reason: "authoring ownership migration, typed embodied IR, and cross-embodiment falsification evidence" },
+  { id: "G-C1-L", reason: "complete GUI AST transaction integration, typed embodied IR coverage, and cross-embodiment falsification evidence" },
   { id: "G-C1-T-A", reason: "owner-selected Skeleton fixture thresholds and runtime authorization" },
   { id: "G-C1-T-N", reason: "pre-registered human perception comparison" },
   { id: "G-C1-P-B", reason: "target-device wall/p95/p99 and contact-model calibration" },
