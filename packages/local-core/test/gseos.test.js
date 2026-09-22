@@ -36,6 +36,8 @@ const skeletonFixtureSchema = JSON.parse(await readFile(resolve(root, "contracts
 const skeletonFixtureDraft = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/skeleton-gdbot-draft.json"), "utf8"));
 const c1tDesignReview = JSON.parse(await readFile(resolve(root, "tests/reports/c1t-design-review.json"), "utf8"));
 const c1tContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1t/contract-index.json"), "utf8"));
+const c1tIndexedSchemas = await Promise.all(c1tContractIndex.schemas.map(async (name) => JSON.parse(await readFile(resolve(root, `contracts/c1t/${name.replace(/@\d+$/, "")}.schema.json`), "utf8"))));
+const c1tSharedContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/shared-contract-pack.json"), "utf8"));
 const taskActivationContractSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/task-activation-contract.schema.json"), "utf8"));
 const modelValidityEnvelopeSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/model-validity-envelope.schema.json"), "utf8"));
 const stateAlignmentContractSchema = JSON.parse(await readFile(resolve(root, "contracts/c1t/state-alignment-contract.schema.json"), "utf8"));
@@ -302,6 +304,27 @@ test("C1-T.0.7/.0.8 锁定四项边界合同、分离设备安全配置并冻结
   );
   assert.equal(contactHandoffBenchmark.non_claims.includes("does not treat Godot physics as physical ground truth"), true);
   assert.equal(jointCompositionBenchmark.counterexamples.every((item) => item.expected_rejection_code === "JOINT_TASK_SET_INFEASIBLE"), true);
+});
+
+test("C1-T.0.7 shared contracts type observations, control, continuation, timing, claims and derived graph", () => {
+  assert.deepEqual(c1tIndexedSchemas.map((item) => item.$id), c1tContractIndex.schemas.map((item) => `coda://contracts/c1t/${item}`));
+  const schema = (name) => c1tIndexedSchemas.find((item) => item.$id.endsWith(`/${name}@1`));
+  assert.equal(schema("observation-contract").properties.on_unresolved.enum.includes("reject"), true);
+  assert.equal(schema("hybrid-mode-graph").properties.unknown_input_policy.const, "reject_or_yield_safety");
+  assert.equal(schema("tracking-envelope").properties.supervisor_role.const, "monitor_and_pre_authorized_escalation_only");
+  assert.equal(schema("control-contract").properties.authority.enum.includes("controller_single_writer"), true);
+  assert.equal(schema("continuation-contract").properties.restore_old_generation.const, false);
+  assert.equal(schema("temporal-command-contract").properties.lease_extension_policy.const, "no_implicit_extension");
+  assert.equal(schema("authority-claim-matrix").properties.local_acceptance_implies_joint_feasible.const, false);
+  assert.equal(schema("reactive-execution-graph").properties.generated_only.const, true);
+  assert.equal(c1tSharedContractPack.observation_contract.on_unresolved, "reject");
+  assert.equal(c1tSharedContractPack.hybrid_mode_graph.transitions[0].commit_policy, "presolve_then_barrier");
+  assert.equal(c1tSharedContractPack.tracking_envelope.supervisor_role, "monitor_and_pre_authorized_escalation_only");
+  assert.equal(c1tSharedContractPack.control_contract.authority, "controller_single_writer");
+  assert.equal(c1tSharedContractPack.continuation_contract.restore_old_generation, false);
+  assert.equal(c1tSharedContractPack.temporal_command_contract.lease_extension_policy, "no_implicit_extension");
+  assert.equal(c1tSharedContractPack.authority_claim_matrix.local_acceptance_implies_joint_feasible, false);
+  assert.equal(c1tSharedContractPack.reactive_execution_graph.generated_only, true);
 });
 
 test("C1-T.1.1 参考仲裁器全取或全拒并阻断旧 generation 写入", () => {

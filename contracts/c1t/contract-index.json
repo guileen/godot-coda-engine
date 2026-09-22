@@ -5,6 +5,14 @@
   "wire_bindings": "generated_only",
   "semantic_digest_source": "canonical_semantic_object",
   "schemas": [
+    "observation-contract@1",
+    "hybrid-mode-graph@1",
+    "tracking-envelope@1",
+    "control-contract@1",
+    "continuation-contract@1",
+    "temporal-command-contract@1",
+    "authority-claim-matrix@1",
+    "reactive-execution-graph@1",
     "task-activation-contract@1",
     "model-validity-envelope@1",
     "state-alignment-contract@1",
@@ -26,7 +34,15 @@
     "INTERNAL_STATE_INCOMPATIBLE",
     "COMMAND_DISCONTINUITY",
     "JOINT_TASK_SET_INFEASIBLE",
-    "SAFETY_PROFILE_MISSING"
+    "SAFETY_PROFILE_MISSING",
+    "OBSERVATION_QUALITY_INSUFFICIENT",
+    "TRACKING_ENVELOPE_UNKNOWN",
+    "CONTROL_DOMAIN_INVALID",
+    "CONTINUATION_UNAVAILABLE",
+    "TEMPORAL_COMMAND_EXPIRED",
+    "COMPOSITION_ADMISSION_REQUIRED",
+    "HYBRID_GUARD_UNRESOLVED",
+    "REACTIVE_GRAPH_INVALID"
   ],
   "hard_boundaries": [
     "no implicit lease extension",
@@ -35,6 +51,9 @@
     "no probability belief region presented as a hard set",
     "no runtime-selected stop-category mapping",
     "no local-task acceptance without joint-task-set admission",
+    "controller closes tracking feedback; supervisor only observes and requests pre-authorized escalation",
+    "unknown observation or guard input fails closed",
+    "continuation starts from current measured state and never restores an old generation",
     "no binary wire format as a second semantic source"
   ]
 }

@@ -429,6 +429,8 @@ observe hole.pose {
 
 ## 11. 下一步合同与门禁
 
+共享合同结构已由 `contracts/c1t/contract-index.json` 索引，覆盖 Observation、HybridMode、Tracking、Control、Continuation、TemporalCommand、AuthorityClaim 与 ReactiveExecutionGraph，并由 `gseos/fixtures/c1t/shared-contract-pack.json` 提供结构 fixture。该结构包不包含已测的 Godot deadline/WCET/p95/p99、设备安全 Profile 或运行时准入证据；这些仍是逐 Profile 的开放门禁。
+
 在实现新的监督运行时前，至少需要：
 
 1. `AuthoringOwnership@1`：`text_owned/graph_owned` 互斥、稳定 node identity、迁移与冲突恢复；

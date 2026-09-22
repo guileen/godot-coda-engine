@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/control-contract@1",
+  "title": "C1-T ControlContract@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "contract_id", "controller_ref", "control_cycle_ref", "input_observation_refs", "output_reference_ref", "tracking_envelope_ref", "authority", "validity_domain_ref", "backup_refs", "handoff_refs"],
+  "properties": {
+    "contract_type": { "const": "ControlContract" },
+    "schema_version": { "const": 1 },
+    "contract_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "controller_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "control_cycle_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "input_observation_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true },
+    "output_reference_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "tracking_envelope_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "authority": { "enum": ["controller_single_writer", "observe_only"] },
+    "validity_domain_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "backup_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true },
+    "handoff_refs": { "type": "array", "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true },
+    "receipt_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }
+  },
+  "additionalProperties": false
+}

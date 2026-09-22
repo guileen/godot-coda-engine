@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/temporal-command-contract@1",
+  "title": "C1-T TemporalCommandContract@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "contract_id", "clock_domains", "authority_lease_ref", "observation_freshness_ref", "command_validity_ref", "buffered_horizon_ref", "liveness_ref", "low_watermark_ref", "hysteresis_ref", "on_invalid", "lease_extension_policy", "old_generation_reactivation"],
+  "properties": {
+    "contract_type": { "const": "TemporalCommandContract" },
+    "schema_version": { "const": 1 },
+    "contract_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "clock_domains": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true },
+    "authority_lease_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "observation_freshness_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "command_validity_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "buffered_horizon_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "liveness_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "low_watermark_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "hysteresis_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "deadline_reserve_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "on_invalid": { "enum": ["hold_if_valid", "enter_admitted_backup", "yield_safety_authority", "reject"] },
+    "lease_extension_policy": { "const": "no_implicit_extension" },
+    "old_generation_reactivation": { "const": false }
+  },
+  "additionalProperties": false
+}

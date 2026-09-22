@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/reactive-execution-graph@1",
+  "title": "C1-T ReactiveExecutionGraph@1",
+  "type": "object",
+  "required": ["graph_type", "schema_version", "graph_id", "parent_effect_ref", "source_ref", "generated_only", "work_budget_ref", "entry_node", "nodes", "edges", "terminal_nodes", "arbitrary_source_execution", "adapter_authority_without_admission"],
+  "properties": {
+    "graph_type": { "const": "ReactiveExecutionGraph" },
+    "schema_version": { "const": 1 },
+    "graph_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "parent_effect_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "source_ref": { "type": "string", "minLength": 1 },
+    "generated_only": { "const": true },
+    "work_budget_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "entry_node": { "type": "string", "pattern": "^[-\\w.]+$" },
+    "nodes": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["node_id", "kind", "contract_ref"], "properties": { "node_id": { "type": "string", "pattern": "^[-\\w.]+$" }, "kind": { "enum": ["observe", "evaluate_guard", "request_candidate", "verify_candidate", "execution_admission", "lease_barrier", "adapter_command", "emit_receipt", "terminal"] }, "contract_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "source_ref": { "type": "string", "minLength": 1 } }, "additionalProperties": false } },
+    "edges": { "type": "array", "items": { "type": "object", "required": ["from", "to", "outcome"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "outcome": { "enum": ["pass", "reject", "unknown", "timeout", "failure", "terminal"] } }, "additionalProperties": false } },
+    "terminal_nodes": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+    "arbitrary_source_execution": { "const": false },
+    "adapter_authority_without_admission": { "const": false }
+  },
+  "additionalProperties": false
+}

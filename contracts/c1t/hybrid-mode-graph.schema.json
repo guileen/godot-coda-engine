@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/hybrid-mode-graph@1",
+  "title": "C1-T HybridModeGraph@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "graph_id", "initial_mode", "modes", "transitions", "unknown_input_policy"],
+  "properties": {
+    "contract_type": { "const": "HybridModeGraph" },
+    "schema_version": { "const": 1 },
+    "graph_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "initial_mode": { "type": "string", "pattern": "^[-\\w.]+$" },
+    "modes": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["mode_id", "mode_class", "controller_refs", "invariant_refs"], "properties": { "mode_id": { "type": "string", "pattern": "^[-\\w.]+$" }, "mode_class": { "enum": ["free_motion", "contact_approach", "contact_established", "recovery", "hold", "profile_defined"] }, "controller_refs": { "type": "array", "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true }, "invariant_refs": { "type": "array", "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true } }, "additionalProperties": false } },
+    "transitions": { "type": "array", "items": { "type": "object", "required": ["transition_id", "from_mode", "to_mode", "guard_ref", "activation_class", "commit_policy"], "properties": { "transition_id": { "type": "string", "pattern": "^[-\\w.]+$" }, "from_mode": { "type": "string" }, "to_mode": { "type": "string" }, "guard_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "activation_class": { "enum": ["hard_atomic", "soft_ramp", "guarded_handoff"] }, "commit_policy": { "enum": ["atomic_single_writer", "profile_approved_ramp", "presolve_then_barrier"] }, "receipt_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" } }, "additionalProperties": false } },
+    "unknown_input_policy": { "const": "reject_or_yield_safety" }
+  },
+  "additionalProperties": false
+}

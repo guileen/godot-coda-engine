@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/continuation-contract@1",
+  "title": "C1-T ContinuationContract@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "contract_id", "resume_modes", "phase_progress_ref", "capture_region_ref", "checkpoint_refs", "viability_gate_ref", "bridge_planner_ref", "commit_alignment_ref", "token_fields", "on_no_solution", "restore_old_generation"],
+  "properties": {
+    "contract_type": { "const": "ContinuationContract" },
+    "schema_version": { "const": 1 },
+    "contract_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "resume_modes": { "type": "array", "minItems": 1, "items": { "enum": ["exact_phase", "compatible_phase", "checkpoint", "replan_remaining", "reject"] }, "uniqueItems": true },
+    "phase_progress_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "capture_region_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "checkpoint_refs": { "type": "array", "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true },
+    "viability_gate_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "bridge_planner_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "commit_alignment_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "token_fields": { "type": "array", "items": { "enum": ["skill_ref", "phase_id", "progress", "state_digest", "constraint_revision", "controller_revision", "lease_id", "generation", "checkpoint_ref", "clock_quality"] }, "uniqueItems": true },
+    "on_no_solution": { "enum": ["recovery_skill_if_admitted", "replan", "reject", "yield_safety_authority"] },
+    "restore_old_generation": { "const": false }
+  },
+  "additionalProperties": false
+}

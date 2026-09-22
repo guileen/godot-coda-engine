@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/authority-claim-matrix@1",
+  "title": "C1-T AuthorityClaimMatrix@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "matrix_id", "claims", "joint_admission_checker_ref", "unknown_conflict_policy", "local_acceptance_implies_joint_feasible"],
+  "properties": {
+    "contract_type": { "const": "AuthorityClaimMatrix" },
+    "schema_version": { "const": 1 },
+    "matrix_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "claims": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["skill_ref", "resource_refs", "claim_mode", "write_authority"], "properties": { "skill_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "resource_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true }, "claim_mode": { "enum": ["exclusive", "composed", "nullspace", "observe_only"] }, "write_authority": { "enum": ["single_writer", "composition_controller", "none"] }, "composition_controller_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "admission_evidence_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" } }, "allOf": [ { "if": { "properties": { "claim_mode": { "enum": ["composed", "nullspace"] } } }, "then": { "required": ["composition_controller_ref"], "properties": { "write_authority": { "const": "composition_controller" } } } }, { "if": { "properties": { "claim_mode": { "const": "observe_only" } } }, "then": { "properties": { "write_authority": { "const": "none" } } } }, { "if": { "properties": { "claim_mode": { "const": "exclusive" } } }, "then": { "properties": { "write_authority": { "const": "single_writer" } } } } ], "additionalProperties": false } },
+    "joint_admission_checker_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "unknown_conflict_policy": { "const": "reject_or_preempt_by_lease_policy" },
+    "local_acceptance_implies_joint_feasible": { "const": false }
+  },
+  "additionalProperties": false
+}

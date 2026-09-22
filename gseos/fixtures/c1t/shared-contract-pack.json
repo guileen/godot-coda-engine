@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "observation_contract": {
+    "contract_type": "ObservationContract",
+    "schema_version": 1,
+    "contract_id": "hand.pose.quality@1",
+    "observations": [{ "observation_ref": "hand.pose@1", "value_type": "pose", "unit_ref": "si.length_angle@1", "reference_frame_ref": "world@1", "freshness_ref": "hand.pose.freshness@1", "quality_requirements": { "calibration": "required", "association": "valid_required", "estimator_health": "healthy_required" }, "uncertainty_ref": "hand.pose.belief@1", "error_bound_ref": "hand.pose.error@1" }],
+    "on_insufficient_information": { "policy": "active_observation", "active_observation_ref": "hand.active_scan@1", "retry_budget_ref": "scan.budget@1", "admission_guard_ref": "scan.safety_guard@1" },
+    "on_unresolved": "reject"
+  },
+  "hybrid_mode_graph": {
+    "contract_type": "HybridModeGraph",
+    "schema_version": 1,
+    "graph_id": "arm.contact.graph@1",
+    "initial_mode": "free_motion",
+    "modes": [
+      { "mode_id": "free_motion", "mode_class": "free_motion", "controller_refs": ["arm.position_controller@1"], "invariant_refs": ["arm.free_space@1"] },
+      { "mode_id": "contact_established", "mode_class": "contact_established", "controller_refs": ["arm.compliance_controller@1"], "invariant_refs": ["arm.contact_limit@1"] }
+    ],
+    "transitions": [{ "transition_id": "contact_confirmed", "from_mode": "free_motion", "to_mode": "contact_established", "guard_ref": "contact.confirmed@1", "activation_class": "guarded_handoff", "commit_policy": "presolve_then_barrier", "receipt_ref": "adapter.mode.receipt@1" }],
+    "unknown_input_policy": "reject_or_yield_safety"
+  },
+  "tracking_envelope": {
+    "contract_type": "TrackingEnvelope",
+    "schema_version": 1,
+    "envelope_id": "arm.track.safe@1",
+    "validity_domain_ref": "arm.model.domain@1",
+    "predicates": [{ "predicate_ref": "arm.tracking.error_ok@1", "observation_ref": "arm.tracking.error@1", "unit_ref": "si.position@1", "evaluator": "native_controller", "hysteresis_ref": "arm.error.hysteresis@1", "unknown_value_policy": "yield_safety_authority", "violation_class": "envelope_breach" }],
+    "unknown_policy": "yield_safety_authority",
+    "escalation_policy_ref": "arm.tracking.escalation@1",
+    "supervisor_role": "monitor_and_pre_authorized_escalation_only"
+  },
+  "control_contract": {
+    "contract_type": "ControlContract",
+    "schema_version": 1,
+    "contract_id": "arm.position.control@1",
+    "controller_ref": "arm.position_controller@1",
+    "control_cycle_ref": "arm.control_cycle.profile@1",
+    "input_observation_refs": ["arm.joint_state@1"],
+    "output_reference_ref": "arm.reference.port@1",
+    "tracking_envelope_ref": "arm.track.safe@1",
+    "authority": "controller_single_writer",
+    "validity_domain_ref": "arm.model.domain@1",
+    "backup_refs": ["arm.hold.backup@1"],
+    "handoff_refs": ["arm.controller.handoff@1"],
+    "receipt_ref": "arm.control.receipt@1"
+  },
+  "continuation_contract": {
+    "contract_type": "ContinuationContract",
+    "schema_version": 1,
+    "contract_id": "taiji.resume@1",
+    "resume_modes": ["exact_phase", "compatible_phase", "checkpoint", "replan_remaining", "reject"],
+    "phase_progress_ref": "taiji.phase.progress@1",
+    "capture_region_ref": "taiji.capture.region@1",
+    "checkpoint_refs": ["taiji.checkpoint.shift@1"],
+    "viability_gate_ref": "taiji.viability.gate@1",
+    "bridge_planner_ref": "taiji.bridge.planner@1",
+    "commit_alignment_ref": "taiji.commit.alignment@1",
+    "token_fields": ["skill_ref", "phase_id", "progress", "state_digest", "lease_id", "generation"],
+    "on_no_solution": "reject",
+    "restore_old_generation": false
+  },
+  "temporal_command_contract": {
+    "contract_type": "TemporalCommandContract",
+    "schema_version": 1,
+    "contract_id": "arm.command.time@1",
+    "clock_domains": ["arm.controller.clock@1", "arm.adapter.clock@1"],
+    "authority_lease_ref": "arm.lease@1",
+    "observation_freshness_ref": "arm.observation.freshness@1",
+    "command_validity_ref": "arm.command.validity@1",
+    "buffered_horizon_ref": "arm.command.buffer@1",
+    "liveness_ref": "arm.controller.heartbeat@1",
+    "low_watermark_ref": "arm.command.low_watermark@1",
+    "hysteresis_ref": "arm.command.hysteresis@1",
+    "deadline_reserve_ref": "arm.command.deadline_reserve@1",
+    "on_invalid": "enter_admitted_backup",
+    "lease_extension_policy": "no_implicit_extension",
+    "old_generation_reactivation": false
+  },
+  "authority_claim_matrix": {
+    "contract_type": "AuthorityClaimMatrix",
+    "schema_version": 1,
+    "matrix_id": "taiji.claims@1",
+    "claims": [
+      { "skill_ref": "taiji.walk@1", "resource_refs": ["body.pelvis@1"], "claim_mode": "exclusive", "write_authority": "single_writer" },
+      { "skill_ref": "taiji.upper_body@1", "resource_refs": ["body.upper_body@1"], "claim_mode": "composed", "write_authority": "composition_controller", "composition_controller_ref": "body.whole_body.composer@1" },
+      { "skill_ref": "vision.observe@1", "resource_refs": ["body.pose.read@1"], "claim_mode": "observe_only", "write_authority": "none" }
+    ],
+    "joint_admission_checker_ref": "body.joint_admission@1",
+    "unknown_conflict_policy": "reject_or_preempt_by_lease_policy",
+    "local_acceptance_implies_joint_feasible": false
+  },
+  "reactive_execution_graph": {
+    "graph_type": "ReactiveExecutionGraph",
+    "schema_version": 1,
+    "graph_id": "taiji.effect.runtime@1",
+    "parent_effect_ref": "taiji.cloud_hands.effect@1",
+    "source_ref": "examples/taiji-cloud-hands.coda",
+    "generated_only": true,
+    "work_budget_ref": "taiji.supervisor.work@1",
+    "entry_node": "observe_current",
+    "nodes": [
+      { "node_id": "observe_current", "kind": "observe", "contract_ref": "taiji.observation@1", "source_ref": "skill:taiji.cloud_hands@1" },
+      { "node_id": "execution_admission", "kind": "execution_admission", "contract_ref": "taiji.admission@1", "source_ref": "skill:taiji.cloud_hands@1" },
+      { "node_id": "adapter_terminal", "kind": "terminal", "contract_ref": "adapter.terminal.receipt@1", "source_ref": "skill:taiji.cloud_hands@1" }
+    ],
+    "edges": [{ "from": "observe_current", "to": "execution_admission", "outcome": "pass" }, { "from": "execution_admission", "to": "adapter_terminal", "outcome": "pass" }],
+    "terminal_nodes": ["adapter_terminal"],
+    "arbitrary_source_execution": false,
+    "adapter_authority_without_admission": false
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/observation-contract@1",
+  "title": "C1-T ObservationContract@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "contract_id", "observations", "on_insufficient_information", "on_unresolved"],
+  "properties": {
+    "contract_type": { "const": "ObservationContract" },
+    "schema_version": { "const": 1 },
+    "contract_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "observations": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["observation_ref", "value_type", "unit_ref", "reference_frame_ref", "freshness_ref", "quality_requirements", "uncertainty_ref"],
+        "properties": {
+          "observation_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+          "value_type": { "enum": ["scalar", "vector", "pose", "twist", "wrench", "contact_state", "categorical", "profile_defined"] },
+          "unit_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+          "reference_frame_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+          "freshness_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+          "quality_requirements": { "type": "object", "required": ["calibration", "association", "estimator_health"], "properties": { "calibration": { "enum": ["required", "profile_defined", "not_applicable"] }, "association": { "enum": ["valid_required", "profile_defined", "not_applicable"] }, "estimator_health": { "enum": ["healthy_required", "profile_defined"] } }, "additionalProperties": false },
+          "uncertainty_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+          "error_bound_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "on_insufficient_information": { "type": "object", "required": ["policy"], "properties": { "policy": { "enum": ["active_observation", "wait_for_update", "reject"] }, "active_observation_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "retry_budget_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "admission_guard_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" } }, "additionalProperties": false },
+    "on_unresolved": { "enum": ["reject", "defer_to_parent"] }
+  },
+  "allOf": [
+    { "if": { "properties": { "on_insufficient_information": { "properties": { "policy": { "const": "active_observation" } } } } }, "then": { "properties": { "on_insufficient_information": { "required": ["active_observation_ref", "retry_budget_ref", "admission_guard_ref"] } } } }
+  ],
+  "additionalProperties": false
+}

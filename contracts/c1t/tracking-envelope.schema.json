@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1t/tracking-envelope@1",
+  "title": "C1-T TrackingEnvelope@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "envelope_id", "validity_domain_ref", "predicates", "unknown_policy", "escalation_policy_ref", "supervisor_role"],
+  "properties": {
+    "contract_type": { "const": "TrackingEnvelope" },
+    "schema_version": { "const": 1 },
+    "envelope_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "validity_domain_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "predicates": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["predicate_ref", "observation_ref", "unit_ref", "evaluator", "unknown_value_policy", "violation_class"], "properties": { "predicate_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "observation_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "unit_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "evaluator": { "enum": ["native_controller", "adapter_monitor", "supervisor"] }, "hysteresis_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "unknown_value_policy": { "enum": ["reject", "hold", "yield_safety_authority"] }, "violation_class": { "enum": ["approaching_boundary", "envelope_breach", "safety_domain_breach"] } }, "additionalProperties": false } },
+    "unknown_policy": { "enum": ["reject", "hold", "yield_safety_authority"] },
+    "escalation_policy_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "supervisor_role": { "const": "monitor_and_pre_authorized_escalation_only" }
+  },
+  "additionalProperties": false
+}
