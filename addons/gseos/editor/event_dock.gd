@@ -1036,9 +1036,9 @@ func _can_format_asset_to_gse(nodes: Array) -> bool:
 			return false
 		var children: Dictionary = node.get("children", {})
 		if command == "if":
-			if children.keys().any(func(slot): return slot != "then"):
+			if children.keys().any(func(slot): return slot not in ["then", "else"]):
 				return false
-			if not _can_format_asset_to_gse(children.get("then", [])):
+			if not _can_format_asset_to_gse(children.get("then", [])) or not _can_format_asset_to_gse(children.get("else", [])):
 				return false
 		elif not children.is_empty():
 			return false
@@ -1052,6 +1052,9 @@ func _append_asset_text(nodes: Array, indent: int, lines: Array[String]) -> void
 			"if":
 				lines.append("%sif (%s):%s" % [pad, _format_source_expression(node.get("params", {}).get("condition", {})), anchor])
 				_append_asset_text(node.get("children", {}).get("then", []), indent + 1, lines)
+				if not node.get("children", {}).get("else", []).is_empty():
+					lines.append("%selse:" % pad)
+					_append_asset_text(node.get("children", {}).get("else", []), indent + 1, lines)
 			"let": lines.append("%slet %s = %s%s" % [pad, node.get("params", {}).get("name", "value"), _format_source_expression(node.get("params", {}).get("value", {})), anchor])
 			"do", "await": lines.append("%s%s %s(%s)%s" % [pad, node.get("command_id", "do"), node.get("params", {}).get("capability", ""), _format_source_arguments(node.get("params", {}).get("args", {})), anchor])
 			"motion_intent":

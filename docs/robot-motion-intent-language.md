@@ -117,6 +117,8 @@ Node 参考核心另提供 `applyAuthoringTransaction`，对 graph-owned JSON �
 
 当前编译器可将纯线性 `MotionIntent` ExecutionPlan lower 为版本化 `TaskGraph`：每个意图保留稳定 node ID、作者 source-ref 和资产指纹；校验器检查引用、依赖/边一致性、重复节点与 DAG；空计划、分支或混合普通指令均拒绝生成部分图。该切片不代表完整 Observation/Mode/Tracking/Control 图 lowering 或运行时准入。
 
+双语 parser/formatter 现支持 `if/else` 与 `若/否则` 的双分支往返，并在 AST 中分别保留两个分支；当前这只完成语法/作者结构，不代表条件已被绑定到 GuardExpression 或可用于运行时执行。
+
 C1-L 当前已经落地一条可解析、可校验、可 lower 的紧凑形式。它产生专用 `motion_intent` 节点和 `MotionIntent` 计划指令，并在编译期要求目标、资源、优先级、安全 profile 与无解策略。该形式只验证 source → IR → 双后端 envelope 的最小链路；扁平 `target/resources/expression` 字段不是最终任务、观测、模式或控制契约：
 
 ```coda
