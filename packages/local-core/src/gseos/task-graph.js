@@ -56,7 +56,9 @@ export function validateTaskGraph(graph) {
     }
     if (edge.relation === "guards" && (nodes.get(edge.from)?.kind !== "guard" || !["true", "false"].includes(edge.outcome))) add("INVALID_TASK_GRAPH_GUARD_EDGE", "guards 边必须从 Guard 节点发出并标记 true/false outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
     else if (edge.relation === "completes" && edge.outcome !== "complete") add("INVALID_TASK_GRAPH_COMPLETION_EDGE", "completes 边必须标记 complete outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
-    else if (!["guards", "completes"].includes(edge.relation) && edge.outcome !== undefined) add("INVALID_TASK_GRAPH_EDGE_OUTCOME", "guards/completes 边之外不得携带 outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
+    else if (edge.relation === "hands_off" && (!new Set(["control", "mode_transition"]).has(nodes.get(edge.from)?.kind) || !new Set(["control", "mode_transition"]).has(nodes.get(edge.to)?.kind) || !/^[a-z][a-z0-9_.-]*@\d+$/u.test(String(edge.contract_ref ?? "")))) add("INVALID_TASK_GRAPH_HANDOFF_EDGE", "hands_off 必须连接 Controller/ModeTransition 节点并绑定版本化 HandoffContract。", { event_id: graph.event_id, path: `/edges/${index}` });
+    else if (edge.relation !== "hands_off" && edge.contract_ref !== undefined) add("INVALID_TASK_GRAPH_EDGE_CONTRACT", "只有 hands_off 边可以绑定 HandoffContract。", { event_id: graph.event_id, path: `/edges/${index}` });
+    if (!["guards", "completes"].includes(edge.relation) && edge.outcome !== undefined) add("INVALID_TASK_GRAPH_EDGE_OUTCOME", "guards/completes 边之外不得携带 outcome。", { event_id: graph.event_id, path: `/edges/${index}` });
     const key = `${edge.from}\u0000${edge.to}\u0000${edge.relation}\u0000${edge.outcome ?? ""}`;
     if (edgeKeys.has(key)) add("DUPLICATE_TASK_GRAPH_EDGE", "TaskGraph 不允许重复边。", { event_id: graph.event_id, path: `/edges/${index}` });
     edgeKeys.add(key);

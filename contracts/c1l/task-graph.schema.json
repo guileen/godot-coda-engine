@@ -62,8 +62,16 @@
           "from": { "type": "string", "minLength": 1 },
           "to": { "type": "string", "minLength": 1 },
           "relation": { "enum": ["requires", "observes", "guards", "hands_off", "completes"] },
-          "outcome": { "enum": ["true", "false", "pass", "reject", "unknown", "complete"] }
+          "outcome": { "enum": ["true", "false", "pass", "reject", "unknown", "complete"] },
+          "contract_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*@\\d+$" }
         },
+        "allOf": [
+          {
+            "if": { "properties": { "relation": { "const": "hands_off" } }, "required": ["relation"] },
+            "then": { "required": ["contract_ref"] },
+            "else": { "properties": { "contract_ref": false } }
+          }
+        ],
         "additionalProperties": false
       }
     }

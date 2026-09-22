@@ -448,6 +448,8 @@ test("C1-L.1 TaskGraph 与 source reference 固定类型和作者源定位", () 
   const sourceSchema = c1lSchemas.find((item) => item.$id.endsWith("/source-ref@1"));
   assert.deepEqual(graphSchema.properties.nodes.items.properties.kind.enum, ["task", "guard", "observation", "mode_transition", "tracking", "control", "intent", "reactive"]);
   assert.equal(graphSchema.properties.nodes.items.properties.contract_ref.pattern, "^[a-z][a-z0-9_.-]*@\\d+$");
+  assert.equal(graphSchema.properties.edges.items.properties.contract_ref.pattern, "^[a-z][a-z0-9_.-]*@\\d+$");
+  assert.deepEqual(graphSchema.properties.edges.items.allOf[0].then.required, ["contract_ref"]);
   assert.deepEqual(graphSchema.properties.nodes.items.allOf[0].then.required, ["branch_entries"]);
   assert.equal(graphSchema.properties.nodes.items.allOf[0].else.properties.branch_entries, false);
   assert.deepEqual(graphSchema.properties.nodes.items.properties.branch_context.items.required, ["guard_node_id", "outcome"]);
@@ -540,6 +542,36 @@ test("C1-L.1 linear MotionIntent lowers to a source-preserving TaskGraph and rej
     { from: "second-intent", to: cycle.nodes[0].node_id, relation: "requires" },
   ];
   assert.ok(validateTaskGraph(cycle).diagnostics.some((item) => item.code === "TASK_GRAPH_CYCLE"));
+});
+
+test("C1-L.1 hands_off edge is limited to typed controller nodes and a versioned contract", () => {
+  const graph = lowerToTaskGraph(motionIntentAsset, registry).task_graph;
+  graph.nodes.push({
+    ...structuredClone(graph.nodes[0]),
+    node_id: "handoff-controller",
+    source_ref: { ...graph.nodes[0].source_ref, node_id: "handoff-controller" },
+    kind: "mode_transition",
+  });
+  graph.nodes[0].kind = "control";
+  graph.edges.push({
+    from: graph.nodes[0].node_id,
+    to: "handoff-controller",
+    relation: "hands_off",
+    contract_ref: "controller.handoff@1",
+  });
+  assert.equal(validateTaskGraph(graph).ok, true);
+
+  const missingContract = structuredClone(graph);
+  delete missingContract.edges.at(-1).contract_ref;
+  assert.ok(validateTaskGraph(missingContract).diagnostics.some((item) => item.code === "INVALID_TASK_GRAPH_HANDOFF_EDGE"));
+
+  const untypedEndpoint = structuredClone(graph);
+  untypedEndpoint.nodes[0].kind = "intent";
+  assert.ok(validateTaskGraph(untypedEndpoint).diagnostics.some((item) => item.code === "INVALID_TASK_GRAPH_HANDOFF_EDGE"));
+
+  const misplacedContract = structuredClone(graph);
+  misplacedContract.edges.push({ from: graph.nodes[0].node_id, to: "handoff-controller", relation: "observes", contract_ref: "controller.handoff@1" });
+  assert.ok(validateTaskGraph(misplacedContract).diagnostics.some((item) => item.code === "INVALID_TASK_GRAPH_EDGE_CONTRACT"));
 });
 
 test("C1-L.1 lowers a two-arm MotionIntent branch only through a source-bound observation Guard", () => {
