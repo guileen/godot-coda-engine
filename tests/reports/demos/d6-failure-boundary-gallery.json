@@ -3,7 +3,7 @@
   "schema_version": 1,
   "demo_id": "D6",
   "title": "Failure and boundary gallery",
-  "status": "PASS_OFFLINE_AND_VISUAL_CAPTURED",
+  "status": "PASS_OFFLINE_REPORT_BOUND",
   "evidence": {
     "cases": [
       {
@@ -33,13 +33,10 @@
       }
     ],
     "fail_closed": true,
-    "visual_states": [
-      {
-        "state": "failure_gallery",
-        "file": "d6.png",
-        "sha256": "ab78d18aaf8cc9ed1daafb572e7aa53b00ad38674ad3feba1678507d2cf8bfd9"
-      }
-    ],
+    "legacy_launcher_preview_fixture": {
+      "file": "visual/d6.png",
+      "accepted_as_demo_visual": false
+    },
     "replay": {
       "file": "replays/d6-failure-boundary-gallery.replay.json",
       "sha256": "7e5c47668c022ae4c3a5cd604e34d6f2f1450bda0e3237dd684934d29f6ecdde"

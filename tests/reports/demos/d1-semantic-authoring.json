@@ -3,7 +3,7 @@
   "schema_version": 1,
   "demo_id": "D1",
   "title": "Semantic authoring and source location",
-  "status": "PASS_VISUAL_CAPTURED",
+  "status": "PASS_OFFLINE_REPORT_BOUND",
   "evidence": {
     "event_asset": "ui.reward.apply",
     "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9",
@@ -11,13 +11,10 @@
     "generated_source_fingerprint": "sha256:0bfc591df2c8a2710557e2861a1f9a321861ea2ef4b8b76bd47c22ae689a7fb1",
     "source_map_entries": 23,
     "source_to_plan_to_generated": true,
-    "visual_states": [
-      {
-        "state": "source_map",
-        "file": "d1.png",
-        "sha256": "cd27a5bcd00bd7e6bd7e7b99a9db5ddfa39f42820a7c4b66e7d1b3e18ffff43b"
-      }
-    ],
+    "legacy_launcher_preview_fixture": {
+      "file": "visual/d1.png",
+      "accepted_as_demo_visual": false
+    },
     "replay": {
       "file": "replays/d1-semantic-authoring.replay.json",
       "sha256": "6f2bc2875dda2ffc3fccdf43bc0bfddbfcb9025a28ab5ff13a2472935be1a1eb"

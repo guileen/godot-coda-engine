@@ -11,59 +11,139 @@
     .badge { border:1px solid #386486; padding:7px 11px; border-radius:99px; color:var(--blue); white-space:nowrap; }
     .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; } .card { background:linear-gradient(145deg,#142640,#0d1929); border:1px solid var(--line); border-radius:14px; padding:18px; min-height:190px; box-shadow:0 12px 30px #0003; } .card.active { border-color:#4e9c7a; }
     .card-head { display:flex; justify-content:space-between; gap:12px; } .id { color:var(--blue); font-weight:700; } .status { font-size:12px; color:var(--green); } .status.pending { color:var(--yellow); } .status.blocked { color:var(--red); } .card h3 { margin:13px 0 6px; font-size:18px; } .card ul { padding-left:18px; color:var(--muted); }
-    .zones { display:grid; grid-template-columns:1.15fr 1fr 1fr 1fr; gap:12px; margin-top:22px; } .zone { min-height:150px; background:#0c1929d9; border:1px solid var(--line); border-radius:12px; padding:15px; } .zone.scene { grid-row:span 2; } .zone h3 { margin:0 0 8px; font-size:14px; color:var(--blue); text-transform:uppercase; letter-spacing:.08em; } .metric { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #ffffff0b; } .ok { color:var(--green); } .warn { color:var(--yellow); } .fail { color:var(--red); }
-    img { width:100%; border-radius:8px; border:1px solid #3a5575; margin-top:6px; } .chips { display:flex; flex-wrap:wrap; gap:6px; } .chip { padding:4px 7px; border-radius:5px; background:#18304c; color:var(--muted); font-size:12px; } footer { margin-top:20px; color:var(--muted); font-size:12px; }
+    .zones { display:grid; grid-template-columns:1.15fr 1fr 1fr 1fr; gap:12px; margin-top:22px; } .zone { min-height:150px; background:#0c1929d9; border:1px solid var(--line); border-radius:12px; padding:15px; } .zone.scene { grid-row:span 2; } .zone h3 { margin:0 0 8px; font-size:14px; color:var(--blue); text-transform:uppercase; letter-spacing:.08em; } .metric { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid #ffffff0b; } .metric span:last-child { text-align:right; overflow-wrap:anywhere; } #decision { display:block; } .ok { color:var(--green); } .warn { color:var(--yellow); } .fail { color:var(--red); }
+    img { width:100%; border-radius:8px; border:1px solid #3a5575; margin-top:6px; } .scene-diagram { display:grid; gap:8px; margin-top:12px; } .scene-diagram[hidden],img[hidden] { display:none; } .diagram-node { padding:10px 12px; border:1px solid #3a5575; border-radius:8px; color:var(--text); background:linear-gradient(120deg,#18304c,#101d30); overflow-wrap:anywhere; } .diagram-node small { display:block; margin-top:3px; color:var(--muted); } .chips { display:flex; flex-wrap:wrap; gap:6px; } .chip { padding:4px 7px; border-radius:5px; background:#18304c; color:var(--muted); font-size:12px; } button.chip { min-height:44px; border:1px solid transparent; font:inherit; text-align:left; cursor:pointer; } button.chip:hover { border-color:#5b83a8; color:var(--text); } button.chip:focus-visible,.card:focus-visible { outline:3px solid #f1c56b; outline-offset:3px; } button.chip[aria-pressed="true"] { border-color:var(--blue); color:var(--text); background:#234566; } .scenario-list { display:grid; gap:6px; margin-top:8px; } .status-line { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; } .source-link { display:inline-flex; align-items:center; min-height:44px; color:var(--blue); } footer { margin-top:20px; color:var(--muted); font-size:12px; }
     @media (max-width:900px) { .grid,.zones { grid-template-columns:1fr; } .zone.scene { grid-row:auto; } header { display:block; } .badge { display:inline-block; margin-top:12px; } }
   </style>
 </head>
 <body>
 <main>
-  <header><div><h1>CODA / Demo Suite</h1><p>意图编排 · 可中断运行时 · Skeleton3D · 多保真 · Anytime · Fail-closed</p></div><div class="badge">离线证据可重跑 · npm run demo:smoke</div></header>
-  <section class="grid" id="cards"></section>
+  <header><div><h1>CODA / Demo Suite</h1><p>意图编排 · 可中断运行时 · Skeleton3D · 多保真 · Anytime · Fail-closed</p></div><div class="badge">报告驱动 · 状态来自本地证据文件</div></header>
+  <section class="grid" id="cards" aria-label="选择一个 Demo 查看其报告证据"></section>
   <section class="zones">
-    <div class="zone scene"><h3>Scene / 视觉状态</h3><p id="scene-copy">当前真实视觉素材：AIBI/GDBot。最终商业交付仍需替换 CC BY-NC-SA 原型资产或取得授权。</p><img id="scene-image" src="../../tests/reports/demos/visual/d3-idle.png" alt="D3 GDBot Skeleton3D idle state"></div>
-    <div class="zone"><h3>Timeline / 运行路径</h3><div id="timeline"></div></div>
-    <div class="zone"><h3>Decision / 硬门</h3><div id="decision" class="chips"></div><p>安全、权限、数值有限性和 deadline 不进入 Pareto 交换。</p></div>
-    <div class="zone"><h3>Evidence / 回执</h3><div id="scenarios" class="chips"></div><div id="evidence"></div><p id="boundary">报告和截图均保留边界，不把 fixture 当作实测 benchmark。</p></div>
+    <div class="zone scene"><h3>Scene / 视觉状态</h3><p id="scene-copy">场景视觉仅展示报告中可追溯的截图，其他 Demo 展示报告数据图示。</p><img id="scene-image" hidden alt=""><div id="scene-diagram" class="scene-diagram" aria-label="由离线报告数据生成的图示"></div></div>
+    <div class="zone"><h3>Timeline / 证据路径</h3><div id="timeline" aria-live="polite"></div></div>
+    <div class="zone"><h3>Decision / 报告事实</h3><div id="decision" class="chips" aria-live="polite"></div><p>只展示报告记录的门与数值；未记录的运行指标不会补造。</p></div>
+    <div class="zone"><h3>Evidence / 报告与场景</h3><div id="scenarios" class="scenario-list" aria-label="报告证据项"></div><div id="evidence" aria-live="polite"></div><p id="boundary">报告和截图均保留边界，不把 fixture 当作实测 benchmark。</p></div>
   </section>
   <footer>入口由 tasks.md 索引；本页是本地验收面板，不连接网络、不接硬件、不授予直接关节写权。</footer>
 </main>
+<script src="./demo-data.js"></script>
 <script>
-const demos = [
-  {id:'D1',title:'语义编排与来源定位',summary:'EventAsset → plan → generated source map',status:'PASS',proof:'单一事实源、来源定位、生成物回溯',pending:'独立视觉入口已捕获',scene:'../../tests/reports/demos/visual/d1-source-map.svg',timeline:['CODA source','EventAsset','ExecutionPlan','source map'],gates:['schema','source ownership','runtime location'],evidence:'d1-semantic-authoring.json',boundary:'不证明任意 GDScript 编辑。',scenarios:[['正常','PASS','攻击意图进入 EventAsset，再定位到生成步骤'],['边界','REJECT','过期 patch 被拒绝，不产生部分写回'],['回放','REPLAY','相同输入得到相同 source map']]},
-  {id:'D2',title:'可中断行为运行时',summary:'状态、仲裁、取消、迟到回调',status:'PASS',proof:'唯一终态与 replay trace',pending:'idle + interrupted 视觉状态已保存',timeline:['event queue','priority arbitration','interrupt','listening'],gates:['priority','cancel once','stale callback reject'],evidence:'d2-interruptible-behavior.json',boundary:'不证明云端 LLM 或硬件控制。',scenarios:[['正常','COMPLETED','speaking 完成后回到 idle'],['打断','SAFE','interrupt 取消 speech 并收敛到 listening'],['迟到回调','REJECT','旧 tts_done 只记录 stale，不重新转态'],['回放','REPLAY','固定事件序列 trace 指纹一致']]},
-  {id:'D3',title:'Skeleton3D 意图过渡',summary:'真实 GDBot 网格、Skeleton3D、FaceScreen、generation',status:'PASS',proof:'CODA plan 被 Godot smoke 消费，表情意图进入 FaceScreen Adapter',pending:'idle + interrupted + defense 截图已保存；FaceScreen 表情 smoke 已通过',timeline:['CODA source: friendly_smile','MotionIntent plan','Skeleton3D + FaceScreen Adapter','interrupted_to_safe'],gates:['snapshot','lease','pose limits','generation','expression ownership'],evidence:'d3-skeleton-transition-smoke.json',boundary:'不单独证明“更自然”或真实硬件安全。',scenarios:[['正常','COMPLETED','MotionIntent 获得 lease 并完成有界姿态过渡'],['表情','EXPRESSION','friendly_smile → happy/default/dizzy → GDBot FaceScreen'],['打断','SAFE','更高优先级抢占，旧 generation 不再写入'],['越界','REJECT','pose 或外部 writer 违反硬门时拒绝'],['回放','REPLAY','source_ref=/root/0 与 runtime observation 关联']]},
-  {id:'D4',title:'物理知情多保真级联',summary:'kinematic → reduced → high fidelity',status:'PASS',proof:'硬安全优先于平均状态误差',pending:'独立视觉入口已捕获；实测 benchmark 待完成',scene:'../../tests/reports/demos/visual/d4-fidelity-cascade.svg',timeline:['admissibility','candidate set','top-k upgrade','execute/reject'],gates:['hard safety','decision fidelity','work units'],evidence:'d4-multifidelity-planning.json',boundary:'不证明所有场景最高精度。',scenarios:[['低成本','EXECUTE','kinematic candidate 通过全部硬门'],['不确定','UPGRADE','误差 envelope 接近边界，升级 high fidelity'],['危险翻转','REJECT','低保真平均误差小但安全决策翻转，拒绝'],['回放','REPLAY','tier/work units/decision 记录稳定']]},
-  {id:'D5',title:'Anytime 与安全边界',summary:'预算、认证候选、Pareto、fallback',status:'PASS',proof:'预算耗尽不返回未认证 iterate',pending:'独立视觉入口已捕获；目标设备 p95/p99 待完成',scene:'../../tests/reports/demos/visual/d5-anytime-frontier.svg',timeline:['budget=8','fallback','certified candidate','Pareto in A_safe'],gates:['certified','deadline reserve','fallback'],evidence:'d5-anytime-safety-boundary.json',boundary:'不证明预算不足时一定成功。',scenarios:[['预算充足','EXECUTE','返回已认证 candidate，并保留 deadline reserve'],['继续改善','UPGRADE','增加预算后进入安全域内更优 Pareto 点'],['预算耗尽','FALLBACK','没有认证候选时只返回 fallback/reject'],['回放','REPLAY','budget/candidate/certified 状态一致']]},
-  {id:'D6',title:'失败与边界画廊',summary:'拒绝、fallback、数值/资源/权限边界',status:'PASS',proof:'fail-closed 与唯一终态',pending:'独立视觉入口已捕获',scene:'../../tests/reports/demos/visual/d6-failure-gallery.svg',timeline:['invalid capability','missing safety','reject','safe terminal'],gates:['fail closed','diagnostic','no partial write'],evidence:'d6-failure-boundary-gallery.json',boundary:'不把失败隐藏成体验降级。',scenarios:[['非法能力','REJECT','CAPABILITY_VERSION_MISMATCH，计划为空'],['缺安全 profile','REJECT','MISSING_MOTION_INTENT_CONTRACT，无 Adapter 写入'],['无认证候选','FALLBACK','唯一 fallback，保留安全终态'],['回放','REPLAY','失败码、source_ref、终态可重复']]}
+const catalog = [
+  { id:'D1', title:'语义编排与来源定位', summary:'EventAsset → plan → generated source map', report:'d1-semantic-authoring.json' },
+  { id:'D2', title:'可中断行为运行时', summary:'状态、仲裁、取消、迟到回调', report:'d2-interruptible-behavior.json' },
+  { id:'D3', title:'Skeleton3D 意图过渡', summary:'GDBot、Skeleton3D、FaceScreen、generation', report:'d3-skeleton-transition-smoke.json' },
+  { id:'D4', title:'物理知情多保真级联', summary:'kinematic → reduced → high fidelity', report:'d4-multifidelity-planning.json' },
+  { id:'D5', title:'Anytime 与安全边界', summary:'预算、认证候选、Pareto、fallback', report:'d5-anytime-safety-boundary.json' },
+  { id:'D6', title:'失败与边界画廊', summary:'拒绝、fallback、数值/资源/权限边界', report:'d6-failure-boundary-gallery.json' },
 ];
+const reports = window.CODA_DEMO_REPORTS || {};
 const cards = document.querySelector('#cards');
-function render(demo) {
-  document.querySelectorAll('.card').forEach(card => card.classList.toggle('active', card.dataset.id === demo.id));
-  document.querySelector('#scene-copy').textContent = demo.id === 'D3' ? '真实 GDBot 网格 / Skeleton3D；当前显示 D3 idle 证据。' : `${demo.title}：场景区使用该 Demo 的语义/证据状态，不用粗糙几何体伪装角色。`;
-  document.querySelector('#scene-image').src = demo.scene || (demo.id === 'D3' ? '../../tests/reports/demos/visual/d3-idle.png' : demo.id === 'D2' ? '../../tests/reports/demos/visual/d2-idle.png' : '../../tests/reports/demos/visual/d3-interrupted.png');
-  document.querySelector('#timeline').innerHTML = demo.timeline.map((item, index) => `<div class="metric"><span>${index + 1}. ${item}</span><span class="ok">observed</span></div>`).join('');
-  document.querySelector('#decision').innerHTML = demo.gates.map(item => `<span class="chip ok">${item}</span>`).join('');
-  document.querySelector('#scenarios').innerHTML = demo.scenarios.map((scenario, index) => `<button class="chip ${index === 0 ? 'ok' : ''}" data-scenario="${index}">${scenario[0]}</button>`).join('');
-  document.querySelectorAll('#scenarios button').forEach(button => button.addEventListener('click', () => runScenario(demo, Number(button.dataset.scenario))));
-  document.querySelector('#evidence').innerHTML = `<div class="metric"><span>report</span><span class="ok">${demo.evidence}</span></div><div class="metric"><span>status</span><span class="ok">${demo.status}</span></div>`;
-  document.querySelector('#boundary').textContent = demo.boundary;
-  runScenario(demo, 0);
+const nodes = Object.fromEntries(['scene-copy','scene-image','scene-diagram','timeline','decision','scenarios','evidence','boundary'].map(id => [id, document.getElementById(id)]));
+const row = (label, value, tone = '') => {
+  const el = document.createElement('div'); el.className = 'metric';
+  const left = document.createElement('span'); left.textContent = label;
+  const right = document.createElement('span'); right.className = tone; right.textContent = String(value);
+  el.append(left, right); return el;
+};
+function evidenceItems(id, evidence) {
+  if (id === 'D1') return [
+    { label:'Source → plan → generated', value:evidence.source_to_plan_to_generated ? 'verified' : 'missing', detail:`source map entries: ${evidence.source_map_entries}` },
+    { label:'Plan fingerprint', value:evidence.plan_fingerprint || 'not recorded', detail:`asset: ${evidence.event_asset || 'not recorded'}` },
+    { label:'Replay evidence', value:evidence.replay?.sha256 || 'not recorded', detail:evidence.replay?.file || 'no replay file' },
+  ];
+  if (id === 'D2') return [
+    { label:'Final state', value:evidence.final_state || 'not recorded', detail:`cancelled effects: ${(evidence.cancelled_effects || []).join(', ') || 'none'}` },
+    { label:'Stale completions rejected', value:evidence.stale_completion_rejections ?? 'not recorded', detail:evidence.replay_trace_fingerprint || 'no replay fingerprint' },
+    ...(evidence.visual_states || []).map(item => ({ label:`Visual: ${item.state}`, value:`generation ${item.generation}`, detail:item.file })),
+  ];
+  if (id === 'D3') return [
+    { label:'Plan consumed by runtime', value:evidence.plan_consumed_by_runtime ? 'yes' : 'no', detail:`source ref: ${evidence.plan_source_ref_observed || 'not recorded'}` },
+    ...(evidence.checks || []).map((item, index) => ({ label:`Smoke check ${index + 1}`, value:'passed', detail:item })),
+    ...(evidence.remaining_for_stage_acceptance || []).map(item => ({ label:'Still open', value:'pending', detail:item, tone:'warn' })),
+  ];
+  if (id === 'D4') return (evidence.candidates || []).map(item => ({ label:`${item.id} · ${item.tier}`, value:`${item.decision} · ${item.work_units} work`, detail:`hard_safe=${item.hard_safe}; state_error=${item.state_error}`, tone:item.hard_safe ? 'ok' : 'fail' }));
+  if (id === 'D5') return (evidence.budget_sweep || []).map(item => ({ label:`budget ${item.budget}`, value:item.outcome, detail:`candidate=${item.candidate ?? 'none'}; certified=${item.certified}`, tone:item.certified ? 'ok' : 'warn' }));
+  return (evidence.cases || []).map(item => ({ label:item.id, value:item.result, detail:(item.diagnostics || []).join(', ') || 'no diagnostic', tone:item.result === 'reject' ? 'fail' : 'warn' }));
 }
-function runScenario(demo, index) {
-  const scenario = demo.scenarios[index];
-  if (demo.id === 'D3') {
-    const stateImages = ['d3-idle.png', 'd3-defense.png', 'd3-interrupted.png', 'd3-interrupted.png', 'd3-idle.png'];
-    document.querySelector('#scene-image').src = `../../tests/reports/demos/visual/${stateImages[index] || 'd3-idle.png'}`;
-    document.querySelector('#scene-copy').textContent = index === 1 ? '真实 GDBot FaceScreen 表情 Adapter smoke：表情通道独立于 Skeleton3D。' : `真实 GDBot 网格 / Skeleton3D；当前显示 D3 ${scenario[0]} 证据。`;
+function decisionFacts(id, evidence) {
+  if (id === 'D1') return [['source ownership', evidence.source_to_plan_to_generated ? 'verified' : 'missing'], ['source-map entries', evidence.source_map_entries ?? 'not recorded']];
+  if (id === 'D2') return [['final state', evidence.final_state || 'not recorded'], ['stale callback rejects', evidence.stale_completion_rejections ?? 'not recorded']];
+  if (id === 'D3') return [['execution authority', evidence.adapter_receipt_contract?.execution_authority || 'not recorded'], ['external writer', evidence.adapter_receipt_contract?.external_writer_status || 'not recorded']];
+  if (id === 'D4') return [['selected candidate', evidence.selected?.id || 'none'], ['decision-flip policy', evidence.decision_flip_policy || 'not recorded']];
+  if (id === 'D5') return [['invariant', evidence.invariant || 'not recorded'], ['Pareto scope', evidence.pareto_scope || 'not recorded']];
+  return [['fail-closed', evidence.fail_closed ? 'yes' : 'no'], ['cases', evidence.cases?.length ?? 0]];
+}
+function diagramFacts(id, evidence) {
+  if (id === 'D1') return [['EventAsset', evidence.event_asset || 'not recorded'], ['Execution plan', evidence.plan_fingerprint || 'not recorded'], ['Generated source map', `${evidence.source_map_entries ?? 0} mappings`]];
+  if (id === 'D4') return (evidence.candidates || []).map(item => [`${item.tier} · ${item.id}`, `${item.work_units} work · error ${item.state_error} · ${item.hard_safe ? 'safe' : 'rejected'}`]);
+  if (id === 'D5') return (evidence.budget_sweep || []).map(item => [`Budget ${item.budget}`, `${item.outcome} · ${item.candidate || 'fallback'} · ${item.certified ? 'certified' : 'not certified'}`]);
+  return (evidence.cases || []).map(item => [item.id, `${item.result} · ${(item.diagnostics || []).join(', ') || 'no diagnostic'}`]);
+}
+function renderDiagram(rows) {
+  nodes['scene-image'].hidden = true;
+  nodes['scene-image'].removeAttribute('src');
+  nodes['scene-diagram'].hidden = false;
+  nodes['scene-diagram'].replaceChildren(...rows.map(([title, detail]) => {
+    const node = document.createElement('div'); node.className = 'diagram-node'; node.append(document.createTextNode(title));
+    const note = document.createElement('small'); note.textContent = detail; node.append(note); return node;
+  }));
+}
+function selectDemo(demo) {
+  document.querySelectorAll('.card').forEach(card => {
+    const active = card.dataset.id === demo.id;
+    card.classList.toggle('active', active); card.setAttribute('aria-pressed', String(active));
+  });
+  const report = reports[demo.id];
+  if (!report || report.demo_id !== demo.id) {
+    nodes['scene-copy'].textContent = '报告文件未生成。请运行 npm run demo:smoke。';
+    nodes['scene-image'].hidden = true; nodes['scene-image'].removeAttribute('src'); nodes['scene-diagram'].replaceChildren(); nodes.timeline.replaceChildren(); nodes.decision.replaceChildren(); nodes.scenarios.replaceChildren();
+    nodes.evidence.replaceChildren(row('report status', 'missing', 'fail')); nodes.boundary.textContent = '缺少报告时不显示成功状态。'; return;
   }
-  document.querySelector('#evidence').innerHTML = `<div class="metric"><span>scenario</span><span class="${scenario[1] === 'REJECT' ? 'fail' : scenario[1] === 'FALLBACK' ? 'warn' : 'ok'}">${scenario[0]}</span></div><div class="metric"><span>terminal</span><span class="${scenario[1] === 'REJECT' ? 'fail' : scenario[1] === 'FALLBACK' ? 'warn' : 'ok'}">${scenario[1]}</span></div><p>${scenario[2]}</p><div class="metric"><span>report</span><span class="ok">${demo.evidence}</span></div>`;
-  document.querySelector('#scenarios').querySelectorAll('button').forEach((button, buttonIndex) => button.classList.toggle('ok', buttonIndex === index));
+  const isSmoke = report.report_type === 'CODA_DemoSmokeReport';
+  const evidence = isSmoke ? report : (report.evidence || {});
+  const imageEvidence = isSmoke ? (evidence.visual_evidence || []) : (evidence.visual_states || []).map(item => `tests/reports/demos/visual/${item.file}`);
+  if (imageEvidence.length) {
+    nodes['scene-diagram'].hidden = true; nodes['scene-diagram'].replaceChildren();
+    nodes['scene-image'].hidden = false; nodes['scene-image'].src = `../../${imageEvidence[0]}`;
+    nodes['scene-image'].alt = `${demo.id} report screenshot: ${imageEvidence[0].split('/').at(-1)}`;
+    nodes['scene-copy'].textContent = `报告记录的静态截图 · ${demo.title}；不是当前执行中的实时画面。`;
+  } else {
+    renderDiagram(diagramFacts(demo.id, evidence));
+    nodes['scene-copy'].textContent = `由 ${demo.id} 离线报告字段生成的数据图示；不是运行时画面或独立视觉验收。`;
+  }
+  const items = evidenceItems(demo.id, evidence);
+  nodes.timeline.replaceChildren(...items.slice(0, 5).map((item, index) => row(`${index + 1}. ${item.label}`, item.value, item.tone || '')));
+  nodes.decision.replaceChildren(...decisionFacts(demo.id, evidence).map(([label, value]) => row(label, value)));
+  const reportLink = document.createElement('a'); reportLink.className = 'source-link'; reportLink.href = `../../tests/reports/demos/${demo.report}`; reportLink.target = '_blank'; reportLink.rel = 'noreferrer'; reportLink.textContent = `打开 ${demo.report}`;
+  nodes.evidence.replaceChildren(row('status', report.status, report.status.startsWith('PASS') ? 'ok' : 'warn'), row('evidence mode', isSmoke ? 'Godot headless smoke' : 'offline report'), reportLink);
+  nodes.scenarios.replaceChildren(...items.map((item, index) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = `chip ${item.tone || ''}`; button.textContent = item.label; button.setAttribute('aria-pressed', String(index === 0));
+    button.addEventListener('click', () => {
+      nodes.scenarios.querySelectorAll('button').forEach((candidate, candidateIndex) => candidate.setAttribute('aria-pressed', String(candidateIndex === index)));
+      nodes.evidence.querySelectorAll('.selected-evidence').forEach(el => el.remove());
+      const detail = document.createElement('p'); detail.className = 'selected-evidence'; detail.textContent = `${item.label}: ${item.detail}`; nodes.evidence.append(detail);
+    }); return button;
+  }));
+  nodes.boundary.textContent = report.boundary || (report.remaining_for_stage_acceptance || []).join(' · ') || '报告未声明边界。';
 }
-cards.innerHTML = demos.map(demo => `<article class="card ${demo.id==='D3'?'active':''}" data-id="${demo.id}" tabindex="0"><div class="card-head"><span class="id">${demo.id}</span><span class="status">${demo.status}</span></div><h3>${demo.title}</h3><p>${demo.summary}</p><ul><li>${demo.proof}</li><li class="${demo.pending.includes('待完成')?'':'ok'}">${demo.pending}</li></ul></article>`).join('');
-cards.querySelectorAll('.card').forEach(card => { const select = () => render(demos.find(demo => demo.id === card.dataset.id)); card.addEventListener('click', select); card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') select(); }); });
+cards.replaceChildren(...catalog.map(demo => {
+  const report = reports[demo.id];
+  const article = document.createElement('article'); article.className = 'card'; article.dataset.id = demo.id; article.tabIndex = 0; article.setAttribute('role','button'); article.setAttribute('aria-pressed','false');
+  const head = document.createElement('div'); head.className = 'card-head';
+  const id = document.createElement('span'); id.className='id'; id.textContent=demo.id;
+  const status = document.createElement('span'); status.className=`status ${report?.status?.startsWith('PASS') ? '' : 'pending'}`; status.textContent=report ? `${report.status?.startsWith('PASS') ? 'PASS' : 'CHECK'} · ${report.report_type === 'CODA_DemoSmokeReport' ? 'Godot smoke' : 'offline'}` : '报告缺失';
+  const title = document.createElement('h3'); title.textContent=demo.title;
+  const summary = document.createElement('p'); summary.textContent=demo.summary;
+  const mode = document.createElement('p'); mode.textContent=report?.report_type === 'CODA_DemoSmokeReport' ? 'Godot headless smoke' : '离线报告';
+  head.append(id,status); article.append(head,title,summary,mode);
+  article.addEventListener('click', () => selectDemo(demo));
+  article.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectDemo(demo); } });
+  return article;
+}));
 const requestedDemo = new URLSearchParams(location.search).get('demo');
-render(demos.find(demo => demo.id === requestedDemo) || demos[2]);
+selectDemo(catalog.find(demo => demo.id === requestedDemo) || catalog[0]);
 </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
   "schema_version": 1,
   "demo_id": "D5",
   "title": "Anytime and safety boundary",
-  "status": "PASS_OFFLINE_AND_VISUAL_CAPTURED",
+  "status": "PASS_OFFLINE_REPORT_BOUND",
   "evidence": {
     "budget_sweep": [
       {
@@ -38,13 +38,10 @@
       "deadline reserve"
     ],
     "pareto_scope": "certified candidates only",
-    "visual_states": [
-      {
-        "state": "anytime_frontier",
-        "file": "d5.png",
-        "sha256": "4adfa75e0854e0f9f17f116d3acfcc2efe73b628e8f8230ee3be5a87f567ab16"
-      }
-    ],
+    "legacy_launcher_preview_fixture": {
+      "file": "visual/d5.png",
+      "accepted_as_demo_visual": false
+    },
     "replay": {
       "file": "replays/d5-anytime-safety-boundary.replay.json",
       "sha256": "35e6ed50c8b79d5fb43dfb55255c55acdfd9fefc6427f0f89cacd40e41f72b91"

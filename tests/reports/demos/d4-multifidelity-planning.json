@@ -3,7 +3,7 @@
   "schema_version": 1,
   "demo_id": "D4",
   "title": "Multi-fidelity planning cascade",
-  "status": "PASS_OFFLINE_AND_VISUAL_CAPTURED",
+  "status": "PASS_OFFLINE_REPORT_BOUND",
   "evidence": {
     "cascade": [
       "kinematic/admissibility",
@@ -54,13 +54,10 @@
     },
     "dangerous_low_fidelity_candidate": "kinematic-dangerous",
     "decision_flip_policy": "hard safety rejection wins over state-error average",
-    "visual_states": [
-      {
-        "state": "fidelity_cascade",
-        "file": "d4.png",
-        "sha256": "0230e72dcd67683d6c7e0a6b28b28329350bfeab3b3b37f0af0263b6dc6c8af4"
-      }
-    ],
+    "legacy_launcher_preview_fixture": {
+      "file": "visual/d4.png",
+      "accepted_as_demo_visual": false
+    },
     "replay": {
       "file": "replays/d4-multifidelity-planning.replay.json",
       "sha256": "18a7a421ec4d108ffb9501a97ab2bccdbc90918727807eb4f24f31ea7a79d47f"

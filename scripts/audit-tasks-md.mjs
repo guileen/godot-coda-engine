@@ -53,12 +53,30 @@ for (const check of reportChecks) {
   check.replay_exists = await exists(check.replay);
 }
 
-// D1–D6 use deliberately different visual filenames; keep the explicit map in the audit.
+const launcherDataPath = "demos/launcher/demo-data.js";
+const launcherDataCheck = { file: launcherDataPath, exists: false, parses: false, matches_reports: false, mismatches: [] };
+try {
+  const source = await readFile(resolve(root, launcherDataPath), "utf8");
+  launcherDataCheck.exists = true;
+  const prefix = "window.CODA_DEMO_REPORTS = ";
+  if (!source.startsWith(prefix)) throw new Error("unexpected launcher data format");
+  const actual = JSON.parse(source.slice(prefix.length).trim().replace(/;$/, ""));
+  launcherDataCheck.parses = true;
+  for (const [demo_id, report_id] of Object.entries(demoReports)) {
+    const expected = JSON.parse(await readFile(resolve(root, `tests/reports/demos/${report_id}.json`), "utf8"));
+    if (JSON.stringify(actual[demo_id]) !== JSON.stringify(expected)) launcherDataCheck.mismatches.push(demo_id);
+  }
+  launcherDataCheck.matches_reports = launcherDataCheck.mismatches.length === 0 && Object.keys(actual).length === Object.keys(demoReports).length;
+} catch (error) {
+  launcherDataCheck.error = error.message;
+}
+
+// Only D2/D3 contain actual demo captures. The other legacy PNGs are launcher previews.
 const visualFiles = {
-  D1: "d1.png", D2: "d2-interrupted.png", D3: "d3-interrupted.png",
-  D4: "d4.png", D5: "d5.png", D6: "d6.png",
+  D2: ["d2-idle.png", "d2-interrupted.png"],
+  D3: ["d3-idle.png", "d3-interrupted.png", "d3-defense.png"],
 };
-const visualChecks = Object.entries(visualFiles).map(([id, file]) => ({ id, file, exists: false }));
+const visualChecks = Object.entries(visualFiles).flatMap(([id, files]) => files.map((file) => ({ id, file, exists: false })));
 for (const check of visualChecks) {
   check.path = `tests/reports/demos/visual/${check.file}`;
   check.exists = await exists(check.path);
@@ -67,7 +85,8 @@ for (const check of visualChecks) {
 const distinctVisualHashes = new Set(visualChecks.map((item) => item.sha256).filter(Boolean));
 const d3StateHashes = await Promise.all(["d3-idle.png", "d3-interrupted.png", "d3-defense.png"].map(async (file) => ({ file, sha256: await sha256(`tests/reports/demos/visual/${file}`) })));
 const visualDistinction = {
-  demo_visual_hashes_unique: distinctVisualHashes.size === visualChecks.length,
+  captured_demo_states_have_unique_hashes: distinctVisualHashes.size === visualChecks.length,
+  legacy_launcher_previews_excluded: ["d1.png", "d4.png", "d5.png", "d6.png"].every((file) => !visualChecks.some((item) => item.file === file)),
   d3_state_hashes: d3StateHashes,
   d3_states_distinct: new Set(d3StateHashes.map((item) => item.sha256).filter(Boolean)).size === d3StateHashes.filter((item) => item.sha256).length,
 };
@@ -90,6 +109,8 @@ const requiredFiles = [
   "packages/local-core/src/gseos/temporal-admission.js",
   "packages/local-core/src/gseos/embodiment-conformance.js",
   "demos/launcher/index.html",
+  "demos/launcher/demo-data.js",
+  "demos/launcher/README.md",
   "demos/d3-skeleton-transition/scripts/d3_skeleton_transition.gd",
   "demos/d3-skeleton-transition/scripts/d3_expression_adapter.gd",
   "tests/reports/demos/d3-skeleton-transition-smoke.json",
@@ -117,9 +138,11 @@ const externalGates = [
 ];
 
 const localEvidencePass = reportChecks.every((item) => item.report_exists && item.replay_exists)
+  && launcherDataCheck.exists && launcherDataCheck.parses && launcherDataCheck.matches_reports
   && requiredFileChecks.every((item) => item.exists)
   && visualChecks.every((item) => item.exists)
-  && visualDistinction.demo_visual_hashes_unique
+  && visualDistinction.captured_demo_states_have_unique_hashes
+  && visualDistinction.legacy_launcher_previews_excluded
   && visualDistinction.d3_states_distinct
   && linkChecks.every((item) => item.exists);
 const pendingTaskLines = (tasks.match(/^\| \[ \].*$/gm) ?? []).length;
@@ -128,7 +151,7 @@ const report = {
   schema_version: 1,
   source: "tasks.md",
   status: localEvidencePass ? "LOCAL_INDEX_AND_EVIDENCE_PASS_EXTERNAL_GATES_PENDING" : "LOCAL_INDEX_INCOMPLETE",
-  local_evidence: { demo_reports_and_replays: reportChecks, visual_files: visualChecks, visual_distinction: visualDistinction, required_files: requiredFileChecks, tasks_md_links: linkChecks },
+  local_evidence: { demo_reports_and_replays: reportChecks, launcher_data: launcherDataCheck, visual_files: visualChecks, visual_distinction: visualDistinction, required_files: requiredFileChecks, tasks_md_links: linkChecks },
   pending_unchecked_task_rows: pendingTaskLines,
   external_gates: externalGates,
   interpretation: "This audit verifies the index and locally available evidence only. It never upgrades an external, perception, calibration, hardware, or owner-decision gate.",
