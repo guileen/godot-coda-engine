@@ -99,6 +99,8 @@ skill taiji.cloud_hands@1(actor: humanoid) {
 
 每个资产的唯一作者源由 [`AuthoringOwnership@1`](../contracts/c1l/authoring-ownership.schema.json) 标记为 `text_owned` 或 `graph_owned`。GUI 修改必须携带期望 owner revision、source fingerprint、稳定 node ID 和字段路径，经 [`AuthoringTransaction@1`](../contracts/c1l/authoring-transaction.schema.json) 写入单一 target source；EventAsset、文本投影、ExecutionPlan 与生成代码都只能作为只读派生物。迁移改变 owner 时必须原子切换；revision/fingerprint 冲突返回无部分写入的 receipt。Godot EventAsset store 已为写入、Undo/Redo 与投影写回增加可选 compare-and-swap，发现磁盘资产在预览后变化会拒绝覆盖；该机制目前比较完整的 EventAsset snapshot，不等同于 owner revision/source fingerprint 协议。对应正反例见 [`authoring-ownership-pack.json`](../gseos/fixtures/c1l/authoring-ownership-pack.json)。text-owned AST transaction、稳定节点迁移和恢复仍未完成。
 
+Node 参考核心另提供 `applyAuthoringTransaction`，对 graph-owned JSON 来源执行 owner revision/source fingerprint CAS、稳定 node ID 和 per-node fingerprint 校验；候选 source 与 node-identity digest 必须完全匹配后才产生递增 owner revision 的新状态。该纯函数不写磁盘，不支持 owner migration，也尚未接入 Godot GUI。
+
 ### 物理 refinement、时域与并行 claim
 
 语言中的 `maintain balance`、`resume compatible_phase` 或并行 `walk + upper_body_skill` 只有在 `EmbodimentDynamicsProfile@1` 提供 actuation/contact/coupling refinement 后才可 lower。编译期最多证明合同存在且类型兼容；目标设备的动力学可达性仍须由声明证据等级的 `ViabilityGate` 和执行准入验证。
