@@ -13,6 +13,8 @@
     "intent-protocol@1",
     "intent-receipt@1",
     "embodiment-protocol@1",
+    "unit-registry@1",
+    "reference-frame-registry@1",
     "safety-authority-port@1",
     "embodiment-dynamics-profile@1",
     "task-graph@1",

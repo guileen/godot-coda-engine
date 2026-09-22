@@ -97,7 +97,7 @@ skill taiji.cloud_hands@1(actor: humanoid) {
 
 这组结构合同位于 [`contracts/c1l/`](../contracts/c1l/)，索引为 [`contract-index.json`](../contracts/c1l/contract-index.json)，正例见 [`contract-pack.json`](../gseos/fixtures/c1l/contract-pack.json)。`EmbodiedSkill@1` 固定 `text_owned` 与 phase/progress/resume 语义；`IntentProtocol@1` 只接收版本化技能引用和语义参数；`EmbodimentProtocol@1` 对 capability、observation、reference、lease、handoff 和 receipt 使用有方向的消息类型；`SafetyAuthorityPort@1` 单向保留独立撤权/保护权；`EmbodimentDynamicsProfile@1` 声明目标拓扑、接触/耦合模型和保证等级。该合同包仍是结构设计和 Godot 视觉正例，不包含运行时实现、目标设备校准或授权。
 
-每条 `EmbodimentProtocol@1` observation 都带非空 `field_unit_map`：每个稳定 `field_ref` 分别绑定 `value_type`、版本化 `unit_ref` 和 `reference_frame_ref`。整体 `unit_system` 与 snapshot 根 `reference_frame` 不能替代字段级映射；重复字段、缺失单位或未版本化引用必须拒绝。单位目录的具体物理定义由目标 Profile/单位注册表提供，协议只保证映射明确，不隐含设备校准或测量精度。
+每条 `EmbodimentProtocol@1` observation 都带非空 `field_unit_map`：每个稳定 `field_ref` 分别绑定 `value_type`、版本化 `unit_ref` 和 `reference_frame_ref`。整体 `unit_system` 与 snapshot 根 `reference_frame` 不能替代字段级映射；重复字段、缺失单位或未版本化引用必须拒绝。`EmbodimentDynamicsProfile@1` 必须引用版本化 `EmbodimentUnitRegistry@1` 和 `ReferenceFrameRegistry@1`：单位注册表以 SI 七基本量加角度指数、正比例与偏移定义换算；坐标系注册表必须是一棵有唯一 root 的树，非根 frame 绑定父 frame 与版本化 transform model。运行时 observation 可按目标 Profile 解析单位/坐标引用，并拒绝未知引用、角度量纲错误和无效 frame graph；schema/目录解析不隐含传感器校准或测量精度。
 
 SafetyAuthority 的撤权、保护动作和设备 failsafe receipt 必须保持 `latched=true`；clear receipt 只报告 latch 清除，不会重新启用原 writer。新写权必须通过更高 generation 的独立注册/授权。Node `MockSafetyAuthorityPort` 用于离线一致性验证、事件去重与旧 generation 拒绝，不会驱动硬件，也不构成设备安全证明。
 

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1l/reference-frame-registry@1",
+  "title": "ReferenceFrameRegistry@1",
+  "type": "object",
+  "required": ["contract_type", "schema_version", "registry_ref", "root_frame_ref", "frames"],
+  "properties": {
+    "contract_type": { "const": "ReferenceFrameRegistry" },
+    "schema_version": { "const": 1 },
+    "registry_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "root_frame_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "frames": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "required": ["frame_ref", "parent_frame_ref", "transform_model_ref"],
+        "properties": {
+          "frame_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+          "parent_frame_ref": { "type": ["string", "null"], "pattern": "^[-\\w.]+@\\d+$" },
+          "transform_model_ref": { "type": ["string", "null"], "pattern": "^[-\\w.]+@\\d+$" }
+        },
+        "additionalProperties": false,
+        "allOf": [
+          { "if": { "properties": { "parent_frame_ref": { "const": null } } }, "then": { "properties": { "transform_model_ref": { "const": null } } } },
+          { "if": { "properties": { "parent_frame_ref": { "type": "string" } } }, "then": { "properties": { "transform_model_ref": { "type": "string" } } } }
+        ]
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -78,6 +78,8 @@
     "target_identity": { "vendor": "GDQuest", "model": "GDBot", "hardware_revision": "not_applicable", "software_revision": "godot.fixture@1" },
     "status": "draft",
     "capability_refs": ["godot.motion@1"],
+    "unit_registry_ref": "godot.si.units@1",
+    "reference_frame_registry_ref": "godot.gdbot.frames@1",
     "actuation_topology_ref": "godot.gdbot.skeleton@1",
     "contact_model_ref": "godot.visual.no_contact@1",
     "coupling_model_ref": "godot.gdbot.kinematic@1",
@@ -85,5 +87,22 @@
     "guarantee_level": "visual_plausibility",
     "evidence_refs": ["tests/reports/demos/d3-skeleton-transition-smoke.json"],
     "unsupported_policy": "reject"
+  },
+  "unit_registry": {
+    "contract_type": "EmbodimentUnitRegistry",
+    "schema_version": 1,
+    "registry_ref": "godot.si.units@1",
+    "unit_system_ref": "godot.si@1",
+    "units": [
+      { "unit_ref": "si.meter@1", "dimension": { "length": 1, "mass": 0, "time": 0, "current": 0, "temperature": 0, "amount": 0, "luminous_intensity": 0, "angle": 0 }, "scale_to_si": 1, "offset_to_si": 0 },
+      { "unit_ref": "si.radian@1", "dimension": { "length": 0, "mass": 0, "time": 0, "current": 0, "temperature": 0, "amount": 0, "luminous_intensity": 0, "angle": 1 }, "scale_to_si": 1, "offset_to_si": 0 }
+    ]
+  },
+  "reference_frame_registry": {
+    "contract_type": "ReferenceFrameRegistry",
+    "schema_version": 1,
+    "registry_ref": "godot.gdbot.frames@1",
+    "root_frame_ref": "world@1",
+    "frames": [{ "frame_ref": "world@1", "parent_frame_ref": null, "transform_model_ref": null }]
   }
 }

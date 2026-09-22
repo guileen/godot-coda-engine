@@ -4,6 +4,61 @@ const versionedRef = /^[-\w.]+@\d+$/u;
 const push = (items, code, message, path) => items.push(gseosDiagnostic(code, message, { path }));
 const headerOk = (value, type) => value && typeof value === "object" && value.contract_type === type && value.schema_version === 1;
 
+const dimensionAxes = ["length", "mass", "time", "current", "temperature", "amount", "luminous_intensity", "angle"];
+const zeroDimension = (dimension) => dimensionAxes.every((axis) => dimension?.[axis] === 0);
+
+export function validateEmbodimentUnitRegistry(registry) {
+  const diagnostics = [];
+  if (!headerOk(registry, "EmbodimentUnitRegistry")) return gseosReceipt([gseosDiagnostic("INVALID_EMBODIMENT_UNIT_REGISTRY", "必须使用 EmbodimentUnitRegistry@1。")]);
+  for (const key of ["registry_ref", "unit_system_ref"]) if (!versionedRef.test(String(registry[key] ?? ""))) push(diagnostics, "INVALID_EMBODIMENT_UNIT_REGISTRY_REF", `${key} 必须是版本化引用。`, `/${key}`);
+  if (!Array.isArray(registry.units) || registry.units.length === 0) push(diagnostics, "EMBODIMENT_UNIT_REGISTRY_EMPTY", "单位注册表至少要声明一个单位。", "/units");
+  const refs = new Set();
+  for (const [index, unit] of (registry.units ?? []).entries()) {
+    const path = `/units/${index}`;
+    if (!unit || typeof unit !== "object" || Array.isArray(unit)) { push(diagnostics, "INVALID_EMBODIMENT_UNIT", "单位定义必须是对象。", path); continue; }
+    if (!versionedRef.test(String(unit.unit_ref ?? "")) || refs.has(unit.unit_ref)) push(diagnostics, "INVALID_OR_DUPLICATE_EMBODIMENT_UNIT_REF", "unit_ref 必须版本化且唯一。", `${path}/unit_ref`);
+    refs.add(unit.unit_ref);
+    const dimension = unit.dimension;
+    if (!dimension || typeof dimension !== "object" || Array.isArray(dimension) || Object.keys(dimension).length !== dimensionAxes.length || Object.keys(dimension).some((axis) => !dimensionAxes.includes(axis)) || dimensionAxes.some((axis) => !Number.isInteger(dimension[axis]) || dimension[axis] < -12 || dimension[axis] > 12)) push(diagnostics, "INVALID_EMBODIMENT_UNIT_DIMENSION", "dimension 必须完整声明 SI 七基本量与角度指数，指数范围为 -12..12。", `${path}/dimension`);
+    if (typeof unit.scale_to_si !== "number" || !Number.isFinite(unit.scale_to_si) || unit.scale_to_si <= 0 || typeof unit.offset_to_si !== "number" || !Number.isFinite(unit.offset_to_si)) push(diagnostics, "INVALID_EMBODIMENT_UNIT_CONVERSION", "scale_to_si 必须为正有限数，offset_to_si 必须为有限数。", path);
+    if (Object.keys(unit).some((key) => !["unit_ref", "dimension", "scale_to_si", "offset_to_si"].includes(key))) push(diagnostics, "UNKNOWN_EMBODIMENT_UNIT_FIELD", "单位定义包含未定义字段。", path);
+  }
+  if (Object.keys(registry).some((key) => !["contract_type", "schema_version", "registry_ref", "unit_system_ref", "units"].includes(key))) push(diagnostics, "UNKNOWN_EMBODIMENT_UNIT_REGISTRY_FIELD", "单位注册表包含未定义字段。", "/");
+  return gseosReceipt(diagnostics);
+}
+
+export function validateReferenceFrameRegistry(registry) {
+  const diagnostics = [];
+  if (!headerOk(registry, "ReferenceFrameRegistry")) return gseosReceipt([gseosDiagnostic("INVALID_REFERENCE_FRAME_REGISTRY", "必须使用 ReferenceFrameRegistry@1。")]);
+  if (!versionedRef.test(String(registry.registry_ref ?? "")) || !versionedRef.test(String(registry.root_frame_ref ?? ""))) push(diagnostics, "INVALID_REFERENCE_FRAME_REGISTRY_REF", "registry_ref 与 root_frame_ref 必须版本化。", "/");
+  if (!Array.isArray(registry.frames) || registry.frames.length === 0) push(diagnostics, "REFERENCE_FRAME_REGISTRY_EMPTY", "坐标系注册表至少要声明一个 frame。", "/frames");
+  const frames = new Map();
+  for (const [index, frame] of (registry.frames ?? []).entries()) {
+    const path = `/frames/${index}`;
+    if (!frame || typeof frame !== "object" || Array.isArray(frame) || !versionedRef.test(String(frame.frame_ref ?? "")) || frames.has(frame.frame_ref)) { push(diagnostics, "INVALID_OR_DUPLICATE_REFERENCE_FRAME", "frame_ref 必须版本化且唯一。", `${path}/frame_ref`); continue; }
+    frames.set(frame.frame_ref, frame);
+    if (frame.parent_frame_ref === null) {
+      if (frame.frame_ref !== registry.root_frame_ref || frame.transform_model_ref !== null) push(diagnostics, "INVALID_REFERENCE_FRAME_ROOT", "唯一根 frame 必须匹配 root_frame_ref 且不绑定 parent transform。", path);
+    } else if (!versionedRef.test(String(frame.parent_frame_ref ?? "")) || !versionedRef.test(String(frame.transform_model_ref ?? ""))) push(diagnostics, "INVALID_REFERENCE_FRAME_TRANSFORM", "非根 frame 必须绑定版本化 parent 与 transform model。", path);
+    if (Object.keys(frame).some((key) => !["frame_ref", "parent_frame_ref", "transform_model_ref"].includes(key))) push(diagnostics, "UNKNOWN_REFERENCE_FRAME_FIELD", "frame 定义包含未定义字段。", path);
+  }
+  const roots = [...frames.values()].filter((frame) => frame.parent_frame_ref === null);
+  if (roots.length !== 1 || roots[0]?.frame_ref !== registry.root_frame_ref) push(diagnostics, "REFERENCE_FRAME_ROOT_COUNT_INVALID", "坐标系树必须恰有一个与 root_frame_ref 相同的根。", "/frames");
+  for (const [frameRef, frame] of frames) if (frame.parent_frame_ref !== null && !frames.has(frame.parent_frame_ref)) push(diagnostics, "REFERENCE_FRAME_PARENT_UNKNOWN", "parent_frame_ref 必须引用同一注册表中的 frame。", `/frames/${frameRef}/parent_frame_ref`);
+  for (const frameRef of frames.keys()) {
+    const visited = new Set();
+    let current = frameRef;
+    while (frames.has(current) && frames.get(current).parent_frame_ref !== null) {
+      if (visited.has(current)) { push(diagnostics, "REFERENCE_FRAME_CYCLE", "坐标系父链不得形成环。", `/frames/${frameRef}`); break; }
+      visited.add(current);
+      current = frames.get(current).parent_frame_ref;
+    }
+    if (frames.has(current) && current !== registry.root_frame_ref) push(diagnostics, "REFERENCE_FRAME_DISCONNECTED", "每个坐标系必须最终连接到声明的 root_frame_ref。", `/frames/${frameRef}`);
+  }
+  if (Object.keys(registry).some((key) => !["contract_type", "schema_version", "registry_ref", "root_frame_ref", "frames"].includes(key))) push(diagnostics, "UNKNOWN_REFERENCE_FRAME_REGISTRY_FIELD", "坐标系注册表包含未定义字段。", "/");
+  return gseosReceipt(diagnostics);
+}
+
 export function validateObservationContract(contract, { known_guard_refs = [] } = {}) {
   const diagnostics = [];
   if (!headerOk(contract, "ObservationContract")) return gseosReceipt([gseosDiagnostic("INVALID_OBSERVATION_CONTRACT", "ObservationContract 类型或版本无效。")]);
@@ -134,7 +189,7 @@ export function validateAuthorityClaimMatrix(matrix) {
   return gseosReceipt(diagnostics);
 }
 
-export function validateEmbodimentProtocolMessage(message, { now_tick = null, clock_domain = null, minimum_epoch = null, minimum_sequence = null } = {}) {
+export function validateEmbodimentProtocolMessage(message, { now_tick = null, clock_domain = null, minimum_epoch = null, minimum_sequence = null, unit_registry = null, frame_registry = null } = {}) {
   const diagnostics = [];
   const add = (code, path, text) => push(diagnostics, code, text, path);
   const types = new Set(["capability_query", "capability_report", "observation", "reference", "mode_request", "authority_lease", "handoff", "barrier_receipt", "start_receipt", "transition_receipt", "terminal_receipt", "reject"]);
@@ -192,7 +247,7 @@ export function validateEmbodimentProtocolMessage(message, { now_tick = null, cl
     if (!Array.isArray(payload.field_unit_map) || payload.field_unit_map.length === 0) add("EMBODIMENT_FIELD_UNIT_MAP_REQUIRED", "/payload/field_unit_map", "observation 必须声明非空 field_unit_map。");
     else {
       const fields = new Set();
-      const valueTypes = new Set(["scalar", "vector3", "rotation3", "pose3", "twist6", "boolean"]);
+      const valueTypes = new Set(["scalar", "vector3", "rotation3", "boolean"]);
       for (const [index, mapping] of payload.field_unit_map.entries()) {
         const path = `/payload/field_unit_map/${index}`;
         if (!mapping || typeof mapping !== "object" || Array.isArray(mapping)) { add("INVALID_EMBODIMENT_FIELD_UNIT", path, "field/unit mapping 必须是对象。"); continue; }
@@ -202,6 +257,25 @@ export function validateEmbodimentProtocolMessage(message, { now_tick = null, cl
         if (!valueTypes.has(mapping.value_type)) add("INVALID_EMBODIMENT_FIELD_VALUE_TYPE", `${path}/value_type`, "value_type 不属于 EmbodimentProtocol@1 字段类型集合。");
         for (const key of ["unit_ref", "reference_frame_ref"]) if (!versionedRef.test(String(mapping[key] ?? ""))) add("INVALID_EMBODIMENT_FIELD_BINDING", `${path}/${key}`, `${key} 必须是版本化引用。`);
         if (Object.keys(mapping).some((key) => !["field_ref", "value_type", "unit_ref", "reference_frame_ref"].includes(key))) add("UNKNOWN_EMBODIMENT_FIELD_UNIT", path, "field/unit mapping 包含未定义字段。");
+      }
+      if (unit_registry !== null || frame_registry !== null) {
+        const unitReceipt = validateEmbodimentUnitRegistry(unit_registry);
+        const frameReceipt = validateReferenceFrameRegistry(frame_registry);
+        for (const item of unitReceipt.diagnostics) diagnostics.push(item);
+        for (const item of frameReceipt.diagnostics) diagnostics.push(item);
+        if (unitReceipt.ok && unit_registry.unit_system_ref !== payload.unit_system) add("EMBODIMENT_UNIT_SYSTEM_MISMATCH", "/payload/unit_system", "observation unit_system 必须匹配目标 Profile 的单位注册表。");
+        const units = new Map((unit_registry?.units ?? []).map((unit) => [unit.unit_ref, unit]));
+        const frames = new Set((frame_registry?.frames ?? []).map((frame) => frame.frame_ref));
+        for (const [index, mapping] of payload.field_unit_map.entries()) {
+          const path = `/payload/field_unit_map/${index}`;
+          const unit = units.get(mapping?.unit_ref);
+          if (unitReceipt.ok && !unit) add("EMBODIMENT_UNIT_UNRESOLVED", `${path}/unit_ref`, "unit_ref 未在 Profile 单位注册表中定义。");
+          if (frameReceipt.ok && !frames.has(mapping?.reference_frame_ref)) add("EMBODIMENT_FRAME_UNRESOLVED", `${path}/reference_frame_ref`, "reference_frame_ref 未在 Profile 坐标系注册表中定义。");
+          if (!unit) continue;
+          if (mapping.value_type === "rotation3" && !(unit.dimension.angle === 1 && dimensionAxes.filter((axis) => axis !== "angle").every((axis) => unit.dimension[axis] === 0))) add("EMBODIMENT_ROTATION_UNIT_DIMENSION_MISMATCH", `${path}/unit_ref`, "rotation3 必须使用纯角度量纲单位。");
+          if (mapping.value_type === "boolean" && (!zeroDimension(unit.dimension) || unit.scale_to_si !== 1 || unit.offset_to_si !== 0)) add("EMBODIMENT_BOOLEAN_UNIT_MISMATCH", `${path}/unit_ref`, "boolean 字段必须使用无量纲单位且不得转换。");
+        }
+        if (frameReceipt.ok && !frames.has(payload.reference_frame)) add("EMBODIMENT_ROOT_FRAME_UNRESOLVED", "/payload/reference_frame", "observation 根 reference_frame 未在 Profile 坐标系注册表中定义。");
       }
     }
   }

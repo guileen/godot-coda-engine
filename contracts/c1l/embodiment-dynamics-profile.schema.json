@@ -3,7 +3,7 @@
   "$id": "coda://contracts/c1l/embodiment-dynamics-profile@1",
   "title": "CODA EmbodimentDynamicsProfile@1",
   "type": "object",
-  "required": ["profile_type", "schema_version", "profile_id", "target_class", "target_identity", "status", "capability_refs", "actuation_topology_ref", "contact_model_ref", "coupling_model_ref", "input_bounds_ref", "guarantee_level", "evidence_refs", "unsupported_policy"],
+  "required": ["profile_type", "schema_version", "profile_id", "target_class", "target_identity", "status", "capability_refs", "unit_registry_ref", "reference_frame_registry_ref", "actuation_topology_ref", "contact_model_ref", "coupling_model_ref", "input_bounds_ref", "guarantee_level", "evidence_refs", "unsupported_policy"],
   "properties": {
     "profile_type": { "const": "EmbodimentDynamicsProfile" },
     "schema_version": { "const": 1 },
@@ -12,6 +12,8 @@
     "target_identity": { "type": "object", "required": ["vendor", "model", "hardware_revision", "software_revision"], "properties": { "vendor": { "type": "string" }, "model": { "type": "string" }, "hardware_revision": { "type": "string" }, "software_revision": { "type": "string" } }, "additionalProperties": false },
     "status": { "enum": ["draft", "measured", "calibrated", "approved"] },
     "capability_refs": { "type": "array", "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true },
+    "unit_registry_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "reference_frame_registry_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
     "actuation_topology_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
     "contact_model_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
     "coupling_model_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },

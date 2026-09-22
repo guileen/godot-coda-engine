@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
+import { validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
 import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
@@ -219,6 +219,10 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.deepEqual(schema("authoring-file-set-recovery").properties.state.enum, ["prepared", "committed"]);
   assert.equal(schema("authoring-file-set-recovery").properties.files.maxItems, 3);
   assert.ok(schema("embodiment-protocol").allOf.length >= 8);
+  assert.ok(schema("embodiment-dynamics-profile").required.includes("unit_registry_ref"));
+  assert.ok(schema("embodiment-dynamics-profile").required.includes("reference_frame_registry_ref"));
+  assert.ok(schema("unit-registry").$defs.dimension.required.includes("angle"));
+  assert.ok(schema("reference-frame-registry").properties.frames.minItems >= 1);
   assert.deepEqual(schema("safety-authority-port").properties.action.enum, ["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"]);
   const safetyLatchRules = schema("safety-authority-port").allOf;
   assert.ok(safetyLatchRules.some((rule) => rule.if?.properties?.action?.enum?.includes("revoke_writer") && rule.then?.properties?.latched?.const === true));
@@ -264,6 +268,29 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.equal(c1lContractPack.dynamics_profile.target_class, "game_visual");
   assert.equal(c1lContractPack.dynamics_profile.guarantee_level, "visual_plausibility");
   assert.equal(c1lContractPack.dynamics_profile.status, "draft");
+  assert.equal(c1lContractPack.dynamics_profile.unit_registry_ref, c1lContractPack.unit_registry.registry_ref);
+  assert.equal(c1lContractPack.dynamics_profile.reference_frame_registry_ref, c1lContractPack.reference_frame_registry.registry_ref);
+  assert.equal(validateEmbodimentUnitRegistry(c1lContractPack.unit_registry).ok, true);
+  assert.equal(validateReferenceFrameRegistry(c1lContractPack.reference_frame_registry).ok, true);
+  assert.equal(validateEmbodimentProtocolMessage(c1lContractPack.embodiment_observation, {
+    unit_registry: c1lContractPack.unit_registry,
+    frame_registry: c1lContractPack.reference_frame_registry,
+  }).ok, true);
+  const wrongRotationUnit = structuredClone(c1lContractPack.embodiment_observation);
+  wrongRotationUnit.payload.field_unit_map[1].unit_ref = "si.meter@1";
+  assert.ok(validateEmbodimentProtocolMessage(wrongRotationUnit, {
+    unit_registry: c1lContractPack.unit_registry,
+    frame_registry: c1lContractPack.reference_frame_registry,
+  }).diagnostics.some((item) => item.code === "EMBODIMENT_ROTATION_UNIT_DIMENSION_MISMATCH"));
+  const unknownObservationFrame = structuredClone(c1lContractPack.embodiment_observation);
+  unknownObservationFrame.payload.field_unit_map[0].reference_frame_ref = "missing.frame@1";
+  assert.ok(validateEmbodimentProtocolMessage(unknownObservationFrame, {
+    unit_registry: c1lContractPack.unit_registry,
+    frame_registry: c1lContractPack.reference_frame_registry,
+  }).diagnostics.some((item) => item.code === "EMBODIMENT_FRAME_UNRESOLVED"));
+  const cyclicFrames = structuredClone(c1lContractPack.reference_frame_registry);
+  cyclicFrames.frames.push({ frame_ref: "arm@1", parent_frame_ref: "tool@1", transform_model_ref: "tool.to.arm@1" }, { frame_ref: "tool@1", parent_frame_ref: "arm@1", transform_model_ref: "arm.to.tool@1" });
+  assert.ok(validateReferenceFrameRegistry(cyclicFrames).diagnostics.some((item) => item.code === "REFERENCE_FRAME_CYCLE"));
 });
 
 test("C1-M.0 独立 SafetyAuthority mock 撤销旧 writer、拒绝重放且不恢复旧 generation", () => {
