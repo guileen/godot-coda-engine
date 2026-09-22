@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateExpressionAdapterProfile, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTransitionSnapshot, validateUserObservationReport, verifyManagedArtifact } from "../src/index.js";
+import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateExpressionAdapterProfile, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
@@ -295,6 +295,7 @@ test("C1-T.0.6 设计审查将证据、未闭合项和 owner blockers 显式索�
 test("C1-L.1 linear MotionIntent lowers to a source-preserving TaskGraph and rejects partial graphs", () => {
   const result = lowerToTaskGraph(motionIntentAsset, registry);
   assert.equal(result.receipt.ok, true);
+  assert.equal(validateTaskGraph(result.task_graph).ok, true);
   assert.equal(result.task_graph.graph_type, "TaskGraph");
   assert.equal(result.task_graph.source_fingerprint, assetFingerprint(motionIntentAsset));
   assert.equal(result.task_graph.nodes.length, 1);
@@ -306,6 +307,21 @@ test("C1-L.1 linear MotionIntent lowers to a source-preserving TaskGraph and rej
   const rejected = lowerToTaskGraph(mixedAsset, registry);
   assert.equal(rejected.task_graph, null);
   assert.equal(rejected.receipt.diagnostics[0].code, "TASK_GRAPH_UNSUPPORTED_INSTRUCTION");
+
+  const duplicate = structuredClone(result.task_graph);
+  duplicate.nodes.push(structuredClone(duplicate.nodes[0]));
+  assert.ok(validateTaskGraph(duplicate).diagnostics.some((item) => item.code === "DUPLICATE_TASK_GRAPH_NODE"));
+  const badSource = structuredClone(result.task_graph);
+  badSource.nodes[0].source_ref.event_id = "other.event";
+  assert.ok(validateTaskGraph(badSource).diagnostics.some((item) => item.code === "TASK_GRAPH_SOURCE_REF_MISMATCH"));
+  const cycle = structuredClone(result.task_graph);
+  cycle.nodes.push({ ...structuredClone(cycle.nodes[0]), node_id: "second-intent", source_ref: { ...cycle.nodes[0].source_ref, node_id: "second-intent" }, depends_on: [cycle.nodes[0].node_id] });
+  cycle.nodes[0].depends_on = ["second-intent"];
+  cycle.edges = [
+    { from: cycle.nodes[0].node_id, to: "second-intent", relation: "requires" },
+    { from: "second-intent", to: cycle.nodes[0].node_id, relation: "requires" },
+  ];
+  assert.ok(validateTaskGraph(cycle).diagnostics.some((item) => item.code === "TASK_GRAPH_CYCLE"));
 });
 
 test("C1-T.0.7/.0.8 锁定四项边界合同、分离设备安全配置并冻结三组证伪规范", () => {
