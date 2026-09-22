@@ -80,7 +80,7 @@ function collectSubtreeNodeIds(node) {
   return ids;
 }
 
-function makeReceipt(transaction, ownership, status, codes = [], changed = []) {
+function makeReceipt(transaction, ownership, status, codes = [], changed = [], invalidated = []) {
   return {
     receipt_type: "AuthoringTransactionReceipt",
     schema_version: 1,
@@ -91,8 +91,13 @@ function makeReceipt(transaction, ownership, status, codes = [], changed = []) {
     owner_revision: ownership?.owner_revision ?? 0,
     source_fingerprint: ownership?.source?.fingerprint ?? "sha256:" + "0".repeat(64),
     changed_node_ids: changed,
+    invalidated_projection_fingerprints: invalidated,
     diagnostics: codes.map((code) => ({ code })),
   };
+}
+
+function projectionFingerprints(ownership) {
+  return [...new Set((Array.isArray(ownership?.derived_projections) ? ownership.derived_projections : []).map((item) => item?.fingerprint).filter((fingerprint) => typeof fingerprint === "string"))].sort();
 }
 
 /**
@@ -164,11 +169,13 @@ export function applyAuthoringTransaction(ownership, sourceDocument, transaction
     owner_revision: ownership.owner_revision + 1,
     source: { ...ownership.source, fingerprint },
     node_identity: { ...ownership.node_identity, mapping_digest: identityDigest },
+    derived_projections: [],
   };
+  const invalidated = projectionFingerprints(ownership);
   return {
     source: next,
     ownership: nextOwnership,
-    receipt: makeReceipt(transaction, nextOwnership, "committed", [], [...changed].sort()),
+    receipt: makeReceipt(transaction, nextOwnership, "committed", [], [...changed].sort(), invalidated),
   };
 }
 
@@ -256,8 +263,10 @@ export function applyTextAuthoringTransaction(ownership, sourceText, transaction
     owner_revision: ownership.owner_revision + 1,
     source: { ...ownership.source, fingerprint: candidateFingerprint },
     node_identity: { ...ownership.node_identity, mapping_digest: candidateIdentity },
+    derived_projections: [],
   };
-  return { source: candidateText, ownership: nextOwnership, receipt: makeReceipt(transaction, nextOwnership, "committed", [], [...changed].sort()) };
+  const invalidated = projectionFingerprints(ownership);
+  return { source: candidateText, ownership: nextOwnership, receipt: makeReceipt(transaction, nextOwnership, "committed", [], [...changed].sort(), invalidated) };
 }
 
 export function authoringSourceNodeFingerprint(node) {

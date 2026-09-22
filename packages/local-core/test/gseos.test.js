@@ -290,6 +290,7 @@ test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子
   assert.ok(transactionSchema.required.includes("expected_owner_revision"));
   assert.ok(transactionSchema.required.includes("expected_source_fingerprint"));
   assert.equal(receiptSchema.allOf[1].then.properties.changed_node_ids.maxItems, 0);
+  assert.deepEqual(receiptSchema.properties.invalidated_projection_fingerprints.items.pattern, "^sha256:[a-f0-9]{64}$");
 
   assert.equal(authoringOwnershipPack.text_owned.authoring_mode, "text_owned");
   assert.equal(authoringOwnershipPack.text_owned.source.source_type, "coda_source");
@@ -312,7 +313,7 @@ test("C1-L.0.1 reference authoring transaction applies atomically with owner rev
     owner_revision: 4,
     source: { source_type: "event_asset", source_ref: "gseos/events/test.authoring.gse.json", fingerprint: assetFingerprint(source) },
     node_identity: { policy: "stable_node_id@1", mapping_digest: identityDigest },
-    derived_projections: [],
+    derived_projections: [{ artifact_type: "execution_plan", fingerprint: "sha256:" + "a".repeat(64), authority: "derived", writable: false }],
   };
   const candidate = structuredClone(source);
   candidate.root[0].params.value = 2;
@@ -332,6 +333,8 @@ test("C1-L.0.1 reference authoring transaction applies atomically with owner rev
   const committed = applyAuthoringTransaction(ownership, source, transaction);
   assert.equal(committed.receipt.status, "committed");
   assert.equal(committed.ownership.owner_revision, 5);
+  assert.deepEqual(committed.ownership.derived_projections, []);
+  assert.deepEqual(committed.receipt.invalidated_projection_fingerprints, ["sha256:" + "a".repeat(64)]);
   assert.equal(committed.source.root[0].params.value, 2);
   assert.equal(source.root[0].params.value, 1);
   assert.deepEqual(committed.receipt.changed_node_ids, ["stable.node"]);
@@ -357,7 +360,8 @@ test("C1-L.0.1 text-owned authoring edits canonical anchored GSE atomically", ()
   const ownership = {
     contract_type: "AuthoringOwnership", schema_version: 1, asset_id: "test.textowned@1", authoring_mode: "text_owned", owner_revision: 2,
     source: { source_type: "coda_source", source_ref: "gseos/events/test.textowned.coda", fingerprint: assetFingerprint(source) },
-    node_identity: { policy: "stable_node_id@1", mapping_digest: identityDigest }, derived_projections: [],
+    node_identity: { policy: "stable_node_id@1", mapping_digest: identityDigest },
+    derived_projections: [{ artifact_type: "execution_plan", fingerprint: "sha256:" + "b".repeat(64), authority: "derived", writable: false }],
   };
   const candidate = structuredClone(parsed.asset);
   candidate.root[0].params.value = 7;
@@ -372,6 +376,8 @@ test("C1-L.0.1 text-owned authoring edits canonical anchored GSE atomically", ()
   const committed = applyTextAuthoringTransaction(ownership, source, transaction);
   assert.equal(committed.receipt.status, "committed");
   assert.equal(committed.ownership.owner_revision, 3);
+  assert.deepEqual(committed.ownership.derived_projections, []);
+  assert.deepEqual(committed.receipt.invalidated_projection_fingerprints, ["sha256:" + "b".repeat(64)]);
   assert.match(committed.source, /value = 7 # @node_id=stable\.value/u);
   assert.equal(applyTextAuthoringTransaction(committed.ownership, source, transaction).receipt.status, "conflict");
   const unanchoredSource = "event test.textowned:\n  let value = 1\n";
