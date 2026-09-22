@@ -113,6 +113,8 @@ skill taiji.cloud_hands@1(actor: humanoid) {
 
 ## 当前已实现的最小语法
 
+当前编译器可将纯线性 `MotionIntent` ExecutionPlan lower 为版本化 `TaskGraph`：每个意图保留稳定 node ID、作者 source-ref 和资产指纹；空计划、分支或混合普通指令均拒绝生成部分图。该切片不代表完整 Observation/Mode/Tracking/Control 图 lowering 或运行时准入。
+
 C1-L 当前已经落地一条可解析、可校验、可 lower 的紧凑形式。它产生专用 `motion_intent` 节点和 `MotionIntent` 计划指令，并在编译期要求目标、资源、优先级、安全 profile 与无解策略。该形式只验证 source → IR → 双后端 envelope 的最小链路；扁平 `target/resources/expression` 字段不是最终任务、观测、模式或控制契约：
 
 ```coda
