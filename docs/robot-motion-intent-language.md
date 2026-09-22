@@ -285,7 +285,7 @@ event acknowledge_user(source) [id: robot.acknowledge_user]:
 
 `MotionIntent` 是父 TaskGraph 中一种 effect；它可以派生 `TransitionPlan`，但不能替代完整的任务阶段、观测门、混合模式和闭环监督表示。`TransitionPlan`、`ReactiveExecutionGraph`、lease、generation、Adapter receipt 和 RuntimeObservation 都是派生物，不能回写成第二个可编辑事实源。
 
-当前独立契约文件是 [`contracts/gseos/motion-intent.schema.json`](../contracts/gseos/motion-intent.schema.json)，一个后端中立的最小子计划 fixture 是 [`gseos/fixtures/social.wave.transition-plan.json`](../gseos/fixtures/social.wave.transition-plan.json)。它们冻结字段责任和写权限边界，但不冒充已经完成 C1-T 的完整数值 validator 或真实机器人安全证明。
+当前独立契约文件是 [`contracts/gseos/motion-intent.schema.json`](../contracts/gseos/motion-intent.schema.json)，目标能力配置由 [`contracts/gseos/intent-backend-profile.schema.json`](../contracts/gseos/intent-backend-profile.schema.json) 描述，示例见 [`gseos/fixtures/intent-backend-profiles.json`](../gseos/fixtures/intent-backend-profiles.json)。编译只在目标 Profile 满足后端所需能力时生成 envelope；缺失能力必须由 Profile 显式映射到已声明替代能力，否则返回 `INTENT_BACKEND_CAPABILITY_UNSUPPORTED`。替代映射会写入 `capability_resolution`，供审阅者看见。一个后端中立的最小子计划 fixture 是 [`gseos/fixtures/social.wave.transition-plan.json`](../gseos/fixtures/social.wave.transition-plan.json)。这些契约冻结字段责任和写权限边界，但不冒充已经完成 C1-T 的完整数值 validator 或真实机器人安全证明。
 
 ## 不能写进 CODA 的内容
 

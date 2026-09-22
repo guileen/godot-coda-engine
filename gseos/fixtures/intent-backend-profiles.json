@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "profile_type": "IntentBackendProfile",
+      "schema_version": 1,
+      "profile_id": "godot.reference.game@1",
+      "backend": "game",
+      "capabilities": ["godot.animation.play_profile@1", "godot.expression.apply_profile@1"],
+      "capability_fallbacks": {}
+    },
+    {
+      "profile_type": "IntentBackendProfile",
+      "schema_version": 1,
+      "profile_id": "robot.reference.adapter@1",
+      "backend": "robot",
+      "capabilities": ["robot.motion.request@1"],
+      "capability_fallbacks": {}
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentToBackend, lowerToExecutionPlan, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateExpressionAdapterProfile, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTransitionSnapshot, validateUserObservationReport, verifyManagedArtifact } from "../src/index.js";
+import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateEventAsset, validateExpressionAdapterProfile, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTransitionSnapshot, validateUserObservationReport, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
@@ -49,6 +49,8 @@ const modelValidityBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fi
 const jointCompositionBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"), "utf8"));
 const c1pContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1p/contract-index.json"), "utf8"));
 const c1pContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1p/contract-pack.json"), "utf8"));
+const intentBackendProfileSchema = JSON.parse(await readFile(resolve(root, "contracts/gseos/intent-backend-profile.schema.json"), "utf8"));
+const intentBackendProfiles = JSON.parse(await readFile(resolve(root, "gseos/fixtures/intent-backend-profiles.json"), "utf8"));
 
 test("EventAsset 保留未知字段并稳定排序", () => {
   const extended = { ...asset, z_unknown: { b: 2, a: 1 }, a_unknown: true };
@@ -143,6 +145,34 @@ test("同一个高层挥手意图分流到 Godot 与机器人适配器", () => {
   assert.equal(game.envelope.llm_direct_write, false);
   assert.equal(robot.envelope.motor_write, "adapter_owned_only");
   assert.equal(JSON.stringify(game.envelope).includes("PWM"), false);
+});
+
+test("C1-L.3 按目标 Profile 能力条件 lowering，缺失能力只接受显式 fallback", () => {
+  assert.equal(intentBackendProfileSchema.$id, "coda://contracts/gseos/intent-backend-profile@1");
+  const instruction = lowerToExecutionPlan(parseGse(waveSource).asset, registry).plan.instructions[0];
+  const [gameProfile, robotProfile] = intentBackendProfiles.profiles;
+  const game = lowerMotionIntentForProfile(instruction, gameProfile);
+  const robot = lowerMotionIntentForProfile(instruction, robotProfile);
+  assert.equal(game.receipt.ok, true);
+  assert.equal(robot.receipt.ok, true);
+  assert.equal(game.envelope.target_profile, gameProfile.profile_id);
+  assert.equal(robot.envelope.target_profile, robotProfile.profile_id);
+
+  const unsupportedProfile = { ...gameProfile, capabilities: ["godot.animation.play_profile@1"] };
+  const unsupported = lowerMotionIntentForProfile(instruction, unsupportedProfile);
+  assert.equal(unsupported.envelope, null);
+  assert.equal(unsupported.receipt.diagnostics[0].code, "INTENT_BACKEND_CAPABILITY_UNSUPPORTED");
+  assert.deepEqual(unsupported.receipt.diagnostics[0].missing_capabilities, ["godot.expression.apply_profile@1"]);
+
+  const fallback = lowerMotionIntentForProfile(instruction, {
+    ...unsupportedProfile,
+    capability_fallbacks: { "godot.expression.apply_profile@1": "godot.expression.neutral_profile@1" },
+    capabilities: ["godot.animation.play_profile@1", "godot.expression.neutral_profile@1"],
+  });
+  assert.equal(fallback.receipt.ok, true);
+  assert.equal(fallback.envelope.godot_actions[1].capability, "godot.expression.neutral_profile@1");
+  assert.deepEqual(fallback.envelope.capability_resolution[1], { requested: "godot.expression.apply_profile@1", resolved: "godot.expression.neutral_profile@1", fallback_used: true });
+  assert.equal(lowerMotionIntentForProfile(instruction, { ...gameProfile, capabilities: ["godot.animation.play_profile@1", "godot.animation.play_profile@1"] }).receipt.diagnostics[0].code, "INVALID_INTENT_BACKEND_PROFILE");
 });
 
 test("C1-L 独立 contract schema 与 TransitionPlan fixture 保持后端中立", () => {
