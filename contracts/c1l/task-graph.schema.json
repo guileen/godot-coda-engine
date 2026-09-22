@@ -19,7 +19,16 @@
           "kind": { "enum": ["task", "guard", "observation", "mode_transition", "tracking", "control", "intent", "reactive"] },
           "contract_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*@\\d+$" },
           "source_ref": { "$ref": "source-ref@1" },
-          "depends_on": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+          "depends_on": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+          "branch_entries": {
+            "type": "object",
+            "required": ["true", "false"],
+            "properties": {
+              "true": { "type": "string", "minLength": 1 },
+              "false": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
         },
         "additionalProperties": false
       }

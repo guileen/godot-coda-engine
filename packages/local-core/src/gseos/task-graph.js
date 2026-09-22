@@ -58,12 +58,24 @@ export function validateTaskGraph(graph) {
     }
   }
   for (const node of nodes.values()) {
-    if (node.kind !== "guard") continue;
+    if (node.kind !== "guard") {
+      if (node.branch_entries !== undefined) add("TASK_GRAPH_BRANCH_ENTRIES_ON_NON_GUARD", "只有 Guard 节点可以声明分支入口。", { event_id: graph.event_id, node_id: node.node_id });
+      continue;
+    }
     const outcomes = adjacency.get(node.node_id) ?? [];
     const guardEdges = graph.edges.filter((edge) => edge.from === node.node_id && edge.relation === "guards");
     const labels = guardEdges.map((edge) => edge.outcome);
     if (guardEdges.length !== 2 || new Set(labels).size !== 2 || !labels.includes("true") || !labels.includes("false")) add("TASK_GRAPH_GUARD_OUTCOMES_INCOMPLETE", "每个 Guard 必须恰有 true/false 两个分支出口。", { event_id: graph.event_id, node_id: node.node_id });
     if (outcomes.length !== guardEdges.length) add("TASK_GRAPH_GUARD_HAS_NONCONDITIONAL_EDGE", "Guard 节点的所有出口都必须是条件边。", { event_id: graph.event_id, node_id: node.node_id });
+    const entries = node.branch_entries;
+    if (!entries || typeof entries.true !== "string" || typeof entries.false !== "string" || entries.true === entries.false) {
+      add("TASK_GRAPH_GUARD_ENTRIES_INVALID", "Guard 必须分别声明不同的 true/false 分支入口。", { event_id: graph.event_id, node_id: node.node_id });
+    } else {
+      for (const outcome of ["true", "false"]) {
+        const edge = guardEdges.find((candidate) => candidate.outcome === outcome);
+        if (!nodes.has(entries[outcome]) || edge?.to !== entries[outcome]) add("TASK_GRAPH_GUARD_ENTRY_MISMATCH", `${outcome} Guard 边必须指向其声明的分支入口。`, { event_id: graph.event_id, node_id: node.node_id, outcome, target_id: entries[outcome] });
+      }
+    }
   }
 
   const indegree = new Map([...nodes.keys()].map((id) => [id, 0]));
@@ -119,7 +131,7 @@ export function lowerToTaskGraph(asset, registry, { guard_bindings = {}, known_o
     const thenNodes = lowerArm(branch.then);
     const elseNodes = lowerArm(branch.else);
     if (!thenNodes || !elseNodes) return { task_graph: null, receipt: gseosReceipt([gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_BRANCH_ARM", "if/else 两侧都必须是非空的纯 MotionIntent 序列；未生成部分图。", { event_id: asset.event_id, node_id: branch.source_ref.node_id })]) };
-    nodes = [{ node_id: branch.source_ref.node_id, kind: "guard", contract_ref: guard.guard_id, source_ref: branch.source_ref }, ...thenNodes, ...elseNodes];
+    nodes = [{ node_id: branch.source_ref.node_id, kind: "guard", contract_ref: guard.guard_id, source_ref: branch.source_ref, branch_entries: { true: thenNodes[0].node_id, false: elseNodes[0].node_id } }, ...thenNodes, ...elseNodes];
     edges = [
       { from: branch.source_ref.node_id, to: thenNodes[0].node_id, relation: "guards", outcome: "true" },
       { from: branch.source_ref.node_id, to: elseNodes[0].node_id, relation: "guards", outcome: "false" },

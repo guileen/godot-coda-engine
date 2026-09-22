@@ -415,6 +415,11 @@ test("C1-L.1 lowers a two-arm MotionIntent branch only through a source-bound ob
   assert.equal(validateTaskGraph(lowered.task_graph).ok, true);
   assert.equal(lowered.task_graph.nodes[0].kind, "guard");
   assert.deepEqual(lowered.task_graph.edges.filter((edge) => edge.relation === "guards").map((edge) => edge.outcome).sort(), ["false", "true"]);
+  const swappedOutcomes = structuredClone(lowered.task_graph);
+  for (const edge of swappedOutcomes.edges.filter((candidate) => candidate.relation === "guards")) {
+    edge.to = swappedOutcomes.nodes[0].branch_entries[edge.outcome === "true" ? "false" : "true"];
+  }
+  assert.ok(validateTaskGraph(swappedOutcomes).diagnostics.some((item) => item.code === "TASK_GRAPH_GUARD_ENTRY_MISMATCH"));
   const unbound = lowerToTaskGraph(asset, registry, { guard_bindings: { "contact-branch": guard } });
   assert.equal(unbound.task_graph, null);
   assert.equal(unbound.receipt.diagnostics[0].code, "TASK_GRAPH_GUARD_UNBOUND");
