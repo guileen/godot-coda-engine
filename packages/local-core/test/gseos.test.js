@@ -364,6 +364,42 @@ test("C1-M.0 mode changes and handoffs require an active lease binding at protoc
   }
 });
 
+test("C1-M.0 lease generations cannot be reused after expiry and remain epoch-bound", () => {
+  const adapterRef = "mock.embodiment.adapter@1";
+  const adapter = new MockEmbodimentAdapter({ adapter_ref: adapterRef, capabilities: ["arm@1"] });
+  const message = (message_id, message_type, epoch, sequence, tick, payload, lease_ref, generation) => ({
+    protocol: "EmbodimentProtocol", schema_version: 1, message_id,
+    direction: "coda_to_adapter", message_type, adapter_ref: adapterRef, epoch, sequence,
+    clock: { domain: "coda.clock", tick, quality: "synchronized" },
+    validity: { valid_from_tick: 0, valid_until_tick: 20 }, payload,
+    ...(lease_ref ? { lease_ref, generation } : {}),
+  });
+  assert.equal(adapter.receive(message("query.epoch1", "capability_query", 1, 0, 0, { profile_ref: "profile.test@1", minimum_protocol_version: 1 })).accepted, true);
+  const firstLease = (sequence, generation, valid_until_tick, epoch = 1, tick = 1) => message(
+    `lease.${epoch}.${generation}.${sequence}`, "authority_lease", epoch, sequence, tick,
+    { lease_id: `lease.${generation}`, owner: "coda", resources: ["arm@1"], valid_until_tick },
+    `lease.actor.${generation}@1`, generation,
+  );
+  assert.equal(adapter.receive(firstLease(1, 4, 3)).accepted, true);
+
+  const beforeReplayGeneration = adapter.snapshot();
+  const replayGeneration = adapter.receive(firstLease(2, 4, 9, 1, 4));
+  assert.equal(replayGeneration.accepted, false);
+  assert.equal(replayGeneration.response.payload.code, "MOCK_GENERATION_NOT_ADVANCED");
+  assert.deepEqual(replayGeneration.ledger, beforeReplayGeneration);
+
+  const renewed = adapter.receive(firstLease(2, 5, 9, 1, 4));
+  assert.equal(renewed.accepted, true);
+  assert.equal(renewed.ledger.lease.generation, 5);
+  const staleEpochCommand = message("reference.old-epoch", "reference", 2, 0, 5,
+    { representation: "hold_reference", reference_ref: "reference.hold@1", constraints_ref: "constraints.arm@1" },
+    "lease.actor.5@1", 5);
+  const beforeStaleCommand = adapter.snapshot();
+  const stale = adapter.receive(staleEpochCommand);
+  assert.equal(stale.accepted, false);
+  assert.deepEqual(stale.ledger, beforeStaleCommand);
+});
+
 test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子", () => {
   const ownershipSchema = c1lSchemas.find((item) => item.$id.endsWith("/authoring-ownership@1"));
   const transactionSchema = c1lSchemas.find((item) => item.$id.endsWith("/authoring-transaction@1"));

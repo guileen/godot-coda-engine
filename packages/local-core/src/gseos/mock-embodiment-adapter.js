@@ -6,6 +6,7 @@ export class MockEmbodimentAdapter {
   #lastSequence = -1;
   #seenMessageIds = new Set();
   #lease = null;
+  #lastGeneration = -1;
   #reference = null;
   #modeRef = null;
   #handoffBarrier = null;
@@ -44,17 +45,21 @@ export class MockEmbodimentAdapter {
     }
     if (message.message_type === "authority_lease") {
       const leaseRef = message.lease_ref;
-      if (this.#lease && this.#lease.valid_until_tick >= now_tick) return reject("MOCK_LEASE_ALREADY_ACTIVE");
+      if (this.#lease?.epoch === message.epoch && this.#lease.valid_until_tick >= now_tick) return reject("MOCK_LEASE_ALREADY_ACTIVE");
+      const previousGeneration = this.#epoch === message.epoch ? this.#lastGeneration : -1;
+      if (message.generation <= previousGeneration) return reject("MOCK_GENERATION_NOT_ADVANCED");
+      if (message.payload.valid_until_tick < now_tick) return reject("MOCK_LEASE_ALREADY_EXPIRED");
       if (message.payload.owner !== "coda" || message.payload.resources.some((resource) => !this.capabilities.includes(resource))) return reject("MOCK_LEASE_CAPABILITY_UNAVAILABLE");
       this.#record(message);
-      this.#lease = { lease_ref: leaseRef, generation: message.generation, valid_until_tick: message.payload.valid_until_tick, resources: [...message.payload.resources] };
+      this.#lastGeneration = message.generation;
+      this.#lease = { lease_ref: leaseRef, generation: message.generation, epoch: message.epoch, valid_until_tick: message.payload.valid_until_tick, resources: [...message.payload.resources] };
       this.#reference = null;
       this.#modeRef = null;
       this.#handoffBarrier = null;
       this.#terminal = false;
       return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
     }
-    if (!this.#lease || message.lease_ref !== this.#lease.lease_ref || message.generation !== this.#lease.generation || now_tick > this.#lease.valid_until_tick) return reject("MOCK_LEASE_OR_GENERATION_MISMATCH");
+    if (!this.#lease || message.epoch !== this.#lease.epoch || message.lease_ref !== this.#lease.lease_ref || message.generation !== this.#lease.generation || now_tick > this.#lease.valid_until_tick) return reject("MOCK_LEASE_OR_GENERATION_MISMATCH");
     if (this.#terminal) return reject("MOCK_LEASE_ALREADY_TERMINAL");
     this.#record(message);
     if (message.message_type === "reference") {
@@ -84,7 +89,7 @@ export class MockEmbodimentAdapter {
   }
 
   #record(message) {
-    if (this.#epoch !== message.epoch) { this.#epoch = message.epoch; this.#lastSequence = -1; }
+    if (this.#epoch !== message.epoch) { this.#epoch = message.epoch; this.#lastSequence = -1; this.#lastGeneration = -1; }
     this.#lastSequence = message.sequence;
     this.#seenMessageIds.add(message.message_id);
   }
