@@ -228,18 +228,21 @@ func _commit_file_set(paths: Array[String], contents: Array[String]) -> Dictiona
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(journal_temp_path))
 		for entry in files: DirAccess.remove_absolute(ProjectSettings.globalize_path(String(entry.path) + ".tmp"))
 		return {"ok": false, "receipt": _receipt("AUTHORING_JOURNAL_WRITE_FAILED", "无法安装事务恢复日志；尚未替换任何源文件。")}
+	_test_crash_at("journal_installed")
 	for entry in files:
 		if not entry.existed: continue
 		var target := ProjectSettings.globalize_path(String(entry.path))
 		if DirAccess.rename_absolute(target, target + ".bak") != OK:
 			var rolled_back := recover_transaction(paths[0])
 			return {"ok": false, "receipt": rolled_back.receipt if not rolled_back.ok else _receipt("AUTHORING_BACKUP_FAILED", "无法备份文件事务；已恢复旧版本。")}
-	for entry in files:
+	for index in files.size():
+		var entry: Dictionary = files[index]
 		var target := ProjectSettings.globalize_path(String(entry.path))
 		var temporary := target + ".tmp"
 		if DirAccess.rename_absolute(temporary, target) != OK:
 			var rolled_back := recover_transaction(paths[0])
 			return {"ok": false, "receipt": rolled_back.receipt if not rolled_back.ok else _receipt("AUTHORING_RENAME_FAILED", "无法提交完整的文件事务；已恢复旧版本。")}
+		if index == 0: _test_crash_at("first_target_installed")
 	var commit_temp := committed_path + ".tmp"
 	var commit_file := FileAccess.open(commit_temp, FileAccess.WRITE)
 	if commit_file == null:
@@ -252,6 +255,7 @@ func _commit_file_set(paths: Array[String], contents: Array[String]) -> Dictiona
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(commit_temp), ProjectSettings.globalize_path(committed_path)) != OK:
 		var rolled_back := recover_transaction(paths[0])
 		return {"ok": false, "receipt": rolled_back.receipt if not rolled_back.ok else _receipt("AUTHORING_COMMIT_MARKER_FAILED", "无法标记事务完成；已恢复旧版本。")}
+	_test_crash_at("commit_marker_installed")
 	var cleanup_pending := false
 	for entry in files:
 		var target := ProjectSettings.globalize_path(String(entry.path))
@@ -386,6 +390,16 @@ func _transaction_artifacts_exist(asset_path: String) -> bool:
 	for suffix in [".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
 		if FileAccess.file_exists(ProjectSettings.globalize_path(asset_path + suffix)): return true
 	return false
+
+func _test_crash_at(point: String) -> void:
+	if not OS.is_debug_build() or not OS.get_cmdline_user_args().has("--enable-authoring-crash-injection") or OS.get_environment("GSEOS_TEST_CRASH_AT") != point: return
+	var marker_path := OS.get_environment("GSEOS_TEST_CRASH_MARKER")
+	if marker_path.is_empty(): return
+	var marker := FileAccess.open(marker_path, FileAccess.WRITE)
+	if marker == null: return
+	marker.store_string(point)
+	marker.close()
+	while true: OS.delay_msec(100)
 
 func _make_ownership(path: String, asset: Dictionary, mode: String, revision: int) -> Dictionary:
 	var ids: Array[String] = []
