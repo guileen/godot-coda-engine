@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
-import { applyIntentProtocolRequest, createIntentProtocolState, settleIntentProtocolInstance, validateIntentProtocolRequest } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -219,6 +219,9 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.equal(c1lContractPack.embodied_skill.authoring_owner, "text_owned");
   assert.equal(c1lContractPack.intent_request.operation, "invoke");
   assert.equal(c1lContractPack.intent_receipt.terminal, false);
+  assert.equal(validateIntentProtocolReceipt(c1lContractPack.intent_receipt).ok, true);
+  const terminalMismatch = validateIntentProtocolReceipt({ ...c1lContractPack.intent_receipt, status: "completed" });
+  assert.ok(terminalMismatch.diagnostics.some((item) => item.code === "INTENT_RECEIPT_TERMINAL_MISMATCH"));
   assert.equal(c1lContractPack.embodiment_observation.direction, "adapter_to_coda");
   assert.equal(c1lContractPack.embodiment_observation.validity.valid_until_tick, 122);
   assert.equal(c1lContractPack.safety_revocation.action, "revoke_writer");
@@ -241,6 +244,7 @@ test("C1-L.0.3 IntentProtocol reference isolates 100 instances and rejects stale
     assert.equal(validateIntentProtocolRequest(request).ok, true);
     const applied = applyIntentProtocolRequest(state, request);
     assert.equal(applied.receipt.status, "admitted");
+    assert.equal(validateIntentProtocolReceipt(applied.receipt).ok, true);
     state = applied.state;
   }
   assert.equal(Object.keys(state.instances).length, 100);
@@ -264,8 +268,10 @@ test("C1-L.0.3 IntentProtocol reference isolates 100 instances and rejects stale
   assert.equal(cancelled.state.instances["actor.18.wave"].status, "running");
   const completed = settleIntentProtocolInstance(cancelled.state, { request_id: "complete.18", instance_id: "actor.18.wave", generation: 0, status: "completed" });
   assert.equal(completed.receipt.status, "completed");
+  assert.equal(validateIntentProtocolReceipt(completed.receipt).ok, true);
   const duplicateTerminal = settleIntentProtocolInstance(completed.state, { request_id: "late.failure.18", instance_id: "actor.18.wave", generation: 0, status: "failed" });
   assert.equal(duplicateTerminal.receipt.status, "stale");
+  assert.equal(validateIntentProtocolReceipt(duplicateTerminal.receipt).ok, true);
   assert.equal(duplicateTerminal.state.instances["actor.18.wave"].status, "completed");
 });
 

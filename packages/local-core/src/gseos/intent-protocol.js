@@ -18,6 +18,35 @@ export function validateIntentProtocolRequest(request) {
   if (["invoke", "amend", "interrupt"].includes(request.operation) && (!Number.isInteger(request.priority) || request.priority < 0 || request.priority > 100)) add("INVALID_INTENT_PRIORITY", "invoke/amend/interrupt 必须声明 0–100 priority。", "/priority");
   if (request.operation === "resume" && (typeof request.continuation_ref !== "string" || request.continuation_ref.length === 0)) add("INTENT_RESUME_CONTINUATION_REQUIRED", "resume 必须绑定 ContinuationToken。", "/continuation_ref");
   if (request.parameters !== undefined && (!request.parameters || typeof request.parameters !== "object" || Array.isArray(request.parameters))) add("INVALID_INTENT_PARAMETERS", "parameters 必须是对象。", "/parameters");
+  if (request.constraints_ref !== undefined && !versionedRef.test(String(request.constraints_ref))) add("INVALID_INTENT_CONSTRAINTS_REF", "constraints_ref 必须是版本化引用。", "/constraints_ref");
+  if (request.continuation_ref !== undefined && (typeof request.continuation_ref !== "string" || request.continuation_ref.length === 0)) add("INVALID_INTENT_CONTINUATION_REF", "continuation_ref 必须非空。", "/continuation_ref");
+  if (request.priority !== undefined && (!Number.isInteger(request.priority) || request.priority < 0 || request.priority > 100)) add("INVALID_INTENT_PRIORITY", "priority 必须在 0–100 范围内。", "/priority");
+  const allowed = new Set(["protocol", "schema_version", "request_id", "operation", "skill_ref", "instance_id", "generation", "issued_at", "deadline", "priority", "parameter_schema_ref", "parameters", "constraints_ref", "continuation_ref", "authority_ref"]);
+  for (const key of Object.keys(request)) if (!allowed.has(key)) add("UNKNOWN_INTENT_REQUEST_FIELD", `IntentProtocol@1 不允许字段 ${key}。`, `/${key}`);
+  return gseosReceipt(diagnostics);
+}
+
+export function validateIntentProtocolReceipt(receipt) {
+  const diagnostics = [];
+  const add = (code, message, path) => diagnostics.push(gseosDiagnostic(code, message, { path }));
+  if (!receipt || typeof receipt !== "object" || receipt.receipt_type !== "IntentReceipt" || receipt.schema_version !== 1) return gseosReceipt([gseosDiagnostic("INVALID_INTENT_RECEIPT_HEADER", "receipt 必须使用 IntentReceipt@1。")]);
+  if (typeof receipt.request_id !== "string" || receipt.request_id.length === 0) add("INVALID_INTENT_RECEIPT_REQUEST_ID", "request_id 必须非空。", "/request_id");
+  if (typeof receipt.instance_id !== "string" || receipt.instance_id.length === 0) add("INVALID_INTENT_RECEIPT_INSTANCE_ID", "instance_id 必须非空。", "/instance_id");
+  if (!Number.isInteger(receipt.generation) || receipt.generation < 0) add("INVALID_INTENT_RECEIPT_GENERATION", "generation 必须是非负整数。", "/generation");
+  const statuses = new Set(["admitted", "rejected", "running", "paused", "resumed", "cancelled", "completed", "preempted", "failed", "stale"]);
+  if (!statuses.has(receipt.status)) add("INVALID_INTENT_RECEIPT_STATUS", "status 不属于 IntentReceipt@1。", "/status");
+  if (typeof receipt.terminal !== "boolean") add("INVALID_INTENT_RECEIPT_TERMINAL", "terminal 必须是布尔值。", "/terminal");
+  else if (receipt.terminal !== terminalStatuses.has(receipt.status)) add("INTENT_RECEIPT_TERMINAL_MISMATCH", "terminal 必须与 IntentReceipt status 的终态语义一致。", "/terminal");
+  if (receipt.phase_id !== undefined && (typeof receipt.phase_id !== "string" || receipt.phase_id.length === 0)) add("INVALID_INTENT_RECEIPT_PHASE", "phase_id 必须非空。", "/phase_id");
+  if (receipt.degradation_refs !== undefined && !Array.isArray(receipt.degradation_refs)) add("INVALID_INTENT_RECEIPT_DEGRADATIONS", "degradation_refs 必须是数组。", "/degradation_refs");
+  else if ((receipt.degradation_refs ?? []).some((ref) => typeof ref !== "string" || !versionedRef.test(ref)) || new Set(receipt.degradation_refs ?? []).size !== (receipt.degradation_refs ?? []).length) add("INVALID_INTENT_RECEIPT_DEGRADATIONS", "degradation_refs 必须是唯一版本化引用。", "/degradation_refs");
+  if (!Array.isArray(receipt.diagnostics)) add("INVALID_INTENT_RECEIPT_DIAGNOSTICS", "diagnostics 必须是数组。", "/diagnostics");
+  else receipt.diagnostics.forEach((item, index) => {
+    if (!item || typeof item !== "object" || !/^[A-Z][A-Z0-9_]+$/u.test(String(item.code ?? "")) || (item.source_ref !== undefined && typeof item.source_ref !== "string")) add("INVALID_INTENT_RECEIPT_DIAGNOSTIC", "diagnostic 必须包含 code 和可选 source_ref。", `/diagnostics/${index}`);
+  });
+  if (receipt.source_ref !== undefined && typeof receipt.source_ref !== "string") add("INVALID_INTENT_RECEIPT_SOURCE", "source_ref 必须是字符串。", "/source_ref");
+  const allowed = new Set(["receipt_type", "schema_version", "request_id", "instance_id", "generation", "status", "terminal", "phase_id", "degradation_refs", "diagnostics", "source_ref"]);
+  for (const key of Object.keys(receipt)) if (!allowed.has(key)) add("UNKNOWN_INTENT_RECEIPT_FIELD", `IntentReceipt@1 不允许字段 ${key}。`, `/${key}`);
   return gseosReceipt(diagnostics);
 }
 
