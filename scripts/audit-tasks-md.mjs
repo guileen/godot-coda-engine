@@ -84,6 +84,7 @@ const requiredFiles = [
   "contracts/c1t/snapshot-bundle.schema.json",
   "contracts/c1t/transition-plan.schema.json",
   "contracts/c1t/hook-manifest.schema.json",
+  "tests/reports/c1p-reference-benchmark.json",
   "packages/local-core/src/gseos/continuation-viability.js",
   "packages/local-core/src/gseos/temporal-admission.js",
   "demos/launcher/index.html",

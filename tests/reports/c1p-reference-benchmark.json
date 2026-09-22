@@ -1,56 +1,679 @@
 {
   "report_type": "C1PReferenceBenchmark",
   "schema_version": 1,
-  "status": "PASS_SCOPED_REFERENCE_ONLY",
+  "status": "PASS_REFERENCE_HOST_PROFILE_MEASURED",
   "implementation": "packages/local-core/src/gseos/physics-reference.js",
   "options": {
-    "initial": { "position": 0, "velocity": 0 },
+    "initial": {
+      "position": 0,
+      "velocity": 0
+    },
     "target": 1,
     "target_tolerance": 0.45,
     "horizon_ticks": 60,
-    "limits": { "position": [-2, 2], "velocity": [-4, 4] },
+    "limits": {
+      "position": [
+        -2,
+        2
+      ],
+      "velocity": [
+        -4,
+        4
+      ]
+    },
     "deadline_reserve_ms": 2,
     "required_reserve_ms": 1
   },
   "cascade": {
-    "reference_tier": "high",
-    "tiers": [
-      { "tier": "kinematic", "work_units": 188, "state_error": 0.3898698914857016, "target_error": 0.4039127390015844, "hard_safe": true, "target_reached": true, "certified": true },
-      { "tier": "reduced", "work_units": 748, "state_error": 0.1329683909520775, "target_error": 0.3049820477501981, "hard_safe": true, "target_reached": true, "certified": true },
-      { "tier": "high", "work_units": 2976, "state_error": 0, "target_error": 0.20339032973432025, "hard_safe": true, "target_reached": true, "certified": true }
+    "candidates": [
+      {
+        "id": "kinematic-reference",
+        "tier": "kinematic",
+        "work_units": 188,
+        "target_error": 0.4039127390015844,
+        "hard_safe": true,
+        "budget_ok": true,
+        "deadline_ok": true,
+        "target_reached": true,
+        "certified": true,
+        "decision": "execute",
+        "rejection_reasons": [],
+        "state_error": 0.3898698914857016,
+        "reference_tier": "high"
+      },
+      {
+        "id": "reduced-reference",
+        "tier": "reduced",
+        "work_units": 748,
+        "target_error": 0.3049820477501981,
+        "hard_safe": true,
+        "budget_ok": true,
+        "deadline_ok": true,
+        "target_reached": true,
+        "certified": true,
+        "decision": "execute",
+        "rejection_reasons": [],
+        "state_error": 0.1329683909520775,
+        "reference_tier": "high"
+      },
+      {
+        "id": "high-reference",
+        "tier": "high",
+        "work_units": 2976,
+        "target_error": 0.20339032973432025,
+        "hard_safe": true,
+        "budget_ok": true,
+        "deadline_ok": true,
+        "target_reached": true,
+        "certified": true,
+        "decision": "execute",
+        "rejection_reasons": [],
+        "state_error": 0,
+        "reference_tier": "high"
+      }
     ],
-    "selected_under_unbounded_reference_budget": "kinematic-reference",
+    "selected": {
+      "id": "kinematic-reference",
+      "tier": "kinematic",
+      "work_units": 188,
+      "target_error": 0.4039127390015844,
+      "hard_safe": true,
+      "budget_ok": true,
+      "deadline_ok": true,
+      "target_reached": true,
+      "certified": true,
+      "decision": "execute",
+      "rejection_reasons": [],
+      "state_error": 0.3898698914857016,
+      "reference_tier": "high"
+    },
+    "reference": {
+      "tier": "high",
+      "final": {
+        "tick": 60,
+        "position": 1.2033903297343203,
+        "velocity": 0.44733548544037066
+      }
+    },
+    "decision": "execute",
     "execution_authority": "candidate_only"
   },
   "anytime": [
-    { "budget_units": 8, "outcome": "fallback", "certified": false },
-    { "budget_units": 200, "outcome": "execute", "certified": true, "candidate": "kinematic-reference" },
-    { "budget_units": 4000, "outcome": "execute", "certified": true, "candidate": "kinematic-reference" }
+    {
+      "budget_units": 8,
+      "outcome": "fallback",
+      "certified": false,
+      "candidate": null,
+      "candidates": [
+        {
+          "id": "kinematic-reference",
+          "tier": "kinematic",
+          "work_units": 188,
+          "target_error": 0.4039127390015844,
+          "hard_safe": true,
+          "budget_ok": false,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": false,
+          "decision": "reject",
+          "rejection_reasons": [
+            "WORK_BUDGET"
+          ],
+          "state_error": 0.3898698914857016,
+          "reference_tier": "high"
+        },
+        {
+          "id": "reduced-reference",
+          "tier": "reduced",
+          "work_units": 748,
+          "target_error": 0.3049820477501981,
+          "hard_safe": true,
+          "budget_ok": false,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": false,
+          "decision": "reject",
+          "rejection_reasons": [
+            "WORK_BUDGET"
+          ],
+          "state_error": 0.1329683909520775,
+          "reference_tier": "high"
+        },
+        {
+          "id": "high-reference",
+          "tier": "high",
+          "work_units": 2976,
+          "target_error": 0.20339032973432025,
+          "hard_safe": true,
+          "budget_ok": false,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": false,
+          "decision": "reject",
+          "rejection_reasons": [
+            "WORK_BUDGET"
+          ],
+          "state_error": 0,
+          "reference_tier": "high"
+        }
+      ]
+    },
+    {
+      "budget_units": 200,
+      "outcome": "execute",
+      "certified": true,
+      "candidate": {
+        "id": "kinematic-reference",
+        "tier": "kinematic",
+        "work_units": 188,
+        "target_error": 0.4039127390015844,
+        "hard_safe": true,
+        "budget_ok": true,
+        "deadline_ok": true,
+        "target_reached": true,
+        "certified": true,
+        "decision": "execute",
+        "rejection_reasons": [],
+        "state_error": 0.3898698914857016,
+        "reference_tier": "high"
+      },
+      "candidates": [
+        {
+          "id": "kinematic-reference",
+          "tier": "kinematic",
+          "work_units": 188,
+          "target_error": 0.4039127390015844,
+          "hard_safe": true,
+          "budget_ok": true,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": true,
+          "decision": "execute",
+          "rejection_reasons": [],
+          "state_error": 0.3898698914857016,
+          "reference_tier": "high"
+        },
+        {
+          "id": "reduced-reference",
+          "tier": "reduced",
+          "work_units": 748,
+          "target_error": 0.3049820477501981,
+          "hard_safe": true,
+          "budget_ok": false,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": false,
+          "decision": "reject",
+          "rejection_reasons": [
+            "WORK_BUDGET"
+          ],
+          "state_error": 0.1329683909520775,
+          "reference_tier": "high"
+        },
+        {
+          "id": "high-reference",
+          "tier": "high",
+          "work_units": 2976,
+          "target_error": 0.20339032973432025,
+          "hard_safe": true,
+          "budget_ok": false,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": false,
+          "decision": "reject",
+          "rejection_reasons": [
+            "WORK_BUDGET"
+          ],
+          "state_error": 0,
+          "reference_tier": "high"
+        }
+      ]
+    },
+    {
+      "budget_units": 4000,
+      "outcome": "execute",
+      "certified": true,
+      "candidate": {
+        "id": "kinematic-reference",
+        "tier": "kinematic",
+        "work_units": 188,
+        "target_error": 0.4039127390015844,
+        "hard_safe": true,
+        "budget_ok": true,
+        "deadline_ok": true,
+        "target_reached": true,
+        "certified": true,
+        "decision": "execute",
+        "rejection_reasons": [],
+        "state_error": 0.3898698914857016,
+        "reference_tier": "high"
+      },
+      "candidates": [
+        {
+          "id": "kinematic-reference",
+          "tier": "kinematic",
+          "work_units": 188,
+          "target_error": 0.4039127390015844,
+          "hard_safe": true,
+          "budget_ok": true,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": true,
+          "decision": "execute",
+          "rejection_reasons": [],
+          "state_error": 0.3898698914857016,
+          "reference_tier": "high"
+        },
+        {
+          "id": "reduced-reference",
+          "tier": "reduced",
+          "work_units": 748,
+          "target_error": 0.3049820477501981,
+          "hard_safe": true,
+          "budget_ok": true,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": true,
+          "decision": "execute",
+          "rejection_reasons": [],
+          "state_error": 0.1329683909520775,
+          "reference_tier": "high"
+        },
+        {
+          "id": "high-reference",
+          "tier": "high",
+          "work_units": 2976,
+          "target_error": 0.20339032973432025,
+          "hard_safe": true,
+          "budget_ok": true,
+          "deadline_ok": true,
+          "target_reached": true,
+          "certified": true,
+          "decision": "execute",
+          "rejection_reasons": [],
+          "state_error": 0,
+          "reference_tier": "high"
+        }
+      ]
+    }
   ],
   "hybrid_reference": {
-    "implementation": "packages/local-core/src/gseos/hybrid-reference.js",
-    "jump_ledger": [
-      { "tick": 8, "external_impulse": 0.05, "envelope": 0.1, "admitted": true },
-      { "tick": 16, "external_impulse": -0.04, "envelope": 0.1, "admitted": true }
+    "states": [
+      {
+        "tick": 0,
+        "position": 0,
+        "velocity": 0
+      },
+      {
+        "tick": 1,
+        "position": 0.0022222222222222222,
+        "velocity": 0.13333333333333333
+      },
+      {
+        "tick": 2,
+        "position": 0.006595061728395062,
+        "velocity": 0.26237037037037036
+      },
+      {
+        "tick": 3,
+        "position": 0.01304428257887517,
+        "velocity": 0.38695325102880657
+      },
+      {
+        "tick": 4,
+        "position": 0.021493261731443378,
+        "velocity": 0.5069387491540923
+      },
+      {
+        "tick": 5,
+        "position": 0.03186323092780911,
+        "velocity": 0.6221981517819437
+      },
+      {
+        "tick": 6,
+        "position": 0.04407351609066651,
+        "velocity": 0.7326171097714442
+      },
+      {
+        "tick": 7,
+        "position": 0.058041773773992264,
+        "velocity": 0.8380954609995453
+      },
+      {
+        "tick": 8,
+        "position": 0.07368422422954271,
+        "velocity": 0.9885470273330267
+      },
+      {
+        "tick": 9,
+        "position": 0.0917242140064721,
+        "velocity": 1.0823993866157635
+      },
+      {
+        "tick": 10,
+        "position": 0.11124139472563478,
+        "velocity": 1.171030843149761
+      },
+      {
+        "tick": 11,
+        "position": 0.1321480791460545,
+        "velocity": 1.2544010652251834
+      },
+      {
+        "tick": 12,
+        "position": 0.1543561228579815,
+        "velocity": 1.3324826227156206
+      },
+      {
+        "tick": 13,
+        "position": 0.17777713387442184,
+        "velocity": 1.405260660986421
+      },
+      {
+        "tick": 14,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 15,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 16,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 17,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 18,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 19,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 20,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 21,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 22,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 23,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 24,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 25,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 26,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 27,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 28,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 29,
+        "position": 0.2,
+        "velocity": 0
+      },
+      {
+        "tick": 30,
+        "position": 0.2,
+        "velocity": 0
+      }
     ],
-    "contact_receipt": { "contact": "upper_limit", "state_safe_admissible": true, "restitution": 0 },
-    "switch_receipt": { "tick": 12, "mode_from": "finite", "mode_to": "field", "switch_admissible": true, "execution_authority": "candidate_only" },
-    "verified_invariants": [
-      "jump outside disturbance envelope is rejected",
-      "one-sided limit clamps state and emits contact receipt",
-      "finite/field switch requires domain, state safety and input intersection"
-    ]
+    "final": {
+      "tick": 30,
+      "position": 0.2,
+      "velocity": 0
+    },
+    "jump_ledger": [
+      {
+        "tick": 8,
+        "external_impulse": 0.05,
+        "envelope": 0.1,
+        "admitted": true
+      },
+      {
+        "tick": 16,
+        "external_impulse": -0.04,
+        "envelope": 0.1,
+        "admitted": true
+      }
+    ],
+    "contact_receipts": [
+      {
+        "tick": 14,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 15,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 16,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 17,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 18,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 19,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 20,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 21,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 22,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 23,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 24,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 25,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 26,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 27,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 28,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 29,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      },
+      {
+        "tick": 30,
+        "contact": "upper_limit",
+        "restitution": 0,
+        "state_safe_admissible": true
+      }
+    ],
+    "switch_receipts": [
+      {
+        "tick": 12,
+        "mode_from": "finite",
+        "mode_to": "field",
+        "switch_admissible": true,
+        "execution_authority": "candidate_only",
+        "receipt": {
+          "barrier": "accepted",
+          "terminal": "pending"
+        }
+      }
+    ],
+    "work_units": 148,
+    "execution_authority": "candidate_only"
   },
-  "verified_invariants": [
-    "hard safety and numerical validity are checked before selection",
-    "work budget is deterministic",
-    "budget exhaustion returns fallback rather than an uncertified iterate",
-    "reference tier is used for state error only and does not grant write authority"
+  "verified_hybrid_invariants": [
+    "tagged external jump is admitted only inside the declared disturbance envelope",
+    "one-sided joint limit produces an explicit contact receipt and clamps state",
+    "finite/field switch requires source/target domain, state safety and input intersection",
+    "hybrid reference remains candidate_only and does not write an Adapter"
   ],
   "non_claims": [
-    "not a target-device wall-time calibration",
-    "not a contact/friction or Skeleton3D benchmark",
-    "not evidence of naturalness or hardware safety",
-    "does not close G-C1-P-A or G-C1-P-B"
+    "target-device wall calibration pending",
+    "not contact/friction or hardware evidence"
+  ],
+  "execution_profile": {
+    "profile_id": "node-reference-current-host@1",
+    "node_version": "v22.16.0",
+    "platform": "darwin",
+    "arch": "x64",
+    "cpu_model": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "logical_cpu_count": 16,
+    "total_memory_bytes": 34359738368,
+    "warmup_iterations": 30,
+    "sample_iterations": 500
+  },
+  "wall_memory_observations": [
+    {
+      "name": "reference_cascade",
+      "sample_count": 500,
+      "wall_ms": {
+        "p50": 0.04086900000000071,
+        "p95": 0.19215099999999552,
+        "p99": 0.2856050000000039,
+        "max": 0.47144300000000783
+      },
+      "memory_bytes": {
+        "heap_used_before_samples": 7044312,
+        "peak_heap_used_during_samples": 7977520,
+        "heap_used_after_samples": 6515920,
+        "rss_before_samples": 44552192,
+        "peak_rss_during_samples": 45289472,
+        "rss_after_samples": 45289472
+      }
+    },
+    {
+      "name": "anytime_reference",
+      "sample_count": 500,
+      "wall_ms": {
+        "p50": 0.11442299999998795,
+        "p95": 0.2513500000000022,
+        "p99": 0.3107259999999883,
+        "max": 0.3762529999999913
+      },
+      "memory_bytes": {
+        "heap_used_before_samples": 6289488,
+        "peak_heap_used_during_samples": 8022864,
+        "heap_used_after_samples": 7794280,
+        "rss_before_samples": 45395968,
+        "peak_rss_during_samples": 48795648,
+        "rss_after_samples": 48795648
+      }
+    },
+    {
+      "name": "hybrid_reference",
+      "sample_count": 500,
+      "wall_ms": {
+        "p50": 0.02458200000000943,
+        "p95": 0.045112999999986414,
+        "p99": 0.22101299999999924,
+        "max": 0.30857699999998545
+      },
+      "memory_bytes": {
+        "heap_used_before_samples": 6957776,
+        "peak_heap_used_during_samples": 8049424,
+        "heap_used_after_samples": 6747776,
+        "rss_before_samples": 48828416,
+        "peak_rss_during_samples": 49852416,
+        "rss_after_samples": 49852416
+      }
+    }
+  ],
+  "decision_fingerprint": "sha256:38a3b3cd780253e14951839b709e82cd762d7c57b0a76d3501098d164399ab17",
+  "observation_non_claims": [
+    "wall percentiles and process memory are host-run observations, not deterministic replay evidence",
+    "host measurements do not certify Godot or any target device profile"
   ]
 }

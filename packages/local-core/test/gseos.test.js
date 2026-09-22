@@ -53,6 +53,7 @@ const contactHandoffBenchmark = JSON.parse(await readFile(resolve(root, "gseos/f
 const modelValidityBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/model-validity-detection.spec.json"), "utf8"));
 const jointCompositionBenchmark = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"), "utf8"));
 const resourceRegistryFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/resource-registry.json"), "utf8"));
+const c1pReferenceBenchmark = JSON.parse(await readFile(resolve(root, "tests/reports/c1p-reference-benchmark.json"), "utf8"));
 const continuationViabilityFixture = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1t/continuation-viability.json"), "utf8"));
 const c1pContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1p/contract-index.json"), "utf8"));
 const c1pContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1p/contract-pack.json"), "utf8"));
@@ -1386,6 +1387,16 @@ test("C1-P.1 reference slice 只在硬门后选择 fidelity，并在 anytime 截
   const simulation = runReferenceCascade(options).value.candidates[0];
   const receipt = certifyReferenceCandidate({ simulation: { ok: true, value: { final: { position: 0.7, velocity: 0 }, tier: "kinematic", work_units: simulation.work_units, finite_state: true, in_domain: true } }, target: 1, target_tolerance: 0.45, budget_units: simulation.work_units });
   assert.equal(receipt.value.certified, true);
+});
+
+test("C1-P.1e reference report separates deterministic decisions from current-host measurements", () => {
+  assert.equal(c1pReferenceBenchmark.status, "PASS_REFERENCE_HOST_PROFILE_MEASURED");
+  assert.equal(c1pReferenceBenchmark.execution_profile.profile_id, "node-reference-current-host@1");
+  assert.equal(c1pReferenceBenchmark.execution_profile.sample_iterations >= 100, true);
+  assert.equal(c1pReferenceBenchmark.wall_memory_observations.length, 3);
+  assert.equal(c1pReferenceBenchmark.wall_memory_observations.every((item) => Number.isFinite(item.wall_ms.p95) && Number.isFinite(item.wall_ms.p99) && item.memory_bytes.peak_heap_used_during_samples >= item.memory_bytes.heap_used_before_samples), true);
+  assert.match(c1pReferenceBenchmark.decision_fingerprint, /^sha256:[a-f0-9]{64}$/u);
+  assert.equal(c1pReferenceBenchmark.observation_non_claims.some((item) => item.includes("target device")), true);
 });
 
 test("C1-P.1b–1d hybrid reference 记录 tagged jump、关节限位和 finite/field 准入", () => {
