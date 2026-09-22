@@ -95,6 +95,28 @@ export function validateTemporalCommandContract(contract) {
   return gseosReceipt(diagnostics);
 }
 
+export function validateSafetyAuthorityReceipt(receipt) {
+  const diagnostics = [];
+  const add = (code, path, text) => push(diagnostics, code, text, path);
+  if (!receipt || typeof receipt !== "object" || receipt.receipt_type !== "SafetyAuthorityReceipt" || receipt.schema_version !== 1) return gseosReceipt([gseosDiagnostic("INVALID_SAFETY_AUTHORITY_RECEIPT", "消息必须使用 SafetyAuthorityReceipt@1。")]);
+  for (const key of ["event_id", "authority_ref", "target_instance", "source_ref"]) {
+    if (typeof receipt[key] !== "string" || receipt[key].length === 0) add("INVALID_SAFETY_AUTHORITY_FIELD", `/${key}`, `${key} 必须是非空字符串。`);
+  }
+  if (!Number.isInteger(receipt.target_generation) || receipt.target_generation < 0) add("INVALID_SAFETY_AUTHORITY_GENERATION", "/target_generation", "target_generation 必须是非负整数。");
+  const actions = new Set(["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"]);
+  if (!actions.has(receipt.action)) add("INVALID_SAFETY_AUTHORITY_ACTION", "/action", "action 不属于 SafetyAuthorityPort@1。");
+  if (typeof receipt.latched !== "boolean") add("INVALID_SAFETY_AUTHORITY_LATCH", "/latched", "latched 必须是布尔值。");
+  const issuedAt = receipt.issued_at;
+  if (!issuedAt || typeof issuedAt !== "object" || typeof issuedAt.clock_domain !== "string" || issuedAt.clock_domain.length === 0 || !Number.isInteger(issuedAt.tick) || issuedAt.tick < 0) add("INVALID_SAFETY_AUTHORITY_TIME", "/issued_at", "issued_at 必须包含非空 clock_domain 与非负整数 tick。");
+  else if (Object.keys(issuedAt).some((key) => !["clock_domain", "tick"].includes(key))) add("UNKNOWN_SAFETY_AUTHORITY_TIME_FIELD", "/issued_at", "issued_at 不允许未定义字段。");
+  if (["request_protective_action", "enter_device_failsafe"].includes(receipt.action) && !versionedRef.test(String(receipt.device_action_ref ?? ""))) add("SAFETY_AUTHORITY_DEVICE_ACTION_REQUIRED", "/device_action_ref", "保护动作和设备 failsafe 必须绑定版本化 device_action_ref。");
+  else if (receipt.device_action_ref !== undefined && !versionedRef.test(String(receipt.device_action_ref))) add("INVALID_SAFETY_AUTHORITY_DEVICE_ACTION", "/device_action_ref", "device_action_ref 必须是版本化引用。");
+  if (receipt.action === "report_safety_clear" && receipt.latched !== false) add("SAFETY_CLEAR_MUST_UNLATCH", "/latched", "report_safety_clear 必须显式清除 latch。");
+  const allowed = new Set(["receipt_type", "schema_version", "event_id", "authority_ref", "target_instance", "target_generation", "action", "device_action_ref", "latched", "issued_at", "source_ref"]);
+  for (const key of Object.keys(receipt)) if (!allowed.has(key)) add("UNKNOWN_SAFETY_AUTHORITY_FIELD", `/${key}`, `${key} 不属于 SafetyAuthorityReceipt@1。`);
+  return gseosReceipt(diagnostics);
+}
+
 export function validateAuthorityClaimMatrix(matrix) {
   const diagnostics = [];
   if (!headerOk(matrix, "AuthorityClaimMatrix")) return gseosReceipt([gseosDiagnostic("INVALID_AUTHORITY_CLAIM_MATRIX", "AuthorityClaimMatrix 类型或版本无效。")]);
