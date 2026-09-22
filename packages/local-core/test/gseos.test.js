@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
-import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, runEmbodimentAdapterConformance, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -517,6 +517,17 @@ test("C1-M.1 mock driver session records and deterministically replays faults an
   assert.equal(divergent.ok, false);
   assert.ok(divergent.mismatches.some((item) => item.index === 1));
   assert.equal(replayMockEmbodimentSession({ ...recording, schema_version: 99 }).code, "MOCK_REPLAY_ENVELOPE_INVALID");
+});
+
+test("C1-M.1 reusable no-hardware conformance suite rejects partial writes and terminal races", () => {
+  const report = runEmbodimentAdapterConformance(new MockEmbodimentAdapter({ adapter_ref: "conformance.adapter@1", capabilities: ["arm@1"] }));
+  assert.equal(report.ok, true, JSON.stringify(report.cases.filter((item) => !item.passed)));
+  assert.equal(report.case_count, 13);
+  assert.equal(report.failure_count, 0);
+  assert.ok(report.non_claims.includes("does not validate physical accuracy, calibration, real-time guarantees, or hardware safety"));
+  const missingMethods = runEmbodimentAdapterConformance({});
+  assert.equal(missingMethods.ok, false);
+  assert.equal(missingMethods.cases[0].name, "adapter_interface");
 });
 
 test("C1-M.0 lease generations cannot be reused after expiry and remain epoch-bound", () => {

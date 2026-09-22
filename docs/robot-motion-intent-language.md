@@ -103,6 +103,8 @@ SafetyAuthority 的撤权、保护动作和设备 failsafe receipt 必须保持 
 
 无硬件驱动包提供 `recordMockEmbodimentSession` / `replayMockEmbodimentSession`：录制有界 mock adapter 配置、输入消息/操作、输出 receipt 与每步状态摘要；回放不执行设备命令，重复结果按 canonical JSON 精确比较。已覆盖的协议拒绝可作为故障注入输入保留在录制中，回放发现输入、输出或 ledger 不一致即返回 divergence；该记录格式目前只用于 Node mock conformance，不是设备数据或安全审计日志。
 
+`runEmbodimentAdapterConformance(adapter)` 是可复用的 no-hardware 一致性套件：对调用方提供的 adapter instance 检查 capability、资源 lease、reference/mode/handoff、过期、唯一终态、迟到命令、observation schema，以及 reject 的 `partial_write=false` 和 ledger 不变。它只给出协议行为报告，不评估物理精度、校准、实时性或硬件安全；独立驱动方仍须用自己的实现运行该套件。
+
 每个资产的唯一作者源由 [`AuthoringOwnership@1`](../contracts/c1l/authoring-ownership.schema.json) 标记为 `text_owned` 或 `graph_owned`。GUI 修改必须携带期望 owner revision、source fingerprint、稳定 node ID 和字段路径，经 [`AuthoringTransaction@1`](../contracts/c1l/authoring-transaction.schema.json) 写入单一 target source；EventAsset、文本投影、ExecutionPlan 与生成代码都只能作为只读派生物。迁移改变 owner 时必须原子切换；revision/fingerprint 冲突返回无部分写入的 receipt。Godot EventAsset store 已为写入、Undo/Redo 与投影写回增加可选 compare-and-swap，发现磁盘资产在预览后变化会拒绝覆盖；该机制目前比较完整的 EventAsset snapshot，不等同于 owner revision/source fingerprint 协议。编辑器生成的文本预览使用 `# @node_id=...` 保留稳定 node identity，未锚定新节点分配新 ID；当前投影器无法表达的资产会被拒绝打开文本事务。对应正反例见 [`authoring-ownership-pack.json`](../gseos/fixtures/c1l/authoring-ownership-pack.json)。text-owned AST transaction、owner 持久化和迁移恢复仍未完成。
 
 Node 参考核心另提供 `applyAuthoringTransaction`，对 graph-owned JSON 来源执行 owner revision/source fingerprint CAS、稳定 node ID 和 per-node fingerprint 校验；候选 source 与 node-identity digest 必须完全匹配后才产生递增 owner revision 的新状态。该纯函数不写磁盘，不支持 owner migration，也尚未接入 Godot GUI。
