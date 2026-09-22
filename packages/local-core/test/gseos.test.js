@@ -53,7 +53,8 @@ const intentBackendProfileSchema = JSON.parse(await readFile(resolve(root, "cont
 const intentBackendProfiles = JSON.parse(await readFile(resolve(root, "gseos/fixtures/intent-backend-profiles.json"), "utf8"));
 const c1lContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1l/contract-index.json"), "utf8"));
 const c1lContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1l/contract-pack.json"), "utf8"));
-const c1lSchemas = await Promise.all(["embodied-skill", "intent-protocol", "intent-receipt", "embodiment-protocol", "safety-authority-port", "embodiment-dynamics-profile"].map(async (name) => JSON.parse(await readFile(resolve(root, `contracts/c1l/${name}.schema.json`), "utf8"))));
+const c1lSchemas = await Promise.all(c1lContractIndex.schemas.map(async (name) => JSON.parse(await readFile(resolve(root, `contracts/c1l/${name.replace(/@\d+$/, "")}.schema.json`), "utf8"))));
+const authoringOwnershipPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1l/authoring-ownership-pack.json"), "utf8"));
 
 test("EventAsset 保留未知字段并稳定排序", () => {
   const extended = { ...asset, z_unknown: { b: 2, a: 1 }, a_unknown: true };
@@ -180,15 +181,15 @@ test("C1-L.3 按目标 Profile 能力条件 lowering，缺失能力只接受显�
 
 test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威边界", () => {
   assert.equal(c1lContractIndex.contract_family, "C1-L");
-  assert.deepEqual(c1lContractIndex.schemas, ["embodied-skill@1", "intent-protocol@1", "intent-receipt@1", "embodiment-protocol@1", "safety-authority-port@1", "embodiment-dynamics-profile@1"]);
   assert.deepEqual(c1lSchemas.map((item) => item.$id), c1lContractIndex.schemas.map((item) => `coda://contracts/c1l/${item}`));
-  assert.equal(c1lSchemas[0].properties.authoring_owner.const, "text_owned");
-  assert.deepEqual(c1lSchemas[1].properties.operation.enum, ["invoke", "amend", "interrupt", "pause", "resume", "cancel"]);
-  assert.equal(c1lSchemas[1].properties.generation.minimum, 0);
-  assert.equal(c1lSchemas[2].properties.terminal.type, "boolean");
-  assert.ok(c1lSchemas[3].allOf.length >= 8);
-  assert.deepEqual(c1lSchemas[4].properties.action.enum, ["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"]);
-  assert.deepEqual(c1lSchemas[5].properties.guarantee_level.enum, ["visual_plausibility", "model_admissible", "calibrated_envelope", "hardware_safety_reviewed"]);
+  const schema = (name) => c1lSchemas.find((item) => item.$id.endsWith(`/${name}@1`));
+  assert.equal(schema("embodied-skill").properties.authoring_owner.const, "text_owned");
+  assert.deepEqual(schema("intent-protocol").properties.operation.enum, ["invoke", "amend", "interrupt", "pause", "resume", "cancel"]);
+  assert.equal(schema("intent-protocol").properties.generation.minimum, 0);
+  assert.equal(schema("intent-receipt").properties.terminal.type, "boolean");
+  assert.ok(schema("embodiment-protocol").allOf.length >= 8);
+  assert.deepEqual(schema("safety-authority-port").properties.action.enum, ["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"]);
+  assert.deepEqual(schema("embodiment-dynamics-profile").properties.guarantee_level.enum, ["visual_plausibility", "model_admissible", "calibrated_envelope", "hardware_safety_reviewed"]);
 
   assert.equal(c1lContractPack.embodied_skill.authoring_owner, "text_owned");
   assert.equal(c1lContractPack.intent_request.operation, "invoke");
@@ -200,6 +201,28 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.equal(c1lContractPack.dynamics_profile.target_class, "game_visual");
   assert.equal(c1lContractPack.dynamics_profile.guarantee_level, "visual_plausibility");
   assert.equal(c1lContractPack.dynamics_profile.status, "draft");
+});
+
+test("C1-L.0.1 authoring ownership 单源、乐观锁与迁移冲突保持原子", () => {
+  const ownershipSchema = c1lSchemas.find((item) => item.$id.endsWith("/authoring-ownership@1"));
+  const transactionSchema = c1lSchemas.find((item) => item.$id.endsWith("/authoring-transaction@1"));
+  const receiptSchema = c1lSchemas.find((item) => item.$id.endsWith("/authoring-transaction-receipt@1"));
+  assert.equal(ownershipSchema.properties.authoring_mode.enum.length, 2);
+  assert.equal(ownershipSchema.properties.node_identity.properties.policy.const, "stable_node_id@1");
+  assert.equal(ownershipSchema.properties.derived_projections.items.properties.authority.const, "derived");
+  assert.equal(ownershipSchema.properties.derived_projections.items.properties.writable.const, false);
+  assert.ok(transactionSchema.required.includes("expected_owner_revision"));
+  assert.ok(transactionSchema.required.includes("expected_source_fingerprint"));
+  assert.equal(receiptSchema.allOf[1].then.properties.changed_node_ids.maxItems, 0);
+
+  assert.equal(authoringOwnershipPack.text_owned.authoring_mode, "text_owned");
+  assert.equal(authoringOwnershipPack.text_owned.source.source_type, "coda_source");
+  assert.equal(authoringOwnershipPack.graph_owned.authoring_mode, "graph_owned");
+  assert.equal(authoringOwnershipPack.graph_owned.source.source_type, "event_asset");
+  assert.equal(authoringOwnershipPack.migration_transaction.expected_mode, "graph_owned");
+  assert.equal(authoringOwnershipPack.migration_transaction.target_mode, "text_owned");
+  assert.equal(authoringOwnershipPack.stale_owner_receipt.status, "conflict");
+  assert.deepEqual(authoringOwnershipPack.stale_owner_receipt.changed_node_ids, []);
 });
 
 test("C1-L 独立 contract schema 与 TransitionPlan fixture 保持后端中立", () => {

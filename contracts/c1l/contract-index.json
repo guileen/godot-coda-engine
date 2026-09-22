@@ -5,6 +5,9 @@
   "wire_bindings": "generated_only",
   "semantic_digest_source": "canonical_semantic_object",
   "schemas": [
+    "authoring-ownership@1",
+    "authoring-transaction@1",
+    "authoring-transaction-receipt@1",
     "embodied-skill@1",
     "intent-protocol@1",
     "intent-receipt@1",
@@ -14,6 +17,8 @@
   ],
   "hard_boundaries": [
     "one authoring owner per skill asset",
+    "optimistic owner revision and source fingerprint required for every authoring transaction",
+    "derived projections are immutable and cannot be transaction targets",
     "semantic task references only; no joint angle, PWM, torque or arbitrary controller code in IntentProtocol",
     "independent SafetyAuthorityPort may revoke CODA authority and cannot be overridden by ordinary intent requests",
     "AuthorityLease, ObservationFreshness, CommandValidity and Liveness are separate concepts",

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1l/authoring-transaction@1",
+  "title": "CODA AuthoringTransaction@1",
+  "type": "object",
+  "required": ["transaction_type", "schema_version", "transaction_id", "asset_id", "expected_mode", "expected_owner_revision", "expected_source_fingerprint", "operation", "target_mode", "target_source", "operations"],
+  "properties": {
+    "transaction_type": { "const": "AuthoringTransaction" },
+    "schema_version": { "const": 1 },
+    "transaction_id": { "type": "string", "minLength": 1 },
+    "asset_id": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "expected_mode": { "enum": ["text_owned", "graph_owned"] },
+    "expected_owner_revision": { "type": "integer", "minimum": 0 },
+    "expected_source_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "operation": { "enum": ["edit", "migrate_owner"] },
+    "target_mode": { "enum": ["text_owned", "graph_owned"] },
+    "target_source": { "type": "object", "required": ["source_type", "source_ref", "candidate_fingerprint", "node_identity_digest"], "properties": { "source_type": { "enum": ["coda_source", "event_asset"] }, "source_ref": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000]+$" }, "candidate_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }, "node_identity_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" } }, "additionalProperties": false },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["operation", "node_id"],
+        "properties": {
+          "operation": { "enum": ["add_node", "replace_field", "remove_node"] },
+          "node_id": { "type": "string", "pattern": "^[-\\w.]+$" },
+          "field_path": { "type": "string", "pattern": "^/[^\\u0000]*$" },
+          "expected_node_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "value": {}
+        },
+        "allOf": [
+          { "if": { "properties": { "operation": { "const": "add_node" } } }, "then": { "required": ["field_path", "value"] } },
+          { "if": { "properties": { "operation": { "const": "replace_field" } } }, "then": { "required": ["field_path", "expected_node_fingerprint", "value"] } },
+          { "if": { "properties": { "operation": { "const": "remove_node" } } }, "then": { "required": ["expected_node_fingerprint"] } }
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "operation": { "const": "edit" }, "expected_mode": { "const": "text_owned" } } }, "then": { "properties": { "target_mode": { "const": "text_owned" }, "target_source": { "properties": { "source_type": { "const": "coda_source" } } } } } },
+    { "if": { "properties": { "operation": { "const": "edit" }, "expected_mode": { "const": "graph_owned" } } }, "then": { "properties": { "target_mode": { "const": "graph_owned" }, "target_source": { "properties": { "source_type": { "const": "event_asset" } } } } } },
+    { "if": { "properties": { "operation": { "const": "migrate_owner" }, "target_mode": { "const": "text_owned" } } }, "then": { "properties": { "target_source": { "properties": { "source_type": { "const": "coda_source" } } } } } },
+    { "if": { "properties": { "operation": { "const": "migrate_owner" }, "target_mode": { "const": "graph_owned" } } }, "then": { "properties": { "target_source": { "properties": { "source_type": { "const": "event_asset" } } } } } },
+    { "if": { "properties": { "operation": { "const": "migrate_owner" }, "expected_mode": { "const": "text_owned" } } }, "then": { "properties": { "target_mode": { "const": "graph_owned" } } } },
+    { "if": { "properties": { "operation": { "const": "migrate_owner" }, "expected_mode": { "const": "graph_owned" } } }, "then": { "properties": { "target_mode": { "const": "text_owned" } } } }
+  ],
+  "additionalProperties": false
+}

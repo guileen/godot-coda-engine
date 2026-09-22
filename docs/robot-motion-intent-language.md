@@ -97,6 +97,8 @@ skill taiji.cloud_hands@1(actor: humanoid) {
 
 这组结构合同位于 [`contracts/c1l/`](../contracts/c1l/)，索引为 [`contract-index.json`](../contracts/c1l/contract-index.json)，正例见 [`contract-pack.json`](../gseos/fixtures/c1l/contract-pack.json)。`EmbodiedSkill@1` 固定 `text_owned` 与 phase/progress/resume 语义；`IntentProtocol@1` 只接收版本化技能引用和语义参数；`EmbodimentProtocol@1` 对 capability、observation、reference、lease、handoff 和 receipt 使用有方向的消息类型；`SafetyAuthorityPort@1` 单向保留独立撤权/保护权；`EmbodimentDynamicsProfile@1` 声明目标拓扑、接触/耦合模型和保证等级。该合同包仍是结构设计和 Godot 视觉正例，不包含运行时实现、目标设备校准或授权。
 
+每个资产的唯一作者源由 [`AuthoringOwnership@1`](../contracts/c1l/authoring-ownership.schema.json) 标记为 `text_owned` 或 `graph_owned`。GUI 修改必须携带期望 owner revision、source fingerprint、稳定 node ID 和字段路径，经 [`AuthoringTransaction@1`](../contracts/c1l/authoring-transaction.schema.json) 写入单一 target source；EventAsset、文本投影、ExecutionPlan 与生成代码都只能作为只读派生物。迁移改变 owner 时必须原子切换；revision/fingerprint 冲突返回无部分写入的 receipt。对应正反例见 [`authoring-ownership-pack.json`](../gseos/fixtures/c1l/authoring-ownership-pack.json)。这冻结事务合同，不代表现有编辑器已经完成 text-owned AST transaction 或自动迁移。
+
 ### 物理 refinement、时域与并行 claim
 
 语言中的 `maintain balance`、`resume compatible_phase` 或并行 `walk + upper_body_skill` 只有在 `EmbodimentDynamicsProfile@1` 提供 actuation/contact/coupling refinement 后才可 lower。编译期最多证明合同存在且类型兼容；目标设备的动力学可达性仍须由声明证据等级的 `ViabilityGate` 和执行准入验证。

@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "text_owned": {
+    "contract_type": "AuthoringOwnership",
+    "schema_version": 1,
+    "asset_id": "social.wave@1",
+    "authoring_mode": "text_owned",
+    "owner_revision": 4,
+    "source": { "source_type": "coda_source", "source_ref": "examples/social-wave.coda", "fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    "node_identity": { "policy": "stable_node_id@1", "mapping_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    "derived_projections": [
+      { "artifact_type": "event_asset", "fingerprint": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "authority": "derived", "writable": false },
+      { "artifact_type": "execution_plan", "fingerprint": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "authority": "derived", "writable": false }
+    ]
+  },
+  "graph_owned": {
+    "contract_type": "AuthoringOwnership",
+    "schema_version": 1,
+    "asset_id": "ui.reward.apply@1",
+    "authoring_mode": "graph_owned",
+    "owner_revision": 7,
+    "source": { "source_type": "event_asset", "source_ref": "gseos/events/ui.reward.apply.gse.json", "fingerprint": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+    "node_identity": { "policy": "stable_node_id@1", "mapping_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
+    "derived_projections": [
+      { "artifact_type": "coda_projection", "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "authority": "derived", "writable": false },
+      { "artifact_type": "generated_code", "fingerprint": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "authority": "derived", "writable": false }
+    ]
+  },
+  "migration_transaction": {
+    "transaction_type": "AuthoringTransaction",
+    "schema_version": 1,
+    "transaction_id": "migration.ui.reward.apply.001",
+    "asset_id": "ui.reward.apply@1",
+    "expected_mode": "graph_owned",
+    "expected_owner_revision": 7,
+    "expected_source_fingerprint": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "operation": "migrate_owner",
+    "target_mode": "text_owned",
+    "target_source": { "source_type": "coda_source", "source_ref": "examples/ui-reward-apply.coda", "candidate_fingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333", "node_identity_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444" },
+    "operations": [
+      { "operation": "replace_field", "node_id": "ui.reward.node.score", "field_path": "/params/value", "expected_node_fingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555", "value": { "ref": "reward" } }
+    ]
+  },
+  "stale_owner_receipt": {
+    "receipt_type": "AuthoringTransactionReceipt",
+    "schema_version": 1,
+    "transaction_id": "migration.ui.reward.apply.001",
+    "status": "conflict",
+    "asset_id": "ui.reward.apply@1",
+    "authoring_mode": "graph_owned",
+    "owner_revision": 7,
+    "source_fingerprint": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "changed_node_ids": [],
+    "diagnostics": [{ "code": "AUTHORING_SOURCE_CHANGED" }]
+  }
+}
