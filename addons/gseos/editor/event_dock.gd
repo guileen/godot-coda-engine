@@ -36,6 +36,7 @@ var _projection_pending_slot_id := ""
 var _projection_preview_diff := ""
 var _projection_slot_controls: Dictionary = {}
 var _generation_override: Callable = Callable()
+var _last_write_ok := true
 
 const COMMAND_DEFINITIONS := {
 	"if": {"label": "条件 if", "fields": ["condition"]},
@@ -615,7 +616,8 @@ func _new_event() -> void:
 		index += 1
 		path = "res://gseos/events/new-event-%d.gse.json" % index
 	var asset := {"asset_type": "EventAsset", "schema_version": 1, "event_id": "ui.new.event.%d" % index, "display_name": "新事件", "args": [], "reentry": "reject", "recovery": "E0", "root": []}
-	_write_asset_transaction(path, {}, asset, "创建 GSEOS 事件")
+	if not _write_asset_transaction(path, {}, asset, "创建 GSEOS 事件"):
+		return
 	_reload()
 
 func _rename_selected() -> void:
@@ -627,7 +629,8 @@ func _rename_selected() -> void:
 		_status.text = "显示名不能为空；未写入资产。"
 		return
 	next.display_name = name
-	_write_asset_transaction(_selected_path, _selected_asset, next, "重命名 GSEOS 事件")
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "重命名 GSEOS 事件"):
+		return
 	_selected_asset = next
 	_update_disk_modified_time()
 	_rebuild_tree()
@@ -675,7 +678,8 @@ func _confirm_draft() -> void:
 		return
 	draft["params"] = params
 	draft.erase("draft")
-	_write_asset_transaction(_selected_path, _selected_asset, _draft_asset, "确认 GSEOS 草稿节点")
+	if not _write_asset_transaction(_selected_path, _selected_asset, _draft_asset, "确认 GSEOS 草稿节点"):
+		return
 	_selected_asset = _draft_asset
 	_update_disk_modified_time()
 	_draft_asset = {}
@@ -714,7 +718,8 @@ func _delete_selected_node() -> void:
 	if not _remove_node(next.root, _selected_node_id):
 		_status.text = "未找到节点；未写入资产。"
 		return
-	_write_asset_transaction(_selected_path, _selected_asset, next, "删除 GSEOS 节点")
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "删除 GSEOS 节点"):
+		return
 	_selected_asset = next
 	_update_disk_modified_time()
 	_selected_node_id = ""
@@ -728,7 +733,8 @@ func _copy_selected_node() -> void:
 	if not _copy_node(next.root, _selected_node_id):
 		_status.text = "未找到节点；未写入资产。"
 		return
-	_write_asset_transaction(_selected_path, _selected_asset, next, "复制 GSEOS 节点")
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "复制 GSEOS 节点"):
+		return
 	_selected_asset = next
 	_update_disk_modified_time()
 	_rebuild_tree()
@@ -762,7 +768,8 @@ func _move_selected_node(delta: int) -> void:
 	if not _move_node(next.root, _selected_node_id, delta):
 		_status.text = "节点无法在当前 slot 移动；未写入资产。"
 		return
-	_write_asset_transaction(_selected_path, _selected_asset, next, "移动 GSEOS 节点")
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "移动 GSEOS 节点"):
+		return
 	_selected_asset = next
 	_update_disk_modified_time()
 	_rebuild_tree()
@@ -792,21 +799,34 @@ func _remove_node(nodes: Array, node_id: String) -> bool:
 				return true
 	return false
 
-func _write_asset_transaction(path: String, before: Dictionary, after: Dictionary, title: String) -> void:
+func _write_asset_transaction(path: String, before: Dictionary, after: Dictionary, title: String) -> bool:
 	if _undo_redo == null:
 		var result := _store.save_asset(path, after, before)
 		if result.saved:
+			after.clear()
+			after.merge(result.asset, true)
+			if result.get("cleanup_pending", false):
+				_status.text = "资产与 owner 已提交；旧备份未清理，后续读取/写入将 fail-closed。"
 			_record_fallback_history(path, before, after, title)
 			_update_disk_modified_time()
-		return
+		else:
+			_status.text = _format_diagnostics(result.receipt.diagnostics)
+		return result.saved
+	_last_write_ok = true
 	_undo_redo.create_action(title)
 	_undo_redo.add_do_method(self, "_write_asset", path, before, after)
 	_undo_redo.add_undo_method(self, "_write_asset", path, after, before)
 	_undo_redo.commit_action()
+	return _last_write_ok
 
 func _write_asset(path: String, expected_asset: Dictionary, asset: Dictionary) -> void:
 	var result := _store.save_asset(path, asset, expected_asset)
+	_last_write_ok = result.saved
 	if result.saved:
+		asset.clear()
+		asset.merge(result.asset, true)
+		if result.get("cleanup_pending", false):
+			_status.text = "资产与 owner 已提交；旧备份未清理，后续读取/写入将 fail-closed。"
 		_update_disk_modified_time()
 	if not result.receipt.ok:
 		_status.text = _format_diagnostics(result.receipt.diagnostics)
@@ -831,7 +851,8 @@ func _apply_condition_edit() -> void:
 	var params: Dictionary = node.get("params", {}).duplicate(true)
 	params["condition"] = parsed
 	node["params"] = params
-	_write_asset_transaction(_selected_path, _selected_asset, next, "编辑 GSEOS 复合条件")
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "编辑 GSEOS 复合条件"):
+		return
 	_selected_asset = next
 	_rebuild_tree()
 
@@ -985,7 +1006,8 @@ func _commit_text_import() -> void:
 	if not committed.ok:
 		_text_import_status.text = _format_diagnostics(committed.diagnostics)
 		return
-	_write_asset_transaction(_selected_path, _selected_asset, committed.asset, "提交 GSE 文本导入")
+	if not _write_asset_transaction(_selected_path, _selected_asset, committed.asset, "提交 GSE 文本导入"):
+		return
 	_selected_asset = committed.asset
 	_text_import_candidate = {}
 	_text_import_panel.visible = false

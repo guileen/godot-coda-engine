@@ -5,12 +5,18 @@ const STORE := preload("res://addons/gseos/core/asset_store.gd")
 var failures: Array[String] = []
 var new_event_path := "res://gseos/events/new-event.gse.json"
 var generated_path := "res://.gseos/generated/ui_reward_apply.gd"
+var reward_owner_path := "res://gseos/events/ui.reward.apply.gse.json.ownership.json"
 
 func _initialize() -> void:
 	call_deferred("_start")
 
 func _start() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json"))
+	var reward_asset_path := "res://gseos/events/ui.reward.apply.gse.json"
+	var reward_asset_raw := FileAccess.get_file_as_string(reward_asset_path)
+	var reward_owner_existed := FileAccess.file_exists(reward_owner_path)
+	var reward_owner_raw := FileAccess.get_file_as_string(reward_owner_path) if reward_owner_existed else ""
 	var dock = DOCK.new()
 	root.add_child(dock)
 	await process_frame
@@ -39,6 +45,12 @@ func _start() -> void:
 	else:
 		var new_index: int = dock._asset_paths.find(new_event_path)
 		dock._on_event_selected(new_index)
+		if new_index < 0 or dock._selected_path != new_event_path:
+			failures.append("Event Dock did not select the newly created EventAsset")
+			dock._selected_path = new_event_path
+			var reloaded_new := STORE.new().load_asset(new_event_path)
+			dock._selected_asset = reloaded_new.asset
+			dock._rebuild_tree()
 		dock._name_edit.text = "可撤销事件"
 		dock._rename_selected()
 		if STORE.new().load_asset(new_event_path).asset.get("display_name") != "可撤销事件":
@@ -96,10 +108,10 @@ func _start() -> void:
 		dock._selected_node_id = dock._selected_asset.root[0].node_id
 		dock._copy_selected_node()
 		if dock._selected_asset.root.size() != 2:
-			failures.append("Event Dock did not copy the selected node")
+			failures.append("Event Dock did not copy the selected node: " + dock._status.text)
 		dock._move_selected_node(1)
 		if dock._selected_asset.root.size() != 2:
-			failures.append("Event Dock did not move the selected node within its slot")
+			failures.append("Event Dock did not move the selected node within its slot: " + dock._status.text)
 		dock._delete_selected_node()
 		if dock._selected_asset.root.size() != 1:
 			failures.append("Event Dock did not delete the selected node")
@@ -109,9 +121,9 @@ func _start() -> void:
 			failures.append("Event Dock did not delete the copied node")
 		dock._reload_selected_from_disk()
 		if dock._selected_asset.root.size() != 0 or not dock._status.text.contains("已从磁盘重载"):
-			failures.append("Event Dock did not rebuild the tree after external reload")
+			failures.append("Event Dock did not rebuild the tree after external reload: roots=%d status=%s" % [dock._selected_asset.root.size(), dock._status.text])
 
-	var reward_backup: Dictionary = STORE.new().load_asset("res://gseos/events/ui.reward.apply.gse.json").asset
+	var reward_backup: Dictionary = JSON.parse_string(reward_asset_raw)
 	dock._selected_path = "res://gseos/events/ui.reward.apply.gse.json"
 	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
 	dock._selected_node_id = "animate-score"
@@ -145,7 +157,7 @@ func _start() -> void:
 		dock._commit_projection_preview()
 		if dock._selected_asset.root[0].children.then[2].params.args.duration != 0.5:
 			failures.append("Event Dock projection confirmation did not write back the slot")
-	STORE.new().save_asset("res://gseos/events/ui.reward.apply.gse.json", reward_backup)
+	STORE.new().save_asset(reward_asset_path, reward_backup)
 	var restore_output: Array[String] = []
 	OS.execute("node", [ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js"), "generate", ProjectSettings.globalize_path("res://gseos/events/ui.reward.apply.gse.json")], restore_output, true)
 	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
@@ -155,7 +167,15 @@ func _start() -> void:
 	dock._apply_condition_edit()
 	if dock._selected_asset.root[0].params.condition.right != 10:
 		failures.append("Event Dock did not commit a composite condition edit")
-	STORE.new().save_asset("res://gseos/events/ui.reward.apply.gse.json", reward_backup)
+	var restored_reward_asset := FileAccess.open(reward_asset_path, FileAccess.WRITE)
+	restored_reward_asset.store_string(reward_asset_raw)
+	restored_reward_asset.close()
+	if reward_owner_existed:
+		var restored_owner := FileAccess.open(reward_owner_path, FileAccess.WRITE)
+		restored_owner.store_string(reward_owner_raw)
+		restored_owner.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(reward_owner_path))
 
 	var generated_file := FileAccess.open(generated_path, FileAccess.READ)
 	if generated_file != null:
@@ -175,7 +195,9 @@ func _start() -> void:
 	dock.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".tmp"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json.tmp"))
 	if failures.is_empty():
 		print("GSEOS Event Dock smoke integration passed")
 		quit(0)
