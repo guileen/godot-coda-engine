@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "embodied_skill": {
+    "contract_type": "EmbodiedSkill",
+    "schema_version": 1,
+    "skill_id": "social.wave@1",
+    "authoring_owner": "text_owned",
+    "actor_kind": "game_character",
+    "parameter_schema_ref": "social.wave.parameters@1",
+    "required_capabilities": ["godot.motion@1"],
+    "observations": ["godot.character_state@1"],
+    "phases": [
+      { "phase_id": "raise_arm", "progress_domain": [0, 1], "task_refs": ["social.wave.raise@1"], "completion_guard_ref": "social.wave.arm_ready@1", "checkpoint_id": "arm_ready" },
+      { "phase_id": "wave", "progress_domain": [0, 1], "task_refs": ["social.wave.arc@1"], "completion_guard_ref": "social.wave.complete@1" }
+    ],
+    "resume_policy": "compatible_phase",
+    "on_no_solution": "reject",
+    "postconditions": ["social.wave.returned_to_rest@1"]
+  },
+  "intent_request": {
+    "protocol": "IntentProtocol",
+    "schema_version": 1,
+    "request_id": "request.wave.001",
+    "operation": "invoke",
+    "skill_ref": "social.wave@1",
+    "instance_id": "actor.1.wave.001",
+    "generation": 1,
+    "issued_at": { "clock_domain": "godot.physics", "tick": 120 },
+    "deadline": { "clock_domain": "godot.physics", "not_after_tick": 240 },
+    "priority": 60,
+    "parameter_schema_ref": "social.wave.parameters@1",
+    "parameters": { "side": "right" },
+    "authority_ref": "gameplay.owner@1"
+  },
+  "intent_receipt": {
+    "receipt_type": "IntentReceipt",
+    "schema_version": 1,
+    "request_id": "request.wave.001",
+    "instance_id": "actor.1.wave.001",
+    "generation": 1,
+    "status": "admitted",
+    "terminal": false,
+    "phase_id": "raise_arm",
+    "degradation_refs": [],
+    "diagnostics": [],
+    "source_ref": "social.wave@1"
+  },
+  "embodiment_observation": {
+    "protocol": "EmbodimentProtocol",
+    "schema_version": 1,
+    "message_id": "adapter.message.001",
+    "direction": "adapter_to_coda",
+    "message_type": "observation",
+    "adapter_ref": "godot.reference.adapter@1",
+    "epoch": 1,
+    "sequence": 12,
+    "clock": { "domain": "godot.physics", "tick": 120, "quality": "synchronized" },
+    "validity": { "valid_from_tick": 120, "valid_until_tick": 122 },
+    "payload": { "snapshot_ref": "snapshot.wave.120", "quality": "valid", "reference_frame": "world@1", "unit_system": "godot.si@1" }
+  },
+  "safety_revocation": {
+    "receipt_type": "SafetyAuthorityReceipt",
+    "schema_version": 1,
+    "event_id": "safety.revoke.001",
+    "authority_ref": "device.safety.authority@1",
+    "target_instance": "actor.1.wave.001",
+    "target_generation": 1,
+    "action": "revoke_writer",
+    "latched": true,
+    "issued_at": { "clock_domain": "godot.physics", "tick": 121 },
+    "source_ref": "safety.guard.contact@1"
+  },
+  "dynamics_profile": {
+    "profile_type": "EmbodimentDynamicsProfile",
+    "schema_version": 1,
+    "profile_id": "godot.gdbot.visual@1",
+    "target_class": "game_visual",
+    "target_identity": { "vendor": "GDQuest", "model": "GDBot", "hardware_revision": "not_applicable", "software_revision": "godot.fixture@1" },
+    "status": "draft",
+    "capability_refs": ["godot.motion@1"],
+    "actuation_topology_ref": "godot.gdbot.skeleton@1",
+    "contact_model_ref": "godot.visual.no_contact@1",
+    "coupling_model_ref": "godot.gdbot.kinematic@1",
+    "input_bounds_ref": "godot.gdbot.joint_limits@1",
+    "guarantee_level": "visual_plausibility",
+    "evidence_refs": ["tests/reports/demos/d3-skeleton-transition-smoke.json"],
+    "unsupported_policy": "reject"
+  }
+}

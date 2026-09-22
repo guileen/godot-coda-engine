@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1l/safety-authority-port@1",
+  "title": "CODA SafetyAuthorityPort@1 receipt",
+  "type": "object",
+  "required": ["receipt_type", "schema_version", "event_id", "authority_ref", "target_instance", "target_generation", "action", "latched", "issued_at", "source_ref"],
+  "properties": {
+    "receipt_type": { "const": "SafetyAuthorityReceipt" },
+    "schema_version": { "const": 1 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "authority_ref": { "type": "string", "minLength": 1 },
+    "target_instance": { "type": "string", "minLength": 1 },
+    "target_generation": { "type": "integer", "minimum": 0 },
+    "action": { "enum": ["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"] },
+    "device_action_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "latched": { "type": "boolean" },
+    "issued_at": { "type": "object", "required": ["clock_domain", "tick"], "properties": { "clock_domain": { "type": "string", "minLength": 1 }, "tick": { "type": "integer", "minimum": 0 } }, "additionalProperties": false },
+    "source_ref": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    { "if": { "properties": { "action": { "enum": ["request_protective_action", "enter_device_failsafe"] } } }, "then": { "required": ["device_action_ref"] } },
+    { "if": { "properties": { "action": { "const": "report_safety_clear" } } }, "then": { "properties": { "latched": { "const": false } } } }
+  ],
+  "additionalProperties": false
+}

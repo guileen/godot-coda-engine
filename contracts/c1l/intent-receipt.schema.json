@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1l/intent-receipt@1",
+  "title": "CODA IntentProtocol receipt",
+  "type": "object",
+  "required": ["receipt_type", "schema_version", "request_id", "instance_id", "generation", "status", "terminal", "diagnostics"],
+  "properties": {
+    "receipt_type": { "const": "IntentReceipt" },
+    "schema_version": { "const": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "instance_id": { "type": "string", "minLength": 1 },
+    "generation": { "type": "integer", "minimum": 0 },
+    "status": { "enum": ["admitted", "rejected", "running", "paused", "resumed", "cancelled", "completed", "preempted", "failed", "stale"] },
+    "terminal": { "type": "boolean" },
+    "phase_id": { "type": "string" },
+    "degradation_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "diagnostics": { "type": "array", "items": { "type": "object", "required": ["code"], "properties": { "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" }, "source_ref": { "type": "string" } }, "additionalProperties": false } },
+    "source_ref": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    { "if": { "properties": { "status": { "enum": ["completed", "preempted", "failed", "cancelled", "rejected", "stale"] } } }, "then": { "properties": { "terminal": { "const": true } } } }
+  ],
+  "additionalProperties": false
+}

@@ -51,6 +51,9 @@ const c1pContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1p/
 const c1pContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1p/contract-pack.json"), "utf8"));
 const intentBackendProfileSchema = JSON.parse(await readFile(resolve(root, "contracts/gseos/intent-backend-profile.schema.json"), "utf8"));
 const intentBackendProfiles = JSON.parse(await readFile(resolve(root, "gseos/fixtures/intent-backend-profiles.json"), "utf8"));
+const c1lContractIndex = JSON.parse(await readFile(resolve(root, "contracts/c1l/contract-index.json"), "utf8"));
+const c1lContractPack = JSON.parse(await readFile(resolve(root, "gseos/fixtures/c1l/contract-pack.json"), "utf8"));
+const c1lSchemas = await Promise.all(["embodied-skill", "intent-protocol", "intent-receipt", "embodiment-protocol", "safety-authority-port", "embodiment-dynamics-profile"].map(async (name) => JSON.parse(await readFile(resolve(root, `contracts/c1l/${name}.schema.json`), "utf8"))));
 
 test("EventAsset 保留未知字段并稳定排序", () => {
   const extended = { ...asset, z_unknown: { b: 2, a: 1 }, a_unknown: true };
@@ -173,6 +176,30 @@ test("C1-L.3 按目标 Profile 能力条件 lowering，缺失能力只接受显�
   assert.equal(fallback.envelope.godot_actions[1].capability, "godot.expression.neutral_profile@1");
   assert.deepEqual(fallback.envelope.capability_resolution[1], { requested: "godot.expression.apply_profile@1", resolved: "godot.expression.neutral_profile@1", fallback_used: true });
   assert.equal(lowerMotionIntentForProfile(instruction, { ...gameProfile, capabilities: ["godot.animation.play_profile@1", "godot.animation.play_profile@1"] }).receipt.diagnostics[0].code, "INVALID_INTENT_BACKEND_PROFILE");
+});
+
+test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威边界", () => {
+  assert.equal(c1lContractIndex.contract_family, "C1-L");
+  assert.deepEqual(c1lContractIndex.schemas, ["embodied-skill@1", "intent-protocol@1", "intent-receipt@1", "embodiment-protocol@1", "safety-authority-port@1", "embodiment-dynamics-profile@1"]);
+  assert.deepEqual(c1lSchemas.map((item) => item.$id), c1lContractIndex.schemas.map((item) => `coda://contracts/c1l/${item}`));
+  assert.equal(c1lSchemas[0].properties.authoring_owner.const, "text_owned");
+  assert.deepEqual(c1lSchemas[1].properties.operation.enum, ["invoke", "amend", "interrupt", "pause", "resume", "cancel"]);
+  assert.equal(c1lSchemas[1].properties.generation.minimum, 0);
+  assert.equal(c1lSchemas[2].properties.terminal.type, "boolean");
+  assert.ok(c1lSchemas[3].allOf.length >= 8);
+  assert.deepEqual(c1lSchemas[4].properties.action.enum, ["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"]);
+  assert.deepEqual(c1lSchemas[5].properties.guarantee_level.enum, ["visual_plausibility", "model_admissible", "calibrated_envelope", "hardware_safety_reviewed"]);
+
+  assert.equal(c1lContractPack.embodied_skill.authoring_owner, "text_owned");
+  assert.equal(c1lContractPack.intent_request.operation, "invoke");
+  assert.equal(c1lContractPack.intent_receipt.terminal, false);
+  assert.equal(c1lContractPack.embodiment_observation.direction, "adapter_to_coda");
+  assert.equal(c1lContractPack.embodiment_observation.validity.valid_until_tick, 122);
+  assert.equal(c1lContractPack.safety_revocation.action, "revoke_writer");
+  assert.equal(c1lContractPack.safety_revocation.latched, true);
+  assert.equal(c1lContractPack.dynamics_profile.target_class, "game_visual");
+  assert.equal(c1lContractPack.dynamics_profile.guarantee_level, "visual_plausibility");
+  assert.equal(c1lContractPack.dynamics_profile.status, "draft");
 });
 
 test("C1-L 独立 contract schema 与 TransitionPlan fixture 保持后端中立", () => {

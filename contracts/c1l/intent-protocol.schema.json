@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/c1l/intent-protocol@1",
+  "title": "CODA IntentProtocol@1 request",
+  "type": "object",
+  "required": ["protocol", "schema_version", "request_id", "operation", "skill_ref", "instance_id", "generation", "issued_at", "deadline", "parameter_schema_ref", "authority_ref"],
+  "properties": {
+    "protocol": { "const": "IntentProtocol" },
+    "schema_version": { "const": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "operation": { "enum": ["invoke", "amend", "interrupt", "pause", "resume", "cancel"] },
+    "skill_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "instance_id": { "type": "string", "minLength": 1 },
+    "generation": { "type": "integer", "minimum": 0 },
+    "issued_at": { "type": "object", "required": ["clock_domain", "tick"], "properties": { "clock_domain": { "type": "string", "minLength": 1 }, "tick": { "type": "integer", "minimum": 0 } }, "additionalProperties": false },
+    "deadline": { "type": "object", "required": ["clock_domain", "not_after_tick"], "properties": { "clock_domain": { "type": "string", "minLength": 1 }, "not_after_tick": { "type": "integer", "minimum": 0 } }, "additionalProperties": false },
+    "priority": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "parameter_schema_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "parameters": { "type": "object" },
+    "constraints_ref": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" },
+    "continuation_ref": { "type": "string", "minLength": 1 },
+    "authority_ref": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    { "if": { "properties": { "operation": { "enum": ["invoke", "amend", "interrupt"] } } }, "then": { "required": ["priority"] } },
+    { "if": { "properties": { "operation": { "const": "resume" } } }, "then": { "required": ["continuation_ref"] } }
+  ],
+  "additionalProperties": false
+}

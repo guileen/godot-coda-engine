@@ -1,0 +1,26 @@
+{
+  "contract_family": "C1-L",
+  "schema_version": 1,
+  "canonical_encoding": "json-schema-2020-12",
+  "wire_bindings": "generated_only",
+  "semantic_digest_source": "canonical_semantic_object",
+  "schemas": [
+    "embodied-skill@1",
+    "intent-protocol@1",
+    "intent-receipt@1",
+    "embodiment-protocol@1",
+    "safety-authority-port@1",
+    "embodiment-dynamics-profile@1"
+  ],
+  "hard_boundaries": [
+    "one authoring owner per skill asset",
+    "semantic task references only; no joint angle, PWM, torque or arbitrary controller code in IntentProtocol",
+    "independent SafetyAuthorityPort may revoke CODA authority and cannot be overridden by ordinary intent requests",
+    "AuthorityLease, ObservationFreshness, CommandValidity and Liveness are separate concepts",
+    "all references and commands bind epoch, generation, clock domain and finite validity",
+    "Adapter receipts are causal evidence and never grant writer authority",
+    "safety clear reports do not automatically restore a prior lease or generation",
+    "unsupported capability or missing profile refinement fails closed",
+    "no runtime claim of hardware safety from schema validation or game-visual evidence"
+  ]
+}
