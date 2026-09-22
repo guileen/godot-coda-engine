@@ -3,12 +3,14 @@
   "$id": "coda://contracts/c1t/guard-expression@1",
   "title": "CODA typed GuardExpression@1",
   "type": "object",
-  "required": ["guard_type", "guard_version", "guard_id", "unknown_policy", "expression"],
+  "required": ["guard_type", "guard_version", "guard_id", "condition_ref", "unknown_policy", "source_ref", "expression"],
   "properties": {
     "guard_type": { "const": "GuardExpression" },
     "guard_version": { "const": 1 },
     "guard_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "condition_ref": { "type": "string", "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$" },
     "unknown_policy": { "const": "reject_or_yield_safety" },
+    "source_ref": { "$ref": "coda://contracts/c1l/source-ref@1" },
     "expression": { "$ref": "#/$defs/expression" }
   },
   "$defs": {

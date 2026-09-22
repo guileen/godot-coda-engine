@@ -115,7 +115,7 @@ Node 参考核心另提供 `applyAuthoringTransaction`，对 graph-owned JSON �
 
 ## 当前已实现的最小语法
 
-当前编译器可将纯线性 `MotionIntent` ExecutionPlan lower 为版本化 `TaskGraph`：每个意图保留稳定 node ID、作者 source-ref 和资产指纹；校验器检查引用、依赖/边一致性、重复节点与 DAG；空计划、分支或混合普通指令均拒绝生成部分图。该切片不代表完整 Observation/Mode/Tracking/Control 图 lowering 或运行时准入。
+当前编译器可将纯线性 `MotionIntent` ExecutionPlan，或单个两臂 if/else 结构（两侧均为非空 MotionIntent 序列）lower 为版本化 `TaskGraph`。分支条件必须绑定同一作者节点的 `GuardExpression@1`，符号名一致且至少读取一个已绑定 Observation 字段，图中显式生成 true/false guards 边；不满足时整图拒绝，不产部分图。每个意图保留稳定 node ID、作者 source-ref 和资产指纹；校验器检查引用、依赖/边一致性、重复节点与 DAG。该切片不代表完整 Observation/Mode/Tracking/Control 图 lowering 或运行时准入。
 
 双语 parser/formatter 现支持 `if/else` 与 `若/否则` 的双分支往返，并在 AST 中分别保留两个分支；当前这只完成语法/作者结构，不代表条件已被绑定到 GuardExpression 或可用于运行时执行。
 

@@ -16,7 +16,7 @@
         "required": ["node_id", "kind", "contract_ref", "source_ref"],
         "properties": {
           "node_id": { "type": "string", "minLength": 1 },
-          "kind": { "enum": ["task", "observation", "mode_transition", "tracking", "control", "intent", "reactive"] },
+          "kind": { "enum": ["task", "guard", "observation", "mode_transition", "tracking", "control", "intent", "reactive"] },
           "contract_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*@\\d+$" },
           "source_ref": { "$ref": "source-ref@1" },
           "depends_on": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
@@ -32,7 +32,8 @@
         "properties": {
           "from": { "type": "string", "minLength": 1 },
           "to": { "type": "string", "minLength": 1 },
-          "relation": { "enum": ["requires", "observes", "guards", "hands_off", "completes"] }
+          "relation": { "enum": ["requires", "observes", "guards", "hands_off", "completes"] },
+          "outcome": { "enum": ["true", "false", "pass", "reject", "unknown", "complete"] }
         },
         "additionalProperties": false
       }

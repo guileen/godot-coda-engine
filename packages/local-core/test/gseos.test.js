@@ -291,7 +291,7 @@ test("C1-L.0.1 reference authoring transaction applies atomically with owner rev
 test("C1-L.1 TaskGraph 与 source reference 固定类型和作者源定位", () => {
   const graphSchema = c1lSchemas.find((item) => item.$id.endsWith("/task-graph@1"));
   const sourceSchema = c1lSchemas.find((item) => item.$id.endsWith("/source-ref@1"));
-  assert.deepEqual(graphSchema.properties.nodes.items.properties.kind.enum, ["task", "observation", "mode_transition", "tracking", "control", "intent", "reactive"]);
+  assert.deepEqual(graphSchema.properties.nodes.items.properties.kind.enum, ["task", "guard", "observation", "mode_transition", "tracking", "control", "intent", "reactive"]);
   assert.equal(graphSchema.properties.nodes.items.properties.contract_ref.pattern, "^[a-z][a-z0-9_.-]*@\\d+$");
   assert.deepEqual(sourceSchema.required, ["event_id", "node_id", "path"]);
   assert.equal(taskGraphFixture.graph_type, "TaskGraph");
@@ -382,6 +382,42 @@ test("C1-L.1 linear MotionIntent lowers to a source-preserving TaskGraph and rej
     { from: "second-intent", to: cycle.nodes[0].node_id, relation: "requires" },
   ];
   assert.ok(validateTaskGraph(cycle).diagnostics.some((item) => item.code === "TASK_GRAPH_CYCLE"));
+});
+
+test("C1-L.1 lowers a two-arm MotionIntent branch only through a source-bound observation Guard", () => {
+  const asset = structuredClone(motionIntentAsset);
+  const intent = asset.root[0].params;
+  asset.args = [{ id: "contact_confirmed", type: "Boolean" }];
+  asset.root = [{
+    node_id: "contact-branch",
+    command_id: "if",
+    params: { condition: { ref: "contact_confirmed" } },
+    children: {
+      then: [{ node_id: "wave-on-contact", command_id: "motion_intent", params: structuredClone(intent) }],
+      else: [{ node_id: "yield-without-contact", command_id: "motion_intent", params: structuredClone(intent) }],
+    },
+  }];
+  const knownRef = "contact.state@1#/confirmed";
+  const guard = {
+    guard_type: "GuardExpression",
+    guard_version: 1,
+    guard_id: "contact.confirmed@1",
+    condition_ref: "contact_confirmed",
+    unknown_policy: "reject_or_yield_safety",
+    source_ref: { event_id: asset.event_id, node_id: "contact-branch", path: "/root/0" },
+    expression: { node_type: "observation_ref", contract_ref: "contact.state@1", path: "/confirmed" },
+  };
+  const lowered = lowerToTaskGraph(asset, registry, {
+    guard_bindings: { "contact-branch": guard },
+    known_observation_refs: [knownRef],
+  });
+  assert.equal(lowered.receipt.ok, true);
+  assert.equal(validateTaskGraph(lowered.task_graph).ok, true);
+  assert.equal(lowered.task_graph.nodes[0].kind, "guard");
+  assert.deepEqual(lowered.task_graph.edges.filter((edge) => edge.relation === "guards").map((edge) => edge.outcome).sort(), ["false", "true"]);
+  const unbound = lowerToTaskGraph(asset, registry, { guard_bindings: { "contact-branch": guard } });
+  assert.equal(unbound.task_graph, null);
+  assert.equal(unbound.receipt.diagnostics[0].code, "TASK_GRAPH_GUARD_UNBOUND");
 });
 
 test("C1-L.1 typed GuardExpression binds observations and fails closed on unknown/free-form input", () => {

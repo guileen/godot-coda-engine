@@ -113,7 +113,13 @@
     "guard_type": "GuardExpression",
     "guard_version": 1,
     "guard_id": "hand.pose.calibrated@1",
+    "condition_ref": "hand_pose_calibrated",
     "unknown_policy": "reject_or_yield_safety",
+    "source_ref": {
+      "event_id": "robot.acknowledge_user",
+      "node_id": "hand-calibrated-guard",
+      "path": "/guards/hand.pose.calibrated"
+    },
     "expression": {
       "node_type": "operation",
       "operator": "eq",
