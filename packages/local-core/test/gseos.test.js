@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
-import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
+import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest } from "../src/index.js";
 import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -220,6 +220,12 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.equal(schema("authoring-file-set-recovery").properties.files.maxItems, 3);
   assert.ok(schema("embodiment-protocol").allOf.length >= 8);
   assert.deepEqual(schema("safety-authority-port").properties.action.enum, ["revoke_writer", "request_protective_action", "enter_device_failsafe", "report_safety_clear"]);
+  const safetyLatchRules = schema("safety-authority-port").allOf;
+  assert.ok(safetyLatchRules.some((rule) => rule.if?.properties?.action?.enum?.includes("revoke_writer") && rule.then?.properties?.latched?.const === true));
+  assert.ok(safetyLatchRules.some((rule) => rule.if?.properties?.action?.const === "report_safety_clear" && rule.then?.properties?.latched?.const === false));
+  const observationBlock = schema("embodiment-protocol").allOf.find((item) => item.if.properties.message_type.const === "observation");
+  assert.ok(observationBlock.then.properties.payload.required.includes("field_unit_map"));
+  assert.equal(observationBlock.then.properties.payload.properties.field_unit_map.minItems, 1);
   assert.deepEqual(schema("embodiment-dynamics-profile").properties.guarantee_level.enum, ["visual_plausibility", "model_admissible", "calibrated_envelope", "hardware_safety_reviewed"]);
 
   assert.equal(c1lContractPack.embodied_skill.authoring_owner, "text_owned");
@@ -230,7 +236,20 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.ok(terminalMismatch.diagnostics.some((item) => item.code === "INTENT_RECEIPT_TERMINAL_MISMATCH"));
   assert.equal(c1lContractPack.embodiment_observation.direction, "adapter_to_coda");
   assert.equal(c1lContractPack.embodiment_observation.validity.valid_until_tick, 122);
+  assert.deepEqual(c1lContractPack.embodiment_observation.payload.field_unit_map.map(({ field_ref, unit_ref, reference_frame_ref }) => ({ field_ref, unit_ref, reference_frame_ref })), [
+    { field_ref: "arm.position@1", unit_ref: "si.meter@1", reference_frame_ref: "world@1" },
+    { field_ref: "arm.orientation@1", unit_ref: "si.radian@1", reference_frame_ref: "world@1" },
+  ]);
   assert.equal(validateEmbodimentProtocolMessage(c1lContractPack.embodiment_observation, { now_tick: 121, clock_domain: "godot.physics", minimum_epoch: 1, minimum_sequence: 11 }).ok, true);
+  const noUnitMap = structuredClone(c1lContractPack.embodiment_observation);
+  delete noUnitMap.payload.field_unit_map;
+  assert.ok(validateEmbodimentProtocolMessage(noUnitMap).diagnostics.some((item) => item.code === "EMBODIMENT_FIELD_UNIT_MAP_REQUIRED"));
+  const duplicateUnitMap = structuredClone(c1lContractPack.embodiment_observation);
+  duplicateUnitMap.payload.field_unit_map.push(duplicateUnitMap.payload.field_unit_map[0]);
+  assert.ok(validateEmbodimentProtocolMessage(duplicateUnitMap).diagnostics.some((item) => item.code === "DUPLICATE_EMBODIMENT_FIELD_REF"));
+  const unversionedUnitMap = structuredClone(c1lContractPack.embodiment_observation);
+  unversionedUnitMap.payload.field_unit_map[0].unit_ref = "meters";
+  assert.ok(validateEmbodimentProtocolMessage(unversionedUnitMap).diagnostics.some((item) => item.code === "INVALID_EMBODIMENT_FIELD_BINDING"));
   const partialReceipt = { ...c1lContractPack.embodiment_observation, message_type: "terminal_receipt", direction: "adapter_to_coda", lease_ref: "lease.wave@1", generation: 1, payload: { receipt_id: "receipt.1", status: "completed", partial_write: true } };
   assert.ok(validateEmbodimentProtocolMessage(partialReceipt).diagnostics.some((item) => item.code === "EMBODIMENT_PARTIAL_WRITE_FORBIDDEN"));
   assert.ok(validateEmbodimentProtocolMessage({ ...c1lContractPack.embodiment_observation, epoch: 0 }, { minimum_epoch: 1 }).diagnostics.some((item) => item.code === "EMBODIMENT_EPOCH_STALE"));
@@ -245,6 +264,38 @@ test("C1-L.0.3 协议合同冻结 authoring、控制权、时效与安全权威�
   assert.equal(c1lContractPack.dynamics_profile.target_class, "game_visual");
   assert.equal(c1lContractPack.dynamics_profile.guarantee_level, "visual_plausibility");
   assert.equal(c1lContractPack.dynamics_profile.status, "draft");
+});
+
+test("C1-M.0 独立 SafetyAuthority mock 撤销旧 writer、拒绝重放且不恢复旧 generation", () => {
+  const port = new MockSafetyAuthorityPort({ authority_ref: "safety.mock@1" });
+  const binding = { instance_id: "actor.wave", generation: 4, lease_ref: "lease.actor@1" };
+  assert.equal(port.registerWriter(binding).accepted, true);
+  assert.equal(port.canWrite(binding.instance_id, binding.generation), true);
+  const revoke = {
+    receipt_type: "SafetyAuthorityReceipt", schema_version: 1, event_id: "event.revoke.1", authority_ref: "safety.mock@1",
+    target_instance: binding.instance_id, target_generation: binding.generation, action: "revoke_writer", latched: true,
+    issued_at: { clock_domain: "test.tick", tick: 20 }, source_ref: "safety.monitor@1",
+  };
+  assert.equal(port.apply(revoke).accepted, true);
+  assert.equal(port.canWrite(binding.instance_id, binding.generation), false);
+  const afterRevoke = port.snapshot();
+  assert.equal(port.apply(revoke).code, "MOCK_SAFETY_EVENT_REPLAY");
+  assert.deepEqual(port.snapshot(), afterRevoke);
+  const wrongGeneration = { ...revoke, event_id: "event.revoke.stale", target_generation: 3 };
+  assert.equal(port.apply(wrongGeneration).code, "MOCK_SAFETY_TARGET_OR_GENERATION_MISMATCH");
+  assert.deepEqual(port.snapshot(), afterRevoke);
+  const wrongAuthority = { ...revoke, event_id: "event.revoke.foreign", authority_ref: "other.safety@1" };
+  assert.equal(port.apply(wrongAuthority).code, "MOCK_SAFETY_AUTHORITY_MISMATCH");
+  assert.deepEqual(port.snapshot(), afterRevoke);
+  const clear = { ...revoke, event_id: "event.clear.1", action: "report_safety_clear", latched: false };
+  assert.equal(port.apply(clear).accepted, true);
+  assert.equal(port.canWrite(binding.instance_id, binding.generation), false);
+  assert.equal(port.registerWriter({ ...binding, generation: 5, lease_ref: "lease.actor.next@1" }).accepted, true);
+  assert.equal(port.canWrite(binding.instance_id, 5), true);
+  assert.equal(port.apply({ ...revoke, event_id: "event.revoke.late" }).code, "MOCK_SAFETY_TARGET_OR_GENERATION_MISMATCH");
+  assert.equal(port.canWrite(binding.instance_id, 5), true);
+  const protectiveActionWithoutLatch = { ...revoke, event_id: "event.protective.invalid", action: "request_protective_action", device_action_ref: "safe.stop@1", latched: false };
+  assert.equal(port.apply(protectiveActionWithoutLatch).accepted, false);
 });
 
 test("C1-L.0.3 IntentProtocol reference isolates 100 instances and rejects stale generations", () => {
@@ -305,9 +356,26 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
   assert.equal(query.response.message_type, "capability_report");
   assert.equal(validateEmbodimentProtocolMessage(query.response).ok, true);
   const afterQuery = adapter.snapshot();
+  const observation = adapter.publishObservation({ snapshot_ref: "snapshot.mock.1", tick: 10 });
+  assert.equal(observation.accepted, true);
+  assert.equal(validateEmbodimentProtocolMessage(observation.response).ok, true);
+  assert.equal(observation.response.payload.field_unit_map[0].unit_ref, "si.meter@1");
+  const invalidObservation = adapter.publishObservation({ snapshot_ref: "snapshot.mock.bad", tick: 10, field_unit_map: [] });
+  assert.equal(invalidObservation.accepted, false);
+  assert.deepEqual(invalidObservation.ledger, afterQuery);
+  const unsupported = adapter.receive(message("unsupported.query", "observation", 1, { snapshot_ref: "snapshot.incoming", quality: "valid", reference_frame: "world@1", unit_system: "si@1", field_unit_map: c1lContractPack.embodiment_observation.payload.field_unit_map }));
+  assert.equal(unsupported.accepted, false);
+  assert.equal(unsupported.response.message_type, "reject");
+  assert.equal(validateEmbodimentProtocolMessage(unsupported.response).ok, true);
+  assert.deepEqual(unsupported.ledger, afterQuery);
   const replay = adapter.receive(queryMessage);
   assert.equal(replay.accepted, false);
   assert.deepEqual(replay.ledger, afterQuery);
+  const beforeUnavailableLease = adapter.snapshot();
+  const unavailableLease = adapter.receive(message("lease.unavailable", "authority_lease", 1, { lease_id: "lease.unavailable", owner: "coda", resources: ["leg@1"], valid_until_tick: 25 }, { lease_ref: "lease.actor@1", generation: 4 }));
+  assert.equal(unavailableLease.accepted, false);
+  assert.equal(unavailableLease.response.payload.code, "MOCK_LEASE_CAPABILITY_UNAVAILABLE");
+  assert.deepEqual(unavailableLease.ledger, beforeUnavailableLease);
   const lease = adapter.receive(message("lease.1", "authority_lease", 1, { lease_id: "lease.1", owner: "coda", resources: ["arm@1"], valid_until_tick: 25 }, { lease_ref: "lease.actor@1", generation: 4 }));
   assert.equal(lease.accepted, true);
   assert.equal(lease.response.payload.partial_write, false);
@@ -319,6 +387,11 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
   assert.equal(mode.accepted, true);
   assert.equal(mode.response.message_type, "transition_receipt");
   assert.equal(validateEmbodimentProtocolMessage(mode.response).ok, true);
+  const beforeMismatchedHandoff = adapter.snapshot();
+  const mismatchedHandoff = adapter.receive(message("handoff.mismatch", "handoff", 4, { handoff_contract_ref: "handoff.other@1", incoming_controller_ref: "controller.contact@1", barrier_id: "barrier.other.1" }, { lease_ref: "lease.actor@1", generation: 4 }));
+  assert.equal(mismatchedHandoff.accepted, false);
+  assert.equal(mismatchedHandoff.response.payload.code, "MOCK_HANDOFF_MODE_NOT_ADMITTED");
+  assert.deepEqual(mismatchedHandoff.ledger, beforeMismatchedHandoff);
   const handoff = adapter.receive(message("handoff.1", "handoff", 4, { handoff_contract_ref: "handoff.contact@1", incoming_controller_ref: "controller.contact@1", barrier_id: "barrier.contact.1" }, { lease_ref: "lease.actor@1", generation: 4 }));
   assert.equal(handoff.accepted, true);
   assert.equal(handoff.ledger.handoff_barrier.barrier_id, "barrier.contact.1");
@@ -340,6 +413,11 @@ test("C1-M.0 mock EmbodimentAdapter conforms to query, lease and reference admis
   const duplicateTerminal = adapter.settleLease({ lease_ref: "lease.actor@1", generation: 4, status: "failed", now_tick: 15 });
   assert.equal(duplicateTerminal.accepted, false);
   assert.deepEqual(duplicateTerminal.ledger, afterTerminal);
+  const unsupportedAfterTerminal = adapter.receive(message("unsupported.1", "observation", 6, { snapshot_ref: "snapshot.incoming", quality: "valid", reference_frame: "world@1", unit_system: "si@1", field_unit_map: c1lContractPack.embodiment_observation.payload.field_unit_map }));
+  assert.equal(unsupportedAfterTerminal.accepted, false);
+  assert.equal(unsupportedAfterTerminal.response.message_type, "reject");
+  assert.equal(validateEmbodimentProtocolMessage(unsupportedAfterTerminal.response).ok, true);
+  assert.deepEqual(unsupportedAfterTerminal.ledger, afterTerminal);
   const postTerminalReference = adapter.receive(message("reference.late", "reference", 6, { representation: "segment", reference_ref: "ref.late@1", constraints_ref: "constraints.arm@1" }, { lease_ref: "lease.actor@1", generation: 4 }), { now_tick: 16 });
   assert.equal(postTerminalReference.accepted, false);
   assert.deepEqual(postTerminalReference.ledger, afterTerminal);

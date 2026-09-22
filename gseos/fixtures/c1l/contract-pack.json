@@ -56,7 +56,7 @@
     "sequence": 12,
     "clock": { "domain": "godot.physics", "tick": 120, "quality": "synchronized" },
     "validity": { "valid_from_tick": 120, "valid_until_tick": 122 },
-    "payload": { "snapshot_ref": "snapshot.wave.120", "quality": "valid", "reference_frame": "world@1", "unit_system": "godot.si@1" }
+    "payload": { "snapshot_ref": "snapshot.wave.120", "quality": "valid", "reference_frame": "world@1", "unit_system": "godot.si@1", "field_unit_map": [{ "field_ref": "arm.position@1", "value_type": "vector3", "unit_ref": "si.meter@1", "reference_frame_ref": "world@1" }, { "field_ref": "arm.orientation@1", "value_type": "rotation3", "unit_ref": "si.radian@1", "reference_frame_ref": "world@1" }] }
   },
   "safety_revocation": {
     "receipt_type": "SafetyAuthorityReceipt",

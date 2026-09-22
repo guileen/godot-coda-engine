@@ -19,6 +19,7 @@
   },
   "allOf": [
     { "if": { "properties": { "action": { "enum": ["request_protective_action", "enter_device_failsafe"] } } }, "then": { "required": ["device_action_ref"] } },
+    { "if": { "properties": { "action": { "enum": ["revoke_writer", "request_protective_action", "enter_device_failsafe"] } } }, "then": { "properties": { "latched": { "const": true } } } },
     { "if": { "properties": { "action": { "const": "report_safety_clear" } } }, "then": { "properties": { "latched": { "const": false } } } }
   ],
   "additionalProperties": false

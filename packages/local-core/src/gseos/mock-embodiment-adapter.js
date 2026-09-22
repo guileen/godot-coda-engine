@@ -8,21 +8,32 @@ export class MockEmbodimentAdapter {
   #lease = null;
   #lastGeneration = -1;
   #reference = null;
-  #modeRef = null;
+  #modeBinding = null;
   #handoffBarrier = null;
   #terminal = false;
   #outSequence = 0;
 
-  constructor({ adapter_ref = "mock.embodiment.adapter@1", capabilities = [], adapter_revision = "mock@1", profile_status = "available", clock_domain = "mock.clock" } = {}) {
+  constructor({ adapter_ref = "mock.embodiment.adapter@1", capabilities = [], adapter_revision = "mock@1", profile_status = "available", clock_domain = "mock.clock", field_unit_map = [{ field_ref: "mock.position@1", value_type: "vector3", unit_ref: "si.meter@1", reference_frame_ref: "mock.world@1" }] } = {}) {
     this.adapter_ref = adapter_ref;
     this.capabilities = [...new Set(capabilities)].sort();
     this.adapter_revision = adapter_revision;
     this.profile_status = profile_status;
     this.clock_domain = clock_domain;
+    this.field_unit_map = structuredClone(field_unit_map);
   }
 
   snapshot() {
-    return structuredClone({ epoch: this.#epoch, last_sequence: this.#lastSequence, lease: this.#lease, reference: this.#reference, mode_ref: this.#modeRef, handoff_barrier: this.#handoffBarrier, terminal: this.#terminal });
+    return structuredClone({ epoch: this.#epoch, last_sequence: this.#lastSequence, lease: this.#lease, reference: this.#reference, mode_binding: this.#modeBinding, handoff_barrier: this.#handoffBarrier, terminal: this.#terminal });
+  }
+
+  publishObservation({ snapshot_ref, quality = "valid", reference_frame = "mock.world@1", unit_system = "mock.si@1", field_unit_map = this.field_unit_map, tick = 0 } = {}) {
+    const source = { epoch: this.#epoch ?? 0, message_id: `${this.adapter_ref}.observation.${this.#outSequence}` };
+    const response = this.#baseResponse(source, tick, "observation", {
+      snapshot_ref, quality, reference_frame, unit_system, field_unit_map: structuredClone(field_unit_map),
+    });
+    const receipt = validateEmbodimentProtocolMessage(response, { now_tick: tick, clock_domain: this.clock_domain });
+    if (!receipt.ok) return { accepted: false, receipt, ledger: this.snapshot() };
+    return { accepted: true, response, ledger: this.snapshot() };
   }
 
   receive(message, { now_tick = message?.clock?.tick } = {}) {
@@ -54,13 +65,14 @@ export class MockEmbodimentAdapter {
       this.#lastGeneration = message.generation;
       this.#lease = { lease_ref: leaseRef, generation: message.generation, epoch: message.epoch, valid_until_tick: message.payload.valid_until_tick, resources: [...message.payload.resources] };
       this.#reference = null;
-      this.#modeRef = null;
+      this.#modeBinding = null;
       this.#handoffBarrier = null;
       this.#terminal = false;
       return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
     }
     if (!this.#lease || message.epoch !== this.#lease.epoch || message.lease_ref !== this.#lease.lease_ref || message.generation !== this.#lease.generation || now_tick > this.#lease.valid_until_tick) return reject("MOCK_LEASE_OR_GENERATION_MISMATCH");
     if (this.#terminal) return reject("MOCK_LEASE_ALREADY_TERMINAL");
+    if (message.message_type === "handoff" && (!this.#modeBinding || message.payload.handoff_contract_ref !== this.#modeBinding.handoff_contract_ref)) return reject("MOCK_HANDOFF_MODE_NOT_ADMITTED");
     this.#record(message);
     if (message.message_type === "reference") {
       if (!this.#lease.resources.length) return reject("MOCK_REFERENCE_RESOURCES_MISSING");
@@ -68,7 +80,7 @@ export class MockEmbodimentAdapter {
       return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted"), ledger: this.snapshot() };
     }
     if (message.message_type === "mode_request") {
-      this.#modeRef = message.payload.mode_ref;
+      this.#modeBinding = { controller_ref: message.payload.controller_ref, mode_ref: message.payload.mode_ref, handoff_contract_ref: message.payload.handoff_contract_ref };
       return { accepted: true, response: this.#barrierReceipt(message, now_tick, "accepted", "transition_receipt"), ledger: this.snapshot() };
     }
     this.#handoffBarrier = { barrier_id: message.payload.barrier_id, incoming_controller_ref: message.payload.incoming_controller_ref, generation: message.generation };
@@ -95,13 +107,15 @@ export class MockEmbodimentAdapter {
   }
 
   #baseResponse(message, nowTick, messageType, payload, leaseRef = undefined, generation = undefined) {
+    const tick = Number.isInteger(nowTick) && nowTick >= 0 ? nowTick : 0;
+    const epoch = Number.isInteger(message?.epoch) && message.epoch >= 0 ? message.epoch : this.#epoch ?? 0;
     return {
       protocol: "EmbodimentProtocol", schema_version: 1,
       message_id: `${this.adapter_ref}.out.${this.#outSequence++}`,
       direction: "adapter_to_coda", message_type: messageType, adapter_ref: this.adapter_ref,
-      epoch: message?.epoch ?? this.#epoch ?? 0, sequence: this.#outSequence - 1,
-      clock: { domain: this.clock_domain, tick: Number.isInteger(nowTick) ? nowTick : 0, quality: "synchronized" },
-      validity: { valid_from_tick: Number.isInteger(nowTick) ? nowTick : 0, valid_until_tick: Number.isInteger(nowTick) ? nowTick : 0 },
+      epoch, sequence: this.#outSequence - 1,
+      clock: { domain: this.clock_domain, tick, quality: "synchronized" },
+      validity: { valid_from_tick: tick, valid_until_tick: tick },
       ...(leaseRef !== undefined ? { lease_ref: leaseRef, generation } : {}), payload,
     };
   }

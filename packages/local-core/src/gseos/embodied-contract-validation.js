@@ -111,6 +111,7 @@ export function validateSafetyAuthorityReceipt(receipt) {
   else if (Object.keys(issuedAt).some((key) => !["clock_domain", "tick"].includes(key))) add("UNKNOWN_SAFETY_AUTHORITY_TIME_FIELD", "/issued_at", "issued_at 不允许未定义字段。");
   if (["request_protective_action", "enter_device_failsafe"].includes(receipt.action) && !versionedRef.test(String(receipt.device_action_ref ?? ""))) add("SAFETY_AUTHORITY_DEVICE_ACTION_REQUIRED", "/device_action_ref", "保护动作和设备 failsafe 必须绑定版本化 device_action_ref。");
   else if (receipt.device_action_ref !== undefined && !versionedRef.test(String(receipt.device_action_ref))) add("INVALID_SAFETY_AUTHORITY_DEVICE_ACTION", "/device_action_ref", "device_action_ref 必须是版本化引用。");
+  if (["revoke_writer", "request_protective_action", "enter_device_failsafe"].includes(receipt.action) && receipt.latched !== true) add("SAFETY_ACTION_MUST_LATCH", "/latched", "撤权、保护动作和设备 failsafe 必须保持独立 latch。");
   if (receipt.action === "report_safety_clear" && receipt.latched !== false) add("SAFETY_CLEAR_MUST_UNLATCH", "/latched", "report_safety_clear 必须显式清除 latch。");
   const allowed = new Set(["receipt_type", "schema_version", "event_id", "authority_ref", "target_instance", "target_generation", "action", "device_action_ref", "latched", "issued_at", "source_ref"]);
   for (const key of Object.keys(receipt)) if (!allowed.has(key)) add("UNKNOWN_SAFETY_AUTHORITY_FIELD", `/${key}`, `${key} 不属于 SafetyAuthorityReceipt@1。`);
@@ -186,7 +187,24 @@ export function validateEmbodimentProtocolMessage(message, { now_tick = null, cl
   for (const key of refFields) if (!versionedRef.test(String(payload[key] ?? ""))) add("INVALID_EMBODIMENT_PAYLOAD_REF", `/payload/${key}`, `${key} 必须是版本化引用。`);
   if (message.message_type === "capability_query" && !nonemptyString(payload.profile_ref)) add("INVALID_EMBODIMENT_PROFILE_REF", "/payload/profile_ref", "profile_ref 必须非空。");
   if (message.message_type === "capability_report" && (!nonemptyString(payload.adapter_revision) || !["available", "degraded", "unsupported"].includes(payload.profile_status))) add("INVALID_EMBODIMENT_CAPABILITY_REPORT", "/payload", "capability_report 必须包含 adapter_revision 和有效 profile_status。");
-  if (message.message_type === "observation" && (!nonemptyString(payload.snapshot_ref) || !["valid", "degraded", "stale", "invalid"].includes(payload.quality) || !nonemptyString(payload.reference_frame) || !nonemptyString(payload.unit_system))) add("INVALID_EMBODIMENT_OBSERVATION", "/payload", "observation 必须声明快照、质量、reference frame 与 unit system。");
+  if (message.message_type === "observation") {
+    if (!nonemptyString(payload.snapshot_ref) || !["valid", "degraded", "stale", "invalid"].includes(payload.quality) || !versionedRef.test(String(payload.reference_frame ?? "")) || !versionedRef.test(String(payload.unit_system ?? ""))) add("INVALID_EMBODIMENT_OBSERVATION", "/payload", "observation 必须声明快照、质量、版本化 reference frame 与 unit system。");
+    if (!Array.isArray(payload.field_unit_map) || payload.field_unit_map.length === 0) add("EMBODIMENT_FIELD_UNIT_MAP_REQUIRED", "/payload/field_unit_map", "observation 必须声明非空 field_unit_map。");
+    else {
+      const fields = new Set();
+      const valueTypes = new Set(["scalar", "vector3", "rotation3", "pose3", "twist6", "boolean"]);
+      for (const [index, mapping] of payload.field_unit_map.entries()) {
+        const path = `/payload/field_unit_map/${index}`;
+        if (!mapping || typeof mapping !== "object" || Array.isArray(mapping)) { add("INVALID_EMBODIMENT_FIELD_UNIT", path, "field/unit mapping 必须是对象。"); continue; }
+        if (!versionedRef.test(String(mapping.field_ref ?? ""))) add("INVALID_EMBODIMENT_FIELD_REF", `${path}/field_ref`, "field_ref 必须是版本化引用。");
+        else if (fields.has(mapping.field_ref)) add("DUPLICATE_EMBODIMENT_FIELD_REF", `${path}/field_ref`, "field_ref 在同一快照映射内必须唯一。");
+        else fields.add(mapping.field_ref);
+        if (!valueTypes.has(mapping.value_type)) add("INVALID_EMBODIMENT_FIELD_VALUE_TYPE", `${path}/value_type`, "value_type 不属于 EmbodimentProtocol@1 字段类型集合。");
+        for (const key of ["unit_ref", "reference_frame_ref"]) if (!versionedRef.test(String(mapping[key] ?? ""))) add("INVALID_EMBODIMENT_FIELD_BINDING", `${path}/${key}`, `${key} 必须是版本化引用。`);
+        if (Object.keys(mapping).some((key) => !["field_ref", "value_type", "unit_ref", "reference_frame_ref"].includes(key))) add("UNKNOWN_EMBODIMENT_FIELD_UNIT", path, "field/unit mapping 包含未定义字段。");
+      }
+    }
+  }
   if (message.message_type === "reference" && (!new Set(["segment", "spline", "setpoint_sequence", "local_policy", "hold_reference"]).has(payload.representation) || !nonemptyString(payload.reference_ref) || !nonemptyString(payload.constraints_ref))) add("INVALID_EMBODIMENT_REFERENCE", "/payload", "reference 消息必须使用受支持的表示并绑定 reference/constraints。");
   if (message.message_type === "handoff" && !nonemptyString(payload.barrier_id)) add("INVALID_EMBODIMENT_HANDOFF", "/payload/barrier_id", "handoff 必须绑定非空 barrier_id。");
   if (message.message_type === "authority_lease" && (!Number.isInteger(payload.valid_until_tick) || payload.valid_until_tick < 0)) add("INVALID_EMBODIMENT_AUTHORITY_LEASE", "/payload/valid_until_tick", "lease valid_until_tick 必须是非负整数。");
