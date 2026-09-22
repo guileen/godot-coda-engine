@@ -171,6 +171,9 @@ func save_asset(path: String, asset: Dictionary, expected_asset: Variant = null,
 func save_text_owned_asset(asset_path: String, source_path: String, source_text: String, asset: Dictionary, expected_owner_revision: int, expected_source_fingerprint: String) -> Dictionary:
 	if asset_path == source_path or asset_path + ".ownership.json" == source_path:
 		return {"receipt": _receipt("AUTHORING_SOURCE_PATH_COLLISION", "派生资产、CODA 源与 ownership sidecar 必须使用不同路径。"), "saved": false}
+	var source_ref := source_path.trim_prefix("res://")
+	if not source_path.begins_with("res://") or source_ref.is_empty() or source_ref.begins_with("/") or source_ref.split("/").has("..") or source_ref.contains("\\"):
+		return {"receipt": _receipt("INVALID_AUTHORING_SOURCE_REF", "text_owned 源必须位于项目内并使用相对路径。"), "saved": false}
 	var checker := GSEOS_EventAsset.new()
 	var receipt: Dictionary = checker.from_dictionary(asset)
 	if not receipt.ok: return {"receipt": receipt, "saved": false}
@@ -203,6 +206,8 @@ func save_text_owned_asset(asset_path: String, source_path: String, source_text:
 	else:
 		if expected_owner_revision != -1 or not expected_source_fingerprint.is_empty() or FileAccess.file_exists(ProjectSettings.globalize_path(owner_path)):
 			return {"receipt": _receipt("AUTHORING_SOURCE_CHANGED", "预期的 authoring source 不存在或 owner sidecar 孤立；拒绝创建。"), "saved": false}
+	if not previous_owner.is_empty() and previous_owner.get("authoring_mode", "graph_owned") == "graph_owned" and FileAccess.file_exists(ProjectSettings.globalize_path(source_path)):
+		return {"receipt": _receipt("AUTHORING_MIGRATION_TARGET_EXISTS", "迁移目标 CODA 源已存在；为避免覆盖，显式迁移已拒绝。"), "saved": false}
 	if previous_owner.get("authoring_mode", "graph_owned") == "text_owned" and String(previous_owner.get("source", {}).get("source_ref", "")) != source_path.trim_prefix("res://"):
 		return {"receipt": _receipt("AUTHORING_SOURCE_PATH_CHANGED", "text_owned 编辑不得隐式迁移 source_ref。"), "saved": false}
 	var next_revision := int(previous_owner.get("owner_revision", -1)) + 1

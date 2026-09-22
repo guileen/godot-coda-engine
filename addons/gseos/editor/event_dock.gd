@@ -65,6 +65,7 @@ func _ready() -> void:
 	toolbar.add_child(_button("新建", _new_event))
 	toolbar.add_child(_button("外部重载", _reload_selected_from_disk))
 	toolbar.add_child(_button("文本导入", _open_text_import))
+	toolbar.add_child(_button("迁移到 CODA 源", _migrate_selected_to_text_owned))
 	toolbar.add_child(_button("确认草稿", _confirm_draft))
 	toolbar.add_child(_button("取消草稿", _cancel_draft))
 	toolbar.add_child(_button("确认投影写回", _commit_projection_preview))
@@ -975,6 +976,45 @@ func _open_text_import() -> void:
 	_text_import_diff.text = ""
 	_text_import_candidate = {}
 	_text_import_panel.visible = true
+
+func _migrate_selected_to_text_owned() -> void:
+	if _selected_asset.is_empty() or _selected_ownership.get("authoring_mode", "graph_owned") != "graph_owned":
+		_status.text = "仅 graph_owned 资产可执行显式迁移。"
+		return
+	if not _can_format_asset_to_gse(_selected_asset.get("root", [])):
+		_status.text = "当前资产含文本投影器不支持的节点/分支；迁移已拒绝。"
+		return
+	var source_path := _selected_path.trim_suffix(".gse.json") + ".coda"
+	if FileAccess.file_exists(source_path):
+		_status.text = "迁移目标 CODA 源已存在；为避免覆盖，迁移已拒绝。"
+		return
+	var source_text := _asset_to_gse_text(_selected_asset)
+	var temp_path := "res://.gseos/migration-%d.coda" % Time.get_ticks_msec()
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
+	if file == null:
+		_status.text = "无法创建迁移校验暂存文件；原资产未改变。"
+		return
+	file.store_string(source_text)
+	file.close()
+	var output: Array[String] = []
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var exit_code := OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(temp_path)], output, true)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+	var parsed = JSON.parse_string("\n".join(output))
+	if exit_code != 0 or not parsed is Dictionary or not parsed.get("receipt", {}).get("ok", false) or not parsed.get("asset") is Dictionary:
+		_status.text = "迁移源未通过 CODA parse；原资产未改变。"
+		return
+	var candidate: Dictionary = parsed.asset.duplicate(true)
+	candidate["recovery"] = _selected_asset.get("recovery", "E0")
+	var migrated := _store.save_text_owned_asset(_selected_path, source_path, source_text, candidate, int(_selected_ownership.get("owner_revision", -1)), String(_selected_ownership.get("source", {}).get("fingerprint", "")))
+	if not migrated.saved:
+		_status.text = _format_diagnostics(migrated.receipt.get("diagnostics", []))
+		return
+	_selected_asset = migrated.asset
+	_selected_ownership = migrated.ownership
+	_rebuild_tree()
+	_refresh_slot_options()
+	_status.text = "已显式迁移为 text_owned；CODA 源现为唯一作者，EventAsset 仅作派生投影。"
 
 func _cancel_text_import() -> void:
 	_text_transaction.cancel()

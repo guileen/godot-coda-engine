@@ -122,6 +122,23 @@ func _start() -> void:
 		dock._reload_selected_from_disk()
 		if dock._selected_asset.root.size() != 0 or not dock._status.text.contains("已从磁盘重载"):
 			failures.append("Event Dock did not rebuild the tree after external reload: roots=%d status=%s" % [dock._selected_asset.root.size(), dock._status.text])
+		dock._migrate_selected_to_text_owned()
+		var migrated_new := STORE.new().load_asset(new_event_path)
+		var migrated_source_path := "res://gseos/events/new-event.coda"
+		if not migrated_new.receipt.ok or migrated_new.ownership.authoring_mode != "text_owned" or not FileAccess.file_exists(migrated_source_path):
+			failures.append("Event Dock explicit graph-owned to text-owned migration did not commit the source and owner")
+		else:
+			var graph_edit_allowed := dock._write_asset_transaction(new_event_path, dock._selected_asset, dock._selected_asset.duplicate(true), "forbidden graph write")
+			if graph_edit_allowed:
+				failures.append("Event Dock allowed a graph transaction after text-owned migration")
+			dock._open_text_import()
+			var migrated_display_name := String(dock._selected_asset.display_name)
+			dock._text_import_edit.text = dock._text_import_edit.text.replace(migrated_display_name, "迁移后的文本作者")
+			dock._preview_text_import()
+			dock._commit_text_import()
+			var edited_migration := STORE.new().load_asset(new_event_path)
+			if not edited_migration.receipt.ok or edited_migration.asset.display_name != "迁移后的文本作者" or not FileAccess.get_file_as_string(migrated_source_path).contains("迁移后的文本作者"):
+				failures.append("Event Dock text-owned edit did not update canonical source, projection and owner")
 
 	var reward_backup: Dictionary = JSON.parse_string(reward_asset_raw)
 	dock._selected_path = "res://gseos/events/ui.reward.apply.gse.json"
@@ -196,8 +213,10 @@ func _start() -> void:
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("res://gseos/events/new-event.coda"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".tmp"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json.tmp"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("res://gseos/events/new-event.coda.tmp"))
 	if failures.is_empty():
 		print("GSEOS Event Dock smoke integration passed")
 		quit(0)
