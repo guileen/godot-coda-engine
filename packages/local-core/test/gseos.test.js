@@ -1667,13 +1667,53 @@ test("AI 语义候选只作为待审提议，不能建立权威锚点", () => {
 });
 
 test("用户观察记录只接受脱敏结构，并保留 G-P3-U 通过门槛", () => {
-  const report = { observation_type: "P3UserObservation", schema_version: 1, study_id: "p3-reward", observations: [] };
+  const report = { observation_type: "P3UserObservation", schema_version: 2, study_id: "p3-reward", observations: [] };
   const incomplete = validateUserObservationReport(report);
   assert.equal(incomplete.ok, false);
   assert.ok(incomplete.diagnostics.some((item) => item.code === "USER_OBSERVATION_COUNT"));
   assert.deepEqual(summarizeUserObservationReport(report).gate, "G-P3-U_PENDING");
-  const withPii = { ...report, observations: [{ participant_id: "u-001", role_profile: "godot", consent: { recorded: true, recording_allowed: false }, tasks: {}, hint_count: 0, outcome: "blocked", name: "should-not-be-recorded" }] };
-  assert.ok(validateUserObservationReport(withPii).diagnostics.some((item) => item.code === "USER_OBSERVATION_PII_FIELD"));
+  const syntheticPassingObservation = (participant_id) => ({
+    participant_id, target_user: true, implementation_involvement: "none", eligibility_verified_by_observer: true, role_profile: "Godot hobby creator; beginner",
+    consent: { recorded: true, recording_allowed: false },
+    tasks: Object.fromEntries(["find_alias", "restate_flow", "edit_duration", "preview_diff", "commit_and_run", "locate_runtime"].map((task) => [task, { result: "pass", hint_free: true }])),
+    hint_count: 0, outcome: "pass", quote_summaries: ["Synthetic validator fixture; not collected user evidence."], blockers: [],
+  });
+  const syntheticValidReport = { ...report, study_id: "p3-validator-test", observations: ["u-001", "u-002", "u-003"].map(syntheticPassingObservation) };
+  assert.equal(validateUserObservationReport(syntheticValidReport).ok, true);
+  assert.deepEqual(summarizeUserObservationReport(syntheticValidReport), {
+    participant_count: 3, observed_record_count: 3, excluded_record_count: 0, passed_without_maintainer_hint: 3,
+    evidence_valid: true, minimum_participants: 3, minimum_passed_without_maintainer_hint: 2, gate: "G-P3-U_READY",
+  });
+  const oneOperationalPrompt = structuredClone(syntheticValidReport);
+  oneOperationalPrompt.observations[2].hint_count = 1;
+  assert.equal(validateUserObservationReport(oneOperationalPrompt).ok, true);
+  assert.equal(summarizeUserObservationReport(oneOperationalPrompt).passed_without_maintainer_hint, 2);
+  assert.equal(summarizeUserObservationReport(oneOperationalPrompt).gate, "G-P3-U_READY");
+  const twoOperationalPrompts = structuredClone(oneOperationalPrompt);
+  twoOperationalPrompts.observations[1].hint_count = 1;
+  assert.ok(validateUserObservationReport(twoOperationalPrompts).diagnostics.some((item) => item.code === "USER_OBSERVATION_PASS_THRESHOLD"));
+  assert.equal(summarizeUserObservationReport(twoOperationalPrompts).gate, "G-P3-U_PENDING");
+  const legacyVersion = { ...syntheticValidReport, schema_version: 1 };
+  assert.ok(validateUserObservationReport(legacyVersion).diagnostics.some((item) => item.code === "UNSUPPORTED_USER_OBSERVATION_VERSION"));
+  assert.equal(summarizeUserObservationReport(legacyVersion).gate, "G-P3-U_PENDING");
+  const withPii = structuredClone(syntheticValidReport);
+  withPii.observations[0].quote_summaries[0] = "Contact user@example.com";
+  assert.ok(validateUserObservationReport(withPii).diagnostics.some((item) => item.code === "USER_OBSERVATION_PRIVATE_TEXT"));
+  assert.equal(summarizeUserObservationReport(withPii).gate, "G-P3-U_PENDING");
+  const withUndeclaredIdentity = { ...syntheticValidReport, email: "private@example.com" };
+  assert.ok(validateUserObservationReport(withUndeclaredIdentity).diagnostics.some((item) => item.code === "USER_OBSERVATION_PII_FIELD"));
+  const withMaintainer = structuredClone(syntheticValidReport);
+  withMaintainer.observations[0].implementation_involvement = "maintenance";
+  assert.ok(validateUserObservationReport(withMaintainer).diagnostics.some((item) => item.code === "USER_OBSERVATION_NOT_INDEPENDENT"));
+  assert.equal(summarizeUserObservationReport(withMaintainer).participant_count, 2);
+  assert.equal(summarizeUserObservationReport(withMaintainer).gate, "G-P3-U_PENDING");
+  const withoutObserverConfirmation = structuredClone(syntheticValidReport);
+  withoutObserverConfirmation.observations[0].eligibility_verified_by_observer = false;
+  assert.ok(validateUserObservationReport(withoutObserverConfirmation).diagnostics.some((item) => item.code === "USER_OBSERVATION_ELIGIBILITY_NOT_CONFIRMED"));
+  assert.equal(summarizeUserObservationReport(withoutObserverConfirmation).participant_count, 2);
+  assert.equal(summarizeUserObservationReport(withoutObserverConfirmation).gate, "G-P3-U_PENDING");
+  const withUnknown = { ...syntheticValidReport, collector_token: "must-not-be-present" };
+  assert.ok(validateUserObservationReport(withUnknown).diagnostics.some((item) => item.code === "UNDECLARED_USER_OBSERVATION_FIELD"));
 });
 
 test("C0 行为定义嵌入 EventAsset，拒绝第二逻辑源、未声明能力与非法 Blackboard 写入", () => {

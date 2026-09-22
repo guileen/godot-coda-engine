@@ -1,22 +1,25 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/user-observation.schema.json",
-  "title": "GSEOS P3 UserObservation@1",
+  "title": "GSEOS P3 UserObservation@2",
   "type": "object",
   "required": ["observation_type", "schema_version", "study_id", "observations"],
   "properties": {
     "observation_type": { "const": "P3UserObservation" },
-    "schema_version": { "const": 1 },
+    "schema_version": { "const": 2 },
     "study_id": { "type": "string", "pattern": "^p3-[a-z0-9-]+$" },
     "observations": { "type": "array", "items": { "$ref": "#/$defs/observation" } }
   },
   "$defs": {
     "observation": {
       "type": "object",
-      "required": ["participant_id", "role_profile", "consent", "tasks", "hint_count", "outcome"],
+      "required": ["participant_id", "target_user", "implementation_involvement", "eligibility_verified_by_observer", "role_profile", "consent", "tasks", "hint_count", "outcome"],
       "properties": {
         "participant_id": { "type": "string", "pattern": "^u-[0-9]{3}$" },
-        "role_profile": { "type": "string", "minLength": 1 },
+        "target_user": { "const": true, "description": "Self-attestation that the participant matches the intended Godot/game-creator audience." },
+        "implementation_involvement": { "const": "none", "description": "Self-attestation that the participant had no implementation, review, or maintenance involvement; identifying details are not collected." },
+        "eligibility_verified_by_observer": { "const": true, "description": "The facilitator independently confirmed target-user eligibility without copying identifying details into this report." },
+        "role_profile": { "type": "string", "minLength": 1, "maxLength": 80, "description": "De-identified audience role/experience only; do not include names, contact details, accounts, or project paths." },
         "consent": { "type": "object", "required": ["recorded", "recording_allowed"], "properties": { "recorded": { "const": true }, "recording_allowed": { "type": "boolean" } }, "additionalProperties": false },
         "tasks": {
           "type": "object",
@@ -33,7 +36,7 @@
         },
         "hint_count": { "type": "integer", "minimum": 0 },
         "outcome": { "enum": ["pass", "fail", "blocked"] },
-        "quote_summaries": { "type": "array", "items": { "type": "string" } },
+        "quote_summaries": { "type": "array", "items": { "type": "string", "maxLength": 240, "description": "Short de-identified paraphrase, never a raw transcript." } },
         "blockers": { "type": "array", "items": { "$ref": "#/$defs/blocker" } }
       },
       "additionalProperties": false
@@ -47,7 +50,7 @@
     "blocker": {
       "type": "object",
       "required": ["stage", "summary"],
-      "properties": { "stage": { "enum": ["alias_tree", "flow_reading", "control", "preview", "transaction", "runtime", "location"] }, "summary": { "type": "string", "minLength": 1 } },
+      "properties": { "stage": { "enum": ["alias_tree", "flow_reading", "control", "preview", "transaction", "runtime", "location"] }, "summary": { "type": "string", "minLength": 1, "maxLength": 240, "description": "De-identified blocker summary; do not include raw participant content or identity." } },
       "additionalProperties": false
     }
   },
