@@ -20,6 +20,18 @@
           "contract_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*@\\d+$" },
           "source_ref": { "$ref": "source-ref@1" },
           "activation_policy": { "enum": ["any_predecessor"] },
+          "branch_context": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["guard_node_id", "outcome"],
+              "properties": {
+                "guard_node_id": { "type": "string", "minLength": 1 },
+                "outcome": { "enum": ["true", "false"] }
+              },
+              "additionalProperties": false
+            }
+          },
           "depends_on": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
           "branch_entries": {
             "type": "object",

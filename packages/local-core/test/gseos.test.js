@@ -450,6 +450,7 @@ test("C1-L.1 TaskGraph 与 source reference 固定类型和作者源定位", () 
   assert.equal(graphSchema.properties.nodes.items.properties.contract_ref.pattern, "^[a-z][a-z0-9_.-]*@\\d+$");
   assert.deepEqual(graphSchema.properties.nodes.items.allOf[0].then.required, ["branch_entries"]);
   assert.equal(graphSchema.properties.nodes.items.allOf[0].else.properties.branch_entries, false);
+  assert.deepEqual(graphSchema.properties.nodes.items.properties.branch_context.items.required, ["guard_node_id", "outcome"]);
   assert.deepEqual(sourceSchema.required, ["event_id", "node_id", "path"]);
   assert.equal(taskGraphFixture.graph_type, "TaskGraph");
   assert.equal(taskGraphFixture.nodes[1].depends_on[0], taskGraphFixture.nodes[0].node_id);
@@ -637,6 +638,9 @@ test("C1-L.1 lowers nested Guard branches through an explicit any-predecessor jo
   const missingJoinPolicy = structuredClone(joined.task_graph);
   delete missingJoinPolicy.nodes.find((node) => node.node_id === "after-join").activation_policy;
   assert.ok(validateTaskGraph(missingJoinPolicy).diagnostics.some((item) => item.code === "TASK_GRAPH_COMPLETION_POLICY_MISSING"));
+  const unprovenJoin = structuredClone(joined.task_graph);
+  delete unprovenJoin.nodes.find((node) => node.node_id === "yield-blocked").branch_context;
+  assert.ok(validateTaskGraph(unprovenJoin).diagnostics.some((item) => item.code === "TASK_GRAPH_JOIN_PATHS_NOT_EXCLUSIVE"));
 });
 
 test("C1-L.1 typed GuardExpression binds observations and fails closed on unknown/free-form input", () => {
