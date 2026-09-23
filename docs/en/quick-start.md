@@ -19,7 +19,7 @@ The fixture is a structured `EventAsset`, not a text script:
 
 ```sh
 npm test
-npm run coda -- validate gseos/events/ui.reward.apply.gse.json
+npm run coda -- validate coda/events/ui.reward.apply.gse.json
 ```
 
 The validator should report `ok: true` with no diagnostics.
@@ -27,10 +27,10 @@ The validator should report `ok: true` with no diagnostics.
 ## 3. Generate the runner
 
 ```sh
-npm run coda -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- generate coda/events/ui.reward.apply.gse.json
 ```
 
-This produces a generated GDScript runner and a JSON source map under `.gseos/generated/`. The generated header contains the plan fingerprint; the source map maps event nodes and fields to generated lines.
+This produces a generated GDScript runner and a JSON source map under `.coda/generated/`. The generated header contains the plan fingerprint; the source map maps event nodes and fields to generated lines.
 
 ## 4. Open the project in Godot
 
@@ -38,7 +38,7 @@ This produces a generated GDScript runner and a JSON source map under `.gseos/ge
 godot --editor --path .
 ```
 
-Enable the `CODA Event Editor` plugin if it is not already enabled. The “CODA Events” dock reads flows from `gseos/events/` and has separate “Flow” and “Step settings” pages. Select a step to review or edit it; adding a draft step opens its settings page automatically, where you can fill the fields and confirm it.
+Enable the `CODA Event Editor` plugin if it is not already enabled. The “CODA Events” dock reads flows from `coda/events/` and has separate “Flow” and “Step settings” pages. Select a step to review or edit it; adding a draft step opens its settings page automatically, where you can fill the fields and confirm it.
 
 ## 5. Run the checks
 

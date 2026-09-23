@@ -1,8 +1,8 @@
 extends Control
 
-const CAPABILITY_REGISTRY := preload("res://addons/gseos/runtime/capability_registry.gd")
-const EVENT_REGISTRY := preload("res://addons/gseos/runtime/event_registry.gd")
-const REWARD_RUNNER := preload("res://addons/gseos/runtime/reward_event_runner.gd")
+const CAPABILITY_REGISTRY := preload("res://addons/coda/runtime/capability_registry.gd")
+const EVENT_REGISTRY := preload("res://addons/coda/runtime/event_registry.gd")
+const REWARD_RUNNER := preload("res://addons/coda/runtime/reward_event_runner.gd")
 
 var capability_registry: CODA_CapabilityRegistry
 var event_registry: CODA_EventRegistry
@@ -193,7 +193,7 @@ func _reset_example() -> void:
 		return
 	for child in reward_history.get_children():
 		child.free()
-	hud.set_meta("_gseos_fields", {"score": 100})
+	hud.set_meta("_coda_fields", {"score": 100})
 	score_label.text = "积分：100"
 	var old_row := Label.new()
 	old_row.name = "OldRewardRow"

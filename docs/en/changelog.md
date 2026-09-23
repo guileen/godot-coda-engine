@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- New generated GDScript uses the CODA marker. The editor and verifier still recognize legacy GSEOS markers; existing projects are not rewritten in bulk and switch markers only when regenerated.
-- New crash-recovery test runs use CODA-prefixed environment variables. Legacy GSEOS-prefixed variables remain supported and are covered by the recovery test.
-- The CODA CLI now uses a CODA-named entry point. The old GSEOS CLI file path and `npm run gseos` remain as compatibility entry points.
-- The local-core implementation now lives under a CODA-named directory. Legacy `src/gseos/` module paths forward to the same API.
+- The GSEOS-to-CODA rename is complete. Directories (`addons/coda/`, `contracts/coda/`, `coda/`), schema identifiers (`CODA_CapabilityManifest`, contract `$id` and titles), environment variables, diagnostic codes and generated markers now use CODA only.
+- The retired compatibility entries are gone: `packages/local-core/src/gseos/`, `gseos-cli.js`, the `npm run gseos` script, the `scripts/gseos-*` launchers, and legacy `GSEOS_*` environment variables were removed rather than kept as aliases.
+- Generated GDScript is written with the CODA marker. The editor and verifier still recognize legacy GSEOS markers on read for existing generated files; those files are not rewritten in bulk and are only replaced when regenerated.
+- Evidence reports, docs, website copy and the asset register were updated to the CODA paths; historical release notes keep the name that was in use at the time.
 - Prepared the repository for the CODA public GitHub publication flow.
 - Added localized public documentation and a bilingual GitHub Pages site.
 - Added contribution, security, conduct, issue, and pull-request guidance.

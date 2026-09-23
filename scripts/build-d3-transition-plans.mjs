@@ -12,16 +12,16 @@ import {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = async (path) => JSON.parse(await readFile(resolve(root, path), "utf8"));
-const manifest = await readJson("contracts/gseos/capabilities.json");
+const manifest = await readJson("contracts/coda/capabilities.json");
 const profile = await readJson("demos/d3-skeleton-transition/fixtures/d3-motion-profile.json");
-const snapshotTemplate = await readJson("gseos/fixtures/c1t/valid-snapshot.json");
+const snapshotTemplate = await readJson("coda/fixtures/c1t/valid-snapshot.json");
 const registry = createSchemaRegistry(manifest);
 const outDir = resolve(root, "demos/d3-skeleton-transition/fixtures/generated");
 await mkdir(outDir, { recursive: true });
 
 const eventFiles = ["robot.attack.recover.gse.json", "robot.high.guard.gse.json"];
 for (const filename of eventFiles) {
-  const assetPath = `gseos/events/${filename}`;
+  const assetPath = `coda/events/${filename}`;
   const asset = await readJson(assetPath);
   const lowered = lowerToExecutionPlan(asset, registry);
   if (!lowered.receipt.ok || lowered.plan.instructions.length !== 1 || lowered.plan.instructions[0].opcode !== "MotionIntent") {

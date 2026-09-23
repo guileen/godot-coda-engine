@@ -1,6 +1,6 @@
 extends SceneTree
 
-const STORE := preload("res://addons/gseos/core/asset_store.gd")
+const STORE := preload("res://addons/coda/core/asset_store.gd")
 
 var store := STORE.new()
 
@@ -15,8 +15,8 @@ func _run() -> void:
 		return
 	var mode := args[0]
 	var case_name := args[1]
-	var source_path := "res://.gseos/" + case_name + ".coda"
-	var asset_path := "res://.gseos/" + case_name + ".gse.json"
+	var source_path := "res://.coda/" + case_name + ".coda"
+	var asset_path := "res://.coda/" + case_name + ".gse.json"
 	if mode == "seed":
 		var source := "event ui.crash.owned [id: ui.crash.owned]:\n  let score = 1 # @node_id=stable.score\n"
 		_write(source_path, source)
@@ -70,7 +70,7 @@ func _write(path: String, content: String) -> void:
 	file.close()
 
 func _cleanup(case_name: String) -> void:
-	var stem := "res://.gseos/" + case_name
+	var stem := "res://.coda/" + case_name
 	for suffix in [".coda", ".coda.candidate", ".gse.json", ".gse.json.ownership.json", ".coda.tmp", ".gse.json.tmp", ".gse.json.ownership.json.tmp", ".coda.bak", ".gse.json.bak", ".gse.json.ownership.json.bak", ".gse.json.transaction.json", ".gse.json.transaction.json.tmp", ".gse.json.transaction.commit.json", ".gse.json.transaction.commit.json.tmp"]:
 		var path := ProjectSettings.globalize_path(stem + suffix)
 		if FileAccess.file_exists(path): DirAccess.remove_absolute(path)

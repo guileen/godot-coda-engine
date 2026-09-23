@@ -435,7 +435,7 @@ observe hole.pose {
 
 ## 11. 下一步合同与门禁
 
-共享合同结构已由 `contracts/c1t/contract-index.json` 索引，覆盖 Observation、HybridMode、Tracking、Control、Continuation、TemporalCommand、AuthorityClaim 与 ReactiveExecutionGraph，并由 `gseos/fixtures/c1t/shared-contract-pack.json` 提供结构 fixture。该结构包不包含已测的 Godot deadline/WCET/p95/p99、设备安全 Profile 或运行时准入证据；这些仍是逐 Profile 的开放门禁。
+共享合同结构已由 `contracts/c1t/contract-index.json` 索引，覆盖 Observation、HybridMode、Tracking、Control、Continuation、TemporalCommand、AuthorityClaim 与 ReactiveExecutionGraph，并由 `coda/fixtures/c1t/shared-contract-pack.json` 提供结构 fixture。该结构包不包含已测的 Godot deadline/WCET/p95/p99、设备安全 Profile 或运行时准入证据；这些仍是逐 Profile 的开放门禁。
 
 在实现新的监督运行时前，至少需要：
 
@@ -478,8 +478,8 @@ observe hole.pose {
 - [`contract-index.json`](../contracts/c1t/contract-index.json)：唯一 canonical encoding、generated-only wire binding、语义 digest 来源、稳定拒绝码和硬边界；
 - [`TaskActivationContract@1`](../contracts/c1t/task-activation-contract.schema.json)、[`ModelValidityEnvelope@1`](../contracts/c1t/model-validity-envelope.schema.json)、[`StateAlignmentContract@1`](../contracts/c1t/state-alignment-contract.schema.json)、[`HandoffContract@1`](../contracts/c1t/handoff-contract.schema.json)：四项边界合同的最小对象形状；
 - [`DeviceCapabilityProfile@1`](../contracts/c1t/device-capability-profile.schema.json) 与 [`SafetyProfile@1`](../contracts/c1t/safety-profile.schema.json)：普通设备能力和不可由 CODA 自行扩张的安全映射分开；
-- [`FalsificationBenchmarkSpec@1`](../contracts/c1t/falsification-benchmark-spec.schema.json) 与[三组 benchmark specification](../gseos/fixtures/c1t/benchmarks/)：接触/无扰交接、模型有效性检测、联合动力学组合；
-- [`contract-hardening-pack.json`](../gseos/fixtures/c1t/contract-hardening-pack.json)：四项正例和稳定拒绝族反例；
+- [`FalsificationBenchmarkSpec@1`](../contracts/c1t/falsification-benchmark-spec.schema.json) 与[三组 benchmark specification](../coda/fixtures/c1t/benchmarks/)：接触/无扰交接、模型有效性检测、联合动力学组合；
+- [`contract-hardening-pack.json`](../coda/fixtures/c1t/contract-hardening-pack.json)：四项正例和稳定拒绝族反例；
 - [`c1t-contract-hardening-review.json`](../tests/reports/c1t-contract-hardening-review.json)：本轮 settlement、证据索引、剩余挑战和重开条件。
 
 冻结的是字段身份、枚举、引用方向、禁止行为、拒绝码、benchmark claim/non-claim 和 Oracle 接口；仍开放的是目标设备、控制器对、动力学后端、校准 corpus、全部 `threshold_ref/budget_ref/evidence_ref` 的实际值、WCET/p95/p99、deadline reserve、安全审批和 runtime authorization。任何 `pending` 引用都不得在运行时被解释成默认许可。

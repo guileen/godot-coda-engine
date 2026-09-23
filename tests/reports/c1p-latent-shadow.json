@@ -2,7 +2,7 @@
   "report_type": "C1PLatentShadowReport",
   "schema_version": 1,
   "status": "PASS_SCOPED_LINEAR_REFERENCE_ONLY",
-  "implementation": "packages/local-core/src/gseos/latent-reference.js",
+  "implementation": "packages/local-core/src/coda/latent-reference.js",
   "verified": [
     "support-domain/OOD guard",
     "pullback metric sigma_min and condition-number guard",

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 COUNTER="$(mktemp /tmp/coda-malloc-counter.XXXXXX.dylib)"
-REPORT="$(mktemp /tmp/gseos-malloc-report.XXXXXX.json)"
+REPORT="$(mktemp /tmp/coda-malloc-report.XXXXXX.json)"
 trap 'rm -f -- "$COUNTER" "$REPORT"' EXIT INT TERM
 
 clang -dynamiclib -O2 "$ROOT_DIR/scripts/coda-malloc-counter.c" -o "$COUNTER"

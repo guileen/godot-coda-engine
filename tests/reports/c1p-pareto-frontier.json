@@ -2,7 +2,7 @@
   "report_type": "C1PParetoFrontierReference",
   "schema_version": 1,
   "status": "PASS_SCOPED_REFERENCE_ONLY",
-  "implementation": "packages/local-core/src/gseos/pareto-reference.js",
+  "implementation": "packages/local-core/src/coda/pareto-reference.js",
   "hard_gate_order": ["schema", "resource", "numerical", "safety", "deadline"],
   "verified": [
     "unsafe accurate candidate is rejected before Pareto comparison",

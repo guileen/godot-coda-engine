@@ -21,14 +21,14 @@ for (const path of await filesUnder(resolve(root, "contracts"))) {
   try { JSON.parse(await readFile(path, "utf8")); } catch (error) { failures.push(`${path}: JSON 无法解析：${error.message}`); }
 }
 
-const manifest = JSON.parse(await readFile(resolve(root, "contracts/gseos/capabilities.json"), "utf8"));
-if (manifest.manifest_type !== "GSEOSCapabilityManifest" || manifest.schema_version !== 1) failures.push("CODA capability manifest 必须是 @1。");
-const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
+const manifest = JSON.parse(await readFile(resolve(root, "contracts/coda/capabilities.json"), "utf8"));
+if (manifest.manifest_type !== "CODA_CapabilityManifest" || manifest.schema_version !== 1) failures.push("CODA capability manifest 必须是 @1。");
+const asset = JSON.parse(await readFile(resolve(root, "coda/events/ui.reward.apply.gse.json"), "utf8"));
 if (asset.asset_type !== "EventAsset" || asset.schema_version !== 1) failures.push("奖励演示必须是 EventAsset@1。");
 if (!asset.root?.length) failures.push("奖励演示必须包含结构化节点树。");
 const { assetFingerprint, buildSemanticProjectionMap, createSchemaRegistry, generateGdscript, lowerToExecutionPlan, validateAliasRegistry, validateSemanticProjectionMap } = await import("../src/coda/index.js");
-const aliasRegistry = JSON.parse(await readFile(resolve(root, "gseos/fixtures/ui.reward.apply.alias-registry.json"), "utf8"));
-const semanticMap = JSON.parse(await readFile(resolve(root, "gseos/fixtures/ui.reward.apply.semantic-map.json"), "utf8"));
+const aliasRegistry = JSON.parse(await readFile(resolve(root, "coda/fixtures/ui.reward.apply.alias-registry.json"), "utf8"));
+const semanticMap = JSON.parse(await readFile(resolve(root, "coda/fixtures/ui.reward.apply.semantic-map.json"), "utf8"));
 const p3Report = JSON.parse(await readFile(resolve(root, "tests/reports/p3-technical-baseline.json"), "utf8"));
 if (!validateAliasRegistry(aliasRegistry).ok) failures.push("奖励演示 AliasRegistry fixture 未通过确定性校验。");
 if (!validateSemanticProjectionMap(semanticMap).ok) failures.push("奖励演示 SemanticProjectionMap fixture 未通过确定性校验。");
@@ -45,7 +45,7 @@ const markdownFiles = (await filesUnder(root)).filter((path) => extname(path) ==
 for (const path of markdownFiles) {
   const markdown = await readFile(path, "utf8");
   for (const match of markdown.matchAll(/\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)/g)) {
-    const target = match[1];
+    const target = match[1].replace(/^<(.*)>$/u, "$1");
     if (/^(https?:|mailto:)/.test(target)) continue;
     const resolved = resolve(dirname(path), target);
     try { await stat(resolved); } catch { failures.push(`${path}: 失效本地链接 ${target}`); }

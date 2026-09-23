@@ -1,12 +1,12 @@
 extends SceneTree
 
-const BEHAVIOR_RUNTIME := preload("res://addons/gseos/runtime/behavior_runtime.gd")
+const BEHAVIOR_RUNTIME := preload("res://addons/coda/runtime/behavior_runtime.gd")
 
 var failures: Array[String] = []
 var capability_calls: Array[Dictionary] = []
 
 func _initialize() -> void:
-	var asset: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://gseos/events/aibi.behavior.runtime.gse.json"))
+	var asset: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://coda/events/aibi.behavior.runtime.gse.json"))
 	var capabilities: CODA_CapabilityRegistry = CODA_CapabilityRegistry.new()
 	for capability in ["face.set_expression@1", "body.plan_action@1", "audio.play_speech@1", "audio.stop_speech@1"]:
 		capabilities.register(capability.get_slice("@", 0), int(capability.get_slice("@", 1)), Callable(self, "_record_capability"))

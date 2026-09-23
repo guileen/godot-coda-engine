@@ -8,7 +8,7 @@
     "event_asset": "ui.reward.apply",
     "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9",
     "plan_fingerprint": "sha256:33443d65b1eca2c749758712a0a8bbf840bba6556b7da9f965a6b9ae7cccebe8",
-    "generated_source_fingerprint": "sha256:0bfc591df2c8a2710557e2861a1f9a321861ea2ef4b8b76bd47c22ae689a7fb1",
+    "generated_source_fingerprint": "sha256:626fa5690fe5878c49aefdcb8c5bf9b32d183d7224554d5ab716fb0eb5f99dc3",
     "source_map_entries": 23,
     "source_to_plan_to_generated": true,
     "legacy_launcher_preview_fixture": {

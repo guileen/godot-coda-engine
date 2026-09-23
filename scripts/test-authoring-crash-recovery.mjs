@@ -39,16 +39,14 @@ try {
   const cases = [
     { point: "journal_installed", expected: "old", envPrefix: "CODA" },
     { point: "first_target_installed", expected: "old", envPrefix: "CODA" },
-    { point: "commit_marker_installed", expected: "new", envPrefix: "GSEOS" },
+    { point: "commit_marker_installed", expected: "new", envPrefix: "CODA" },
   ];
   for (const { point, expected, envPrefix } of cases) {
     const caseName = `authoring-crash-${point}`;
     const markerPath = join(tempRoot, `${point}.ready`);
     const crashEnv = { ...process.env };
-    for (const prefix of ["CODA", "GSEOS"]) {
-      delete crashEnv[`${prefix}_TEST_CRASH_AT`];
-      delete crashEnv[`${prefix}_TEST_CRASH_MARKER`];
-    }
+    delete crashEnv["CODA_TEST_CRASH_AT"];
+    delete crashEnv["CODA_TEST_CRASH_MARKER"];
     crashEnv[`${envPrefix}_TEST_CRASH_AT`] = point;
     crashEnv[`${envPrefix}_TEST_CRASH_MARKER`] = markerPath;
     runGodot("seed", caseName);

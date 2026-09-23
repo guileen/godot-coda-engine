@@ -95,7 +95,7 @@ skill taiji.cloud_hands@1(actor: humanoid) {
 
 独立的 `SafetyAuthorityPort@1` 可以越过普通流程撤销写权；它不是第三套供业务编排的动作 API。
 
-这组结构合同位于 [`contracts/c1l/`](../contracts/c1l/)，索引为 [`contract-index.json`](../contracts/c1l/contract-index.json)，正例见 [`contract-pack.json`](../gseos/fixtures/c1l/contract-pack.json)。`EmbodiedSkill@1` 固定 `text_owned` 与 phase/progress/resume 语义；`IntentProtocol@1` 只接收版本化技能引用和语义参数；`EmbodimentProtocol@1` 对 capability、observation、reference、lease、handoff 和 receipt 使用有方向的消息类型；`SafetyAuthorityPort@1` 单向保留独立撤权/保护权；`EmbodimentDynamicsProfile@1` 声明目标拓扑、接触/耦合模型和保证等级。该合同包仍是结构设计和 Godot 视觉正例，不包含运行时实现、目标设备校准或授权。
+这组结构合同位于 [`contracts/c1l/`](../contracts/c1l/)，索引为 [`contract-index.json`](../contracts/c1l/contract-index.json)，正例见 [`contract-pack.json`](../coda/fixtures/c1l/contract-pack.json)。`EmbodiedSkill@1` 固定 `text_owned` 与 phase/progress/resume 语义；`IntentProtocol@1` 只接收版本化技能引用和语义参数；`EmbodimentProtocol@1` 对 capability、observation、reference、lease、handoff 和 receipt 使用有方向的消息类型；`SafetyAuthorityPort@1` 单向保留独立撤权/保护权；`EmbodimentDynamicsProfile@1` 声明目标拓扑、接触/耦合模型和保证等级。该合同包仍是结构设计和 Godot 视觉正例，不包含运行时实现、目标设备校准或授权。
 
 每条 `EmbodimentProtocol@1` observation 都带非空 `field_unit_map`：每个稳定 `field_ref` 分别绑定 `value_type`、版本化 `unit_ref` 和 `reference_frame_ref`。整体 `unit_system` 与 snapshot 根 `reference_frame` 不能替代字段级映射；重复字段、缺失单位或未版本化引用必须拒绝。`EmbodimentDynamicsProfile@1` 必须引用版本化 `EmbodimentUnitRegistry@1` 和 `ReferenceFrameRegistry@1`：单位注册表以 SI 七基本量加角度指数、正比例与偏移定义换算；坐标系注册表必须是一棵有唯一 root 的树，非根 frame 绑定父 frame 与版本化 transform model。运行时 observation 可按目标 Profile 解析单位/坐标引用，并拒绝未知引用、角度量纲错误和无效 frame graph；schema/目录解析不隐含传感器校准或测量精度。
 
@@ -105,7 +105,7 @@ SafetyAuthority 的撤权、保护动作和设备 failsafe receipt 必须保持 
 
 `runEmbodimentAdapterConformance(adapter)` 是可复用的 no-hardware 一致性套件：对调用方提供的 adapter instance 检查 capability、资源 lease、reference/mode/handoff、过期、唯一终态、迟到命令、observation schema，以及 reject 的 `partial_write=false` 和 ledger 不变。它只给出协议行为报告，不评估物理精度、校准、实时性或硬件安全；独立驱动方仍须用自己的实现运行该套件。
 
-每个资产的唯一作者源由 [`AuthoringOwnership@1`](../contracts/c1l/authoring-ownership.schema.json) 标记为 `text_owned` 或 `graph_owned`。GUI 修改必须携带期望 owner revision、source fingerprint、稳定 node ID 和字段路径，经 [`AuthoringTransaction@1`](../contracts/c1l/authoring-transaction.schema.json) 写入单一 target source；EventAsset、文本投影、ExecutionPlan 与生成代码都只能作为只读派生物。迁移改变 owner 时必须原子切换；revision/fingerprint 冲突返回无部分写入的 receipt。Godot EventAsset store 已为写入、Undo/Redo 与投影写回增加可选 compare-and-swap，发现磁盘资产在预览后变化会拒绝覆盖；该机制目前比较完整的 EventAsset snapshot，不等同于 owner revision/source fingerprint 协议。编辑器生成的文本预览使用 `# @node_id=...` 保留稳定 node identity，未锚定新节点分配新 ID；当前投影器无法表达的资产会被拒绝打开文本事务。对应正反例见 [`authoring-ownership-pack.json`](../gseos/fixtures/c1l/authoring-ownership-pack.json)。Node reference 的 text-owned transaction 已经按 owner/source/node/candidate fingerprint 校验并原子产生新 source/ownership；Godot 的 multi-file journal 覆盖崩溃回滚、前滚及歧义状态 fail-closed。完整 GUI AST transaction 接线和不同历史资产的迁移证据仍未完成。
+每个资产的唯一作者源由 [`AuthoringOwnership@1`](../contracts/c1l/authoring-ownership.schema.json) 标记为 `text_owned` 或 `graph_owned`。GUI 修改必须携带期望 owner revision、source fingerprint、稳定 node ID 和字段路径，经 [`AuthoringTransaction@1`](../contracts/c1l/authoring-transaction.schema.json) 写入单一 target source；EventAsset、文本投影、ExecutionPlan 与生成代码都只能作为只读派生物。迁移改变 owner 时必须原子切换；revision/fingerprint 冲突返回无部分写入的 receipt。Godot EventAsset store 已为写入、Undo/Redo 与投影写回增加可选 compare-and-swap，发现磁盘资产在预览后变化会拒绝覆盖；该机制目前比较完整的 EventAsset snapshot，不等同于 owner revision/source fingerprint 协议。编辑器生成的文本预览使用 `# @node_id=...` 保留稳定 node identity，未锚定新节点分配新 ID；当前投影器无法表达的资产会被拒绝打开文本事务。对应正反例见 [`authoring-ownership-pack.json`](../coda/fixtures/c1l/authoring-ownership-pack.json)。Node reference 的 text-owned transaction 已经按 owner/source/node/candidate fingerprint 校验并原子产生新 source/ownership；Godot 的 multi-file journal 覆盖崩溃回滚、前滚及歧义状态 fail-closed。完整 GUI AST transaction 接线和不同历史资产的迁移证据仍未完成。
 
 Node 参考核心提供 `applyAuthoringTransaction` 与 `applyTextAuthoringTransaction`：前者对 graph-owned JSON、后者对规范锚点 GSE 执行 owner revision/source fingerprint CAS、稳定 node ID 和 per-node fingerprint 校验；候选 source 与 node-identity digest 必须完全匹配后才产生递增 owner revision 的新状态。它们是无文件写权的纯函数。graph-to-text owner migration 由 Godot Event Dock 的显式事务完成；核心 API 不自动迁移资产。
 
@@ -134,7 +134,7 @@ event robot.acknowledge.user:
   intent robot.acknowledge_user@1(target: "pose.orient_to_source", resources: "robot.head@1+robot.torso@1", priority: 80, safety_profile: "aibi.gdbot.safety@1", on_no_solution: "safe_stop")
 ```
 
-对应的可复跑源码、EventAsset、计划 fixture 和测试分别位于 [`examples/robot-acknowledge.coda`](../examples/robot-acknowledge.coda)、[`gseos/events/robot.acknowledge_user.gse.json`](../gseos/events/robot.acknowledge_user.gse.json)、[`demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json`](../demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json) 与 `packages/local-core/test/gseos.test.js`。多行 `resources/constraints/preempt/receipt` 语法仍是后续 C1-L.1 的扩展，不应被误解为本轮已经全部实现。
+对应的可复跑源码、EventAsset、计划 fixture 和测试分别位于 [`examples/robot-acknowledge.coda`](../examples/robot-acknowledge.coda)、[`coda/events/robot.acknowledge_user.gse.json`](../coda/events/robot.acknowledge_user.gse.json)、[`demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json`](../demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json) 与 `packages/local-core/test/coda.test.js`。多行 `resources/constraints/preempt/receipt` 语法仍是后续 C1-L.1 的扩展，不应被误解为本轮已经全部实现。
 
 ## 从“挥挥手”到两条执行路径
 
@@ -147,7 +147,7 @@ event companion.greet:
   intent social.wave@1(target: "person.nearby", expression: "friendly_smile", resources: "character.right_arm@1+character.face@1", priority: 60, safety_profile: "game.character.safe@1", on_no_solution: "fallback")
 ```
 
-这个示例的可复跑入口是 [`examples/social-wave.coda`](../examples/social-wave.coda)，对应 EventAsset 是 [`gseos/events/social.wave.gse.json`](../gseos/events/social.wave.gse.json)。它表达的是“对附近的人友好地挥右手并带微笑”，不是“把右臂关节写成某组角度”。
+这个示例的可复跑入口是 [`examples/social-wave.coda`](../examples/social-wave.coda)，对应 EventAsset 是 [`coda/events/social.wave.gse.json`](../coda/events/social.wave.gse.json)。它表达的是“对附近的人友好地挥右手并带微笑”，不是“把右臂关节写成某组角度”。
 
 共享流水线固定为：
 
@@ -303,7 +303,7 @@ event acknowledge_user(source) [id: robot.acknowledge_user]:
 
 `MotionIntent` 是父 TaskGraph 中一种 effect；它可以派生 `TransitionPlan`，但不能替代完整的任务阶段、观测门、混合模式和闭环监督表示。`TransitionPlan`、`ReactiveExecutionGraph`、lease、generation、Adapter receipt 和 RuntimeObservation 都是派生物，不能回写成第二个可编辑事实源。
 
-当前独立契约文件是 [`contracts/gseos/motion-intent.schema.json`](../contracts/gseos/motion-intent.schema.json)，目标能力配置由 [`contracts/gseos/intent-backend-profile.schema.json`](../contracts/gseos/intent-backend-profile.schema.json) 描述，示例见 [`gseos/fixtures/intent-backend-profiles.json`](../gseos/fixtures/intent-backend-profiles.json)。编译只在目标 Profile 满足后端所需能力时生成 envelope；缺失能力必须由 Profile 显式映射到已声明替代能力，否则返回 `INTENT_BACKEND_CAPABILITY_UNSUPPORTED`。替代映射会写入 `capability_resolution`，供审阅者看见。一个后端中立的最小子计划 fixture 是 [`gseos/fixtures/social.wave.transition-plan.json`](../gseos/fixtures/social.wave.transition-plan.json)。这些契约冻结字段责任和写权限边界，但不冒充已经完成 C1-T 的完整数值 validator 或真实机器人安全证明。
+当前独立契约文件是 [`contracts/coda/motion-intent.schema.json`](../contracts/coda/motion-intent.schema.json)，目标能力配置由 [`contracts/coda/intent-backend-profile.schema.json`](../contracts/coda/intent-backend-profile.schema.json) 描述，示例见 [`coda/fixtures/intent-backend-profiles.json`](../coda/fixtures/intent-backend-profiles.json)。编译只在目标 Profile 满足后端所需能力时生成 envelope；缺失能力必须由 Profile 显式映射到已声明替代能力，否则返回 `INTENT_BACKEND_CAPABILITY_UNSUPPORTED`。替代映射会写入 `capability_resolution`，供审阅者看见。一个后端中立的最小子计划 fixture 是 [`coda/fixtures/social.wave.transition-plan.json`](../coda/fixtures/social.wave.transition-plan.json)。这些契约冻结字段责任和写权限边界，但不冒充已经完成 C1-T 的完整数值 validator 或真实机器人安全证明。
 
 ## 不能写进 CODA 的内容
 

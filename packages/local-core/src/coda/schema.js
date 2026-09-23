@@ -26,7 +26,7 @@ export function createSchemaRegistry(manifest) {
 
 export function validateCapabilityManifest(manifest) {
   const diagnostics = [];
-  if (manifest?.manifest_type !== "GSEOSCapabilityManifest") diagnostics.push(codaDiagnostic("INVALID_MANIFEST", "能力清单类型不正确。", { path: "/manifest_type" }));
+  if (manifest?.manifest_type !== "CODA_CapabilityManifest") diagnostics.push(codaDiagnostic("INVALID_MANIFEST", "能力清单类型不正确。", { path: "/manifest_type" }));
   if (manifest?.schema_version !== CAPABILITY_MANIFEST_VERSION) diagnostics.push(codaDiagnostic("UNSUPPORTED_MANIFEST_VERSION", "能力清单版本不受支持。", { path: "/schema_version" }));
   const seen = new Set();
   for (const [index, item] of (manifest?.capabilities ?? []).entries()) {

@@ -1,6 +1,6 @@
 extends SceneTree
 
-const REWARD_RUNNER := preload("res://addons/gseos/runtime/reward_event_runner.gd")
+const REWARD_RUNNER := preload("res://addons/coda/runtime/reward_event_runner.gd")
 
 var registry: CODA_EventRegistry
 var failures: Array[String] = []
@@ -28,7 +28,7 @@ func _start() -> void:
 	registry.register("benchmark.reward", Callable(reward_runner, "run"), "reject")
 	var hud := Node.new()
 	hud.name = "BenchmarkHUD"
-	hud.set_meta("_gseos_fields", {"score": 100})
+	hud.set_meta("_coda_fields", {"score": 100})
 	root.add_child(hud)
 	var old_row := Label.new()
 	old_row.name = "OldRewardRow"

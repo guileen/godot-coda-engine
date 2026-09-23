@@ -43,8 +43,8 @@ run_input type "Native GUI"
 run_input click 1480 184
 sleep 1
 
-[[ -f "$GUI_PROJECT/gseos/events/new-event.gse.json" ]]
-DISPLAY_NAME="$(node -e 'console.log(require(process.argv[1]).display_name)' "$GUI_PROJECT/gseos/events/new-event.gse.json")"
+[[ -f "$GUI_PROJECT/coda/events/new-event.gse.json" ]]
+DISPLAY_NAME="$(node -e 'console.log(require(process.argv[1]).display_name)' "$GUI_PROJECT/coda/events/new-event.gse.json")"
 [[ "$DISPLAY_NAME" == "Native GUI" ]]
 
 run_input click 980 150
@@ -69,13 +69,13 @@ run_input type '{"op":">","left":{"ref":"value"},"right":0}'
 run_input click 1065 150
 sleep 1
 
-ROOT_COUNT="$(node -e 'console.log(require(process.argv[1]).root.length)' "$GUI_PROJECT/gseos/events/new-event.gse.json")"
+ROOT_COUNT="$(node -e 'console.log(require(process.argv[1]).root.length)' "$GUI_PROJECT/coda/events/new-event.gse.json")"
 [[ "$ROOT_COUNT" == "1" ]]
 
 run_input click 850 313
 run_input click 1205 150
 sleep 1
-ROOT_COUNT_AFTER_DELETE="$(node -e 'console.log(require(process.argv[1]).root.length)' "$GUI_PROJECT/gseos/events/new-event.gse.json")"
+ROOT_COUNT_AFTER_DELETE="$(node -e 'console.log(require(process.argv[1]).root.length)' "$GUI_PROJECT/coda/events/new-event.gse.json")"
 [[ "$ROOT_COUNT_AFTER_DELETE" == "0" ]]
 
 printf '%s\n' '{"result":"passed","native_editor":"Godot 4.7.2","actions":["create","select","rename","text_preview","draft_commit","delete"],"asset_persisted":true}'

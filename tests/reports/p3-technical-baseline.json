@@ -8,20 +8,20 @@
   },
   "fixtures": {
     "event_asset": {
-      "path": "gseos/events/ui.reward.apply.gse.json",
+      "path": "coda/events/ui.reward.apply.gse.json",
       "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9"
     },
     "alias_registry": {
-      "path": "gseos/fixtures/ui.reward.apply.alias-registry.json",
+      "path": "coda/fixtures/ui.reward.apply.alias-registry.json",
       "registry_version": "reward-fixture@1"
     },
     "semantic_projection": {
-      "path": "gseos/fixtures/ui.reward.apply.semantic-map.json",
+      "path": "coda/fixtures/ui.reward.apply.semantic-map.json",
       "contract_fingerprint": "sha256:9111297e18d072e8fb97ce9859d6b337e265755213c7052721d7eba7db359384",
       "node_count": 8
     },
     "generated_runner": {
-      "path": ".gseos/generated/ui_reward_apply.gd",
+      "path": ".coda/generated/ui_reward_apply.gd",
       "plan_fingerprint": "sha256:33443d65b1eca2c749758712a0a8bbf840bba6556b7da9f965a6b9ae7cccebe8",
       "source_map": "tests/golden/ui.reward.apply.source-map.json"
     }

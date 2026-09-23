@@ -12,9 +12,9 @@
     "hook_manifest": "contracts/c1t/hook-manifest.schema.json",
     "replay_envelope": "contracts/c1t/replay-envelope.schema.json",
     "runtime_observation": "contracts/c1t/runtime-observation.schema.json",
-    "skeleton_fixture": "gseos/fixtures/c1t/skeleton-gdbot-draft.json",
-    "positive_fixtures": ["gseos/fixtures/c1t/valid-snapshot.json", "gseos/fixtures/c1t/trusted-hook-manifest.json", "gseos/fixtures/c1t/replay-envelope.json", "gseos/fixtures/c1t/runtime-observation.json"],
-    "negative_fixture": "gseos/fixtures/c1t/external-writer-reject.json"
+    "skeleton_fixture": "coda/fixtures/c1t/skeleton-gdbot-draft.json",
+    "positive_fixtures": ["coda/fixtures/c1t/valid-snapshot.json", "coda/fixtures/c1t/trusted-hook-manifest.json", "coda/fixtures/c1t/replay-envelope.json", "coda/fixtures/c1t/runtime-observation.json"],
+    "negative_fixture": "coda/fixtures/c1t/external-writer-reject.json"
   },
   "requirement_review": [
     { "id": "R-C1T-01", "status": "PARTIAL", "finding": "single-writer responsibility is documented; parent-cancel/owner-loss fixture is missing" },

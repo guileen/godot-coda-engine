@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coda://contracts/coda/intent-backend-profile@1",
+  "title": "CODA IntentBackendProfile",
+  "type": "object",
+  "required": ["profile_type", "schema_version", "profile_id", "backend", "capabilities", "capability_fallbacks"],
+  "properties": {
+    "profile_type": { "const": "IntentBackendProfile" },
+    "schema_version": { "const": 1 },
+    "profile_id": { "type": "string", "pattern": "^[-\\w.]+@1$" },
+    "backend": { "enum": ["game", "robot"] },
+    "capabilities": { "type": "array", "items": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }, "uniqueItems": true },
+    "capability_fallbacks": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[-\\w.]+@\\d+$" },
+      "additionalProperties": { "type": "string", "pattern": "^[-\\w.]+@\\d+$" }
+    }
+  },
+  "additionalProperties": false
+}

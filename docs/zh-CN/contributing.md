@@ -9,8 +9,8 @@ CODA 是面向 Godot 的结构化事件创作与生成层。贡献应维护结�
 ```sh
 npm test
 npm run check
-npm run coda -- validate gseos/events/ui.reward.apply.gse.json
-npm run coda -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- validate coda/events/ui.reward.apply.gse.json
+npm run coda -- generate coda/events/ui.reward.apply.gse.json
 godot --headless --path . --editor --quit
 ```
 
@@ -25,6 +25,6 @@ godot --headless --path . --editor --quit
 - 不要增加任意 Godot 反射；不支持的逻辑应放在普通 GDScript 中，或放进声明明确输入输出的 `escape` 节点。
 - 修改降级或代码生成时保留源映射和诊断信息。
 
-`.gseos/generated/` 和 `gseos/generated/` 由工具管理，不要手动编辑或提交。保持 Pull Request 聚焦，并说明对 E0 边界、取消语义、所有权或生成产物格式的影响。
+`.coda/generated/` 和 `coda/generated/` 由工具管理，不要手动编辑或提交。保持 Pull Request 聚焦，并说明对 E0 边界、取消语义、所有权或生成产物格式的影响。
 
 软件贡献采用 MIT；文档贡献采用 CC BY 4.0。推荐使用的 `Made with CODA` 徽章由 [`TRADEMARKS.md`](../../TRADEMARKS.md) 管理，不是软件使用条件。

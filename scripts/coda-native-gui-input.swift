@@ -6,7 +6,7 @@ let args = CommandLine.arguments
 guard args.count >= 2 else { exit(2) }
 let source = CGEventSource(stateID: .hidSystemState)
 let environment = ProcessInfo.processInfo.environment
-if let pidText = environment["CODA_GODOT_PID"] ?? environment["GSEOS_GODOT_PID"], let pid = Int32(pidText) {
+if let pidText = environment["CODA_GODOT_PID"] ?? environment["CODA_GODOT_PID"], let pid = Int32(pidText) {
     NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateIgnoringOtherApps, .activateAllWindows])
     Thread.sleep(forTimeInterval: 0.3)
 }

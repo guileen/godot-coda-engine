@@ -43,7 +43,7 @@ npm run coda -- text-generate examples/reward-claim.coda
 godot --editor --path .
 ```
 
-Start by changing the reward flow in [`examples/reward-claim.coda`](examples/reward-claim.coda), then run `text-check` again. Generated files appear under the hidden `.gseos/generated/` compatibility folder; they are output, not files to edit by hand.
+Start by changing the reward flow in [`examples/reward-claim.coda`](examples/reward-claim.coda), then run `text-check` again. Generated files appear under the hidden `.coda/generated/` compatibility folder; they are output, not files to edit by hand.
 
 To work with an AI, give it the [CODA AI skill](skills/coda-gameplay-flow/SKILL.md) and this request:
 

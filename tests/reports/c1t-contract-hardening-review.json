@@ -30,11 +30,11 @@
     "device_capability_profile": "contracts/c1t/device-capability-profile.schema.json",
     "safety_profile": "contracts/c1t/safety-profile.schema.json",
     "benchmark_schema": "contracts/c1t/falsification-benchmark-spec.schema.json",
-    "contract_fixture_pack": "gseos/fixtures/c1t/contract-hardening-pack.json",
+    "contract_fixture_pack": "coda/fixtures/c1t/contract-hardening-pack.json",
     "benchmark_specs": [
-      "gseos/fixtures/c1t/benchmarks/contact-handoff.spec.json",
-      "gseos/fixtures/c1t/benchmarks/model-validity-detection.spec.json",
-      "gseos/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"
+      "coda/fixtures/c1t/benchmarks/contact-handoff.spec.json",
+      "coda/fixtures/c1t/benchmarks/model-validity-detection.spec.json",
+      "coda/fixtures/c1t/benchmarks/joint-dynamics-composition.spec.json"
     ]
   },
   "blocking_challenges": [

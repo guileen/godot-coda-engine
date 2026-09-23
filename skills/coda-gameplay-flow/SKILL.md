@@ -15,7 +15,7 @@ Produce a small, readable `.coda` flow that captures the requested sequence. Exp
 - Name values calculated inside the flow with `let` / `令`.
 - Make every decision a visible `if` / `若` branch.
 - Use `await` / `等待` whenever the next step must wait for an animation or other cross-frame capability.
-- Use only declared capability IDs and event topics. Check `contracts/gseos/capabilities.json` before inventing one.
+- Use only declared capability IDs and event topics. Check `contracts/coda/capabilities.json` before inventing one.
 
 ## What should remain GDScript
 

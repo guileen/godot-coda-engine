@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/coda/behavior-runtime.schema.json",
+  "title": "CODA EventAsset behavior_runtime@1",
+  "type": "object",
+  "required": ["behavior_type", "schema_version", "behavior_id", "initial_state", "states", "events", "blackboard", "effects", "rules"],
+  "properties": {
+    "behavior_type": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$" },
+    "schema_version": { "const": 1 },
+    "behavior_id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$" },
+    "initial_state": { "type": "string" },
+    "states": { "type": "array", "items": { "type": "object", "required": ["state_id"], "properties": { "state_id": { "type": "string" }, "parent_state_id": { "type": "string" } }, "additionalProperties": false } },
+    "events": { "type": "array", "items": { "type": "object", "required": ["event_id", "priority"], "properties": { "event_id": { "type": "string" }, "priority": { "type": "integer", "minimum": 0 }, "completion_effect_id": { "type": "string" } }, "additionalProperties": false } },
+    "blackboard": { "type": "array", "items": { "type": "object", "required": ["field_id", "type", "default", "writable_by_events"], "properties": { "field_id": { "type": "string" }, "type": { "enum": ["number", "string", "boolean"] }, "minimum": { "type": "number" }, "maximum": { "type": "number" }, "default": {}, "writable_by_events": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } },
+    "effects": { "type": "array", "items": { "type": "object", "required": ["effect_id", "capability", "cancellable", "owner_state"], "properties": { "effect_id": { "type": "string" }, "capability": { "type": "string" }, "args": { "type": "object" }, "cancellable": { "type": "boolean" }, "owner_state": { "type": "string" }, "convergence_effect_id": { "type": "string" } }, "additionalProperties": false } },
+    "rules": { "type": "array", "items": { "type": "object", "required": ["rule_id", "from_state", "event_id", "to_state", "effects", "blackboard_writes"], "properties": { "rule_id": { "type": "string" }, "from_state": { "type": "string" }, "event_id": { "type": "string" }, "to_state": { "type": "string" }, "effects": { "type": "array", "items": { "type": "string" } }, "blackboard_writes": { "type": "object" } }, "additionalProperties": false } }
+  },
+  "additionalProperties": false
+}

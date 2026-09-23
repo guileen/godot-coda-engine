@@ -14,9 +14,9 @@
     "Godot FaceScreen Adapter smoke consumes expression intent without modifying the core reference model"
   ],
   "evidence": [
-    "packages/local-core/src/gseos/expression-reference.js",
-    "packages/local-core/src/gseos/transition.js",
-    "packages/local-core/test/gseos.test.js",
+    "packages/local-core/src/coda/expression-reference.js",
+    "packages/local-core/src/coda/transition.js",
+    "packages/local-core/test/coda.test.js",
     "demos/d3-skeleton-transition/scripts/d3_expression_adapter.gd",
     "tests/reports/demos/d3-skeleton-transition-smoke.json"
   ],

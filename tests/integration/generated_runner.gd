@@ -1,7 +1,7 @@
 extends SceneTree
 
-const GENERATED := preload("res://.gseos/generated/ui_reward_apply.gd")
-const FACADE := preload("res://addons/gseos/runtime/generated_runtime_facade.gd")
+const GENERATED := preload("res://.coda/generated/ui_reward_apply.gd")
+const FACADE := preload("res://addons/coda/runtime/generated_runtime_facade.gd")
 
 var failures: Array[String] = []
 var received: Dictionary = {}
@@ -17,7 +17,7 @@ func _start() -> void:
 	var runtime := FACADE.new(capability_registry, event_registry)
 	var hud := Node.new()
 	hud.name = "GeneratedHUD"
-	hud.set_meta("_gseos_fields", {"score": 100})
+	hud.set_meta("_coda_fields", {"score": 100})
 	root.add_child(hud)
 	var old_row := Label.new()
 	old_row.name = "OldRewardRow"

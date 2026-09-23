@@ -6,11 +6,11 @@
 
 | 公开宣称 | 证据 | 复现方式 |
 | --- | --- | --- |
-| CODA 保存带稳定 ID 的版本化 `EventAsset@1`，并保留未知字段。 | `packages/local-core/src/coda/asset.js`、`contracts/gseos/event-asset.schema.json` 和资产测试。 | `npm test` |
-| 生成链路是 `EventAsset → ExecutionPlan → GDScript`，包含源映射和确定性输出。 | `packages/local-core/src/coda/planner.js`、`packages/local-core/src/coda/codegen.js`、`tests/golden/ui.reward.apply.source-map.json` 以及奖励 fixture。 | 先运行 `npm run coda -- validate gseos/events/ui.reward.apply.gse.json`，再运行 `npm run coda -- generate gseos/events/ui.reward.apply.gse.json` |
-| E0 运行时明确处理等待、取消、超时、所有者失效和迟到回调。 | `addons/gseos/runtime/`，尤其是 `wait_registration.gd`、`run_handle.gd` 和 `event_registry.gd`；竞争集成测试覆盖终态规则。 | `npm run test:godot` |
+| CODA 保存带稳定 ID 的版本化 `EventAsset@1`，并保留未知字段。 | `packages/local-core/src/coda/asset.js`、`contracts/coda/event-asset.schema.json` 和资产测试。 | `npm test` |
+| 生成链路是 `EventAsset → ExecutionPlan → GDScript`，包含源映射和确定性输出。 | `packages/local-core/src/coda/planner.js`、`packages/local-core/src/coda/codegen.js`、`tests/golden/ui.reward.apply.source-map.json` 以及奖励 fixture。 | 先运行 `npm run coda -- validate coda/events/ui.reward.apply.gse.json`，再运行 `npm run coda -- generate coda/events/ui.reward.apply.gse.json` |
+| E0 运行时明确处理等待、取消、超时、所有者失效和迟到回调。 | `addons/coda/runtime/`，尤其是 `wait_registration.gd`、`run_handle.gd` 和 `event_registry.gd`；竞争集成测试覆盖终态规则。 | `npm run test:godot` |
 | 英文、中文和混合语言导入面会归一到同一个结构化模型。 | `packages/local-core/src/coda/frontend.js` 和双语前端测试。 | `npm test` |
-| 编辑器界面支持资产事务和源映射定位。 | `addons/gseos/editor/event_dock.gd`、`tests/integration/event_dock_smoke.gd` 和 `tests/reports/t2-editor-smoke.json`。 | `npm run test:godot:gui` |
+| 编辑器界面支持资产事务和源映射定位。 | `addons/coda/editor/event_dock.gd`、`tests/integration/event_dock_smoke.gd` 和 `tests/reports/t2-editor-smoke.json`。 | `npm run test:godot:gui` |
 | 导出运行时不包含编辑器、前端、旧词典或 EventAsset 解释层。 | `export_presets.cfg`、`scripts/coda-pack-audit.js` 和 `tests/reports/t2-export-audit.json`。 | `npm run export:pack` |
 | 双语静态网站通过响应式、键盘、减少动态效果和无跟踪检查。 | `website/`、`i18n/` 和 `tests/reports/t2-pages-visual-qa.json`。 | 在本地 Pages 预览上运行报告中记录的视觉验收命令。 |
 

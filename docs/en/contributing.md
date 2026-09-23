@@ -9,8 +9,8 @@ Run the checks that match your change:
 ```sh
 npm test
 npm run check
-npm run coda -- validate gseos/events/ui.reward.apply.gse.json
-npm run coda -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- validate coda/events/ui.reward.apply.gse.json
+npm run coda -- generate coda/events/ui.reward.apply.gse.json
 godot --headless --path . --editor --quit
 ```
 
@@ -25,6 +25,6 @@ For Godot integration, runtime, generated output, or export changes, also run `n
 - Do not add arbitrary Godot reflection. Unsupported logic belongs in ordinary GDScript or a declared `escape` node with explicit inputs and outputs.
 - Preserve source maps and diagnostics when changing lowering or code generation.
 
-`.gseos/generated/` and `gseos/generated/` are tool-owned. Do not edit or commit them. Keep pull requests focused and explain changes to the E0 boundary, cancellation semantics, ownership, or generated artifact format.
+`.coda/generated/` and `coda/generated/` are tool-owned. Do not edit or commit them. Keep pull requests focused and explain changes to the E0 boundary, cancellation semantics, ownership, or generated artifact format.
 
 Software contributions are released under MIT; documentation contributions are released under CC BY 4.0. The recommended `Made with CODA` badge is governed by [`TRADEMARKS.md`](../../TRADEMARKS.md) and is not a condition of using the software.

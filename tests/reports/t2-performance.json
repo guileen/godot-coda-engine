@@ -29,7 +29,7 @@
   "command": "/usr/bin/time -p godot --headless --path . --script res://tests/integration/benchmark.gd",
   "raw_malloc": {
     "command": "npm run benchmark:malloc:godot",
-    "interposer": "scripts/gseos-malloc-counter.c",
+    "interposer": "scripts/coda-malloc-counter.c",
     "malloc_calls": 501344,
     "calloc_calls": 41064,
     "realloc_calls": 25646,
@@ -38,13 +38,13 @@
   },
   "exported_runtime_startup": {
     "command": "npm run export:pack",
-    "pack": "<temporary-output>/gseos-runtime.zip",
-    "target": "Linux/X11 GSEOS Runtime Pack",
+    "pack": "<temporary-output>/coda-runtime.zip",
+    "target": "Linux/X11 CODA Runtime Pack",
     "result": "passed",
-    "entrypoint": "addons/gseos/runtime/main.tscn",
+    "entrypoint": "addons/coda/runtime/main.tscn",
     "boundary_audit": "passed",
     "host_native_command": "npm run export:native:macos",
-    "host_native_bundle": "<temporary-output>/GSEOSRuntime.app",
+    "host_native_bundle": "<temporary-output>/CODARuntime.app",
     "host_native_executable_startup": "passed"
   },
   "result": "passed",

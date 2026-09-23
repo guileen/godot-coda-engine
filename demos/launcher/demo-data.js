@@ -9,7 +9,7 @@ window.CODA_DEMO_REPORTS = {
       "event_asset": "ui.reward.apply",
       "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9",
       "plan_fingerprint": "sha256:33443d65b1eca2c749758712a0a8bbf840bba6556b7da9f965a6b9ae7cccebe8",
-      "generated_source_fingerprint": "sha256:0bfc591df2c8a2710557e2861a1f9a321861ea2ef4b8b76bd47c22ae689a7fb1",
+      "generated_source_fingerprint": "sha256:626fa5690fe5878c49aefdcb8c5bf9b32d183d7224554d5ab716fb0eb5f99dc3",
       "source_map_entries": 23,
       "source_to_plan_to_generated": true,
       "legacy_launcher_preview_fixture": {
@@ -55,7 +55,7 @@ window.CODA_DEMO_REPORTS = {
       "visual_distinction": "不同 generation、终态记录和 RuntimeObservation；不是只替换标题",
       "replay": {
         "file": "replays/d2-interruptible-behavior.replay.json",
-        "sha256": "6a123bb20e5144b09ebbb26d657b7e8c7e077201bd327064a696faee4e2f56bb"
+        "sha256": "f745f1a33caaede7f43ff60aab6dbd5a6852f434ff24350be3a9f999be535e92"
       }
     },
     "boundary": "Does not prove cloud LLM behavior, microphone input, or hardware control."

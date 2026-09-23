@@ -1,13 +1,13 @@
 extends SceneTree
 
-const DOCK := preload("res://addons/gseos/editor/event_dock.gd")
-const STORE := preload("res://addons/gseos/core/asset_store.gd")
+const DOCK := preload("res://addons/coda/editor/event_dock.gd")
+const STORE := preload("res://addons/coda/core/asset_store.gd")
 var failures: Array[String] = []
-var new_event_path := "res://gseos/events/new-event.gse.json"
-var generated_path := "res://.gseos/generated/ui_reward_apply.gd"
-var reward_owner_path := "res://gseos/events/ui.reward.apply.gse.json.ownership.json"
-var embodied_asset_path := "res://gseos/events/embodied-event.gse.json"
-var embodied_source_path := "res://gseos/events/embodied-event.coda"
+var new_event_path := "res://coda/events/new-event.gse.json"
+var generated_path := "res://.coda/generated/ui_reward_apply.gd"
+var reward_owner_path := "res://coda/events/ui.reward.apply.gse.json.ownership.json"
+var embodied_asset_path := "res://coda/events/embodied-event.gse.json"
+var embodied_source_path := "res://coda/events/embodied-event.coda"
 
 func _initialize() -> void:
 	call_deferred("_start")
@@ -20,7 +20,7 @@ func _start() -> void:
 	for suffix in [".ownership.json", ".bak", ".tmp", ".ownership.json.bak", ".ownership.json.tmp", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_asset_path + suffix))
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_source_path + suffix))
-	var reward_asset_path := "res://gseos/events/ui.reward.apply.gse.json"
+	var reward_asset_path := "res://coda/events/ui.reward.apply.gse.json"
 	var reward_asset_raw := FileAccess.get_file_as_string(reward_asset_path)
 	var reward_owner_existed := FileAccess.file_exists(reward_owner_path)
 	var reward_owner_raw := FileAccess.get_file_as_string(reward_owner_path) if reward_owner_existed else ""
@@ -35,14 +35,14 @@ func _start() -> void:
 		failures.append("Event Dock narrow layout did not separate the flow and step settings pages")
 	if dock._event_list.item_count < 1:
 		failures.append("Event Dock did not discover the reward EventAsset")
-	var reward_index: int = dock._asset_paths.find("res://gseos/events/ui.reward.apply.gse.json")
+	var reward_index: int = dock._asset_paths.find("res://coda/events/ui.reward.apply.gse.json")
 	if reward_index < 0:
 		failures.append("Event Dock did not index the reward EventAsset path")
 	dock._new_embodied_event()
 	var created_embodied := STORE.new().load_asset(embodied_asset_path)
 	if not created_embodied.receipt.ok or created_embodied.ownership.authoring_mode != "text_owned" or not FileAccess.file_exists(embodied_source_path):
 		failures.append("new embodied event did not default to a canonical text-owned CODA source")
-	reward_index = dock._asset_paths.find("res://gseos/events/ui.reward.apply.gse.json")
+	reward_index = dock._asset_paths.find("res://coda/events/ui.reward.apply.gse.json")
 	dock._on_event_selected(reward_index)
 	dock._selected_path = ""
 	dock._selected_asset = {}
@@ -224,7 +224,7 @@ func _start() -> void:
 			failures.append("Event Dock did not rebuild the tree after external reload: roots=%d status=%s" % [dock._selected_asset.root.size(), dock._status.text])
 		dock._migrate_selected_to_text_owned()
 		var migrated_new := STORE.new().load_asset(new_event_path)
-		var migrated_source_path := "res://gseos/events/new-event.coda"
+		var migrated_source_path := "res://coda/events/new-event.coda"
 		if not migrated_new.receipt.ok or migrated_new.ownership.authoring_mode != "text_owned" or not FileAccess.file_exists(migrated_source_path):
 			failures.append("Event Dock explicit graph-owned to text-owned migration did not commit the source and owner")
 		else:
@@ -265,7 +265,7 @@ func _start() -> void:
 					failures.append("Event Dock recovery action did not restore the last consistent text-owned file set")
 
 	var reward_backup: Dictionary = JSON.parse_string(reward_asset_raw)
-	dock._selected_path = "res://gseos/events/ui.reward.apply.gse.json"
+	dock._selected_path = "res://coda/events/ui.reward.apply.gse.json"
 	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
 	dock._selected_node_id = "animate-score"
 	dock._rebuild_tree()
@@ -300,7 +300,7 @@ func _start() -> void:
 			failures.append("Event Dock projection confirmation did not write back the slot")
 	STORE.new().save_asset(reward_asset_path, reward_backup)
 	var restore_output: Array[String] = []
-	OS.execute("node", [ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js"), "generate", ProjectSettings.globalize_path("res://gseos/events/ui.reward.apply.gse.json")], restore_output, true)
+	OS.execute("node", [ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js"), "generate", ProjectSettings.globalize_path("res://coda/events/ui.reward.apply.gse.json")], restore_output, true)
 	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
 	dock._selected_node_id = "reward-check"
 	dock._rebuild_tree()
@@ -334,7 +334,7 @@ func _start() -> void:
 		var changed_generated := FileAccess.open(generated_path, FileAccess.WRITE)
 		changed_generated.store_string("# manually changed\n")
 		changed_generated.close()
-		dock._selected_path = "res://gseos/events/ui.reward.apply.gse.json"
+		dock._selected_path = "res://coda/events/ui.reward.apply.gse.json"
 		dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
 		dock._inspect_managed_artifact()
 		if not dock._status.text.contains("手改"):
@@ -346,10 +346,10 @@ func _start() -> void:
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + ".ownership.json"))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("res://gseos/events/new-event.coda"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("res://coda/events/new-event.coda"))
 	for suffix in [".bak", ".tmp", ".ownership.json.bak", ".ownership.json.tmp", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(new_event_path + suffix))
-		DirAccess.remove_absolute(ProjectSettings.globalize_path("res://gseos/events/new-event.coda" + suffix))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("res://coda/events/new-event.coda" + suffix))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_asset_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_source_path))
 	for suffix in [".ownership.json", ".bak", ".tmp", ".ownership.json.bak", ".ownership.json.tmp", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:

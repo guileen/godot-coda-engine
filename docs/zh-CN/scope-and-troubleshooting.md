@@ -11,7 +11,7 @@ E0 版本覆盖 sequence、`if`、局部绑定和明确输出、受约束的 `wh
 当受管理产物不再匹配源指纹时，生成器会停止。只删除工具拥有的生成目录内对应的生成产物，然后从 EventAsset 重新生成：
 
 ```sh
-npm run coda -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- generate coda/events/ui.reward.apply.gse.json
 ```
 
 不要编辑生成的 GDScript 来修复源文件。如果行为无法由结构化后端表达，请使用声明过的 `escape` 节点，或在生成 runner 外使用普通 GDScript。
@@ -26,7 +26,7 @@ npm run coda -- generate gseos/events/ui.reward.apply.gse.json
 
 ## 编辑器没有显示事件
 
-确认文件是 `gse.json` 后缀的资产，并位于 `gseos/events/`；确认 EventAsset 校验通过且 `CODA Event Editor` 插件已启用。面板从资产重新构建，摘要文本不是可解析的源文件。
+确认文件是 `gse.json` 后缀的资产，并位于 `coda/events/`；确认 EventAsset 校验通过且 `CODA Event Editor` 插件已启用。面板从资产重新构建，摘要文本不是可解析的源文件。
 
 ## 需要 E0 之外的行为
 

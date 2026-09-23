@@ -11,7 +11,7 @@ The release does not cover `spawn/join`, `try/catch/finally`, E1/E2, cross-scene
 The generator is designed to stop when a managed artifact no longer matches its source fingerprint. Delete only the generated artifact that is inside the tool-owned generated directory, then regenerate from the EventAsset:
 
 ```sh
-npm run coda -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- generate coda/events/ui.reward.apply.gse.json
 ```
 
 Do not edit generated GDScript to fix the source. If the behavior cannot be represented by the structured backend, use a declared `escape` node or ordinary GDScript outside the generated runner.
@@ -26,7 +26,7 @@ Inspect the capability contract and the owner lifecycle. E0 waits can settle on 
 
 ## The editor does not show an event
 
-Check that the file is a `.gse.json` asset under `gseos/events/`, that the EventAsset validates, and that the `CODA Event Editor` plugin is enabled. The dock rebuilds from the asset; its summary text is not a parseable source.
+Check that the file is a `.gse.json` asset under `coda/events/`, that the EventAsset validates, and that the `CODA Event Editor` plugin is enabled. The dock rebuilds from the asset; its summary text is not a parseable source.
 
 ## Need behavior outside E0
 

@@ -2,7 +2,7 @@
   "report_type": "C1PTopologyFallbackReport",
   "schema_version": 1,
   "status": "PASS_SCOPED_REFERENCE_ONLY",
-  "implementation": "packages/local-core/src/gseos/field-reference.js",
+  "implementation": "packages/local-core/src/coda/field-reference.js",
   "verified": [
     "field progress/speed stagnation is detected over a finite dwell window",
     "finite escape path uses deterministic obstacle-clearance checks",

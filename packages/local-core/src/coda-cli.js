@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { buildSemanticProjectionMap, createSchemaRegistry, generateGdscript, lowerToExecutionPlan, parseGse, roundTripEventAsset, validateCapabilityManifest, validateEventAsset, verifyManagedArtifact } from "./coda/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const manifestPath = resolve(root, "contracts/gseos/capabilities.json");
+const manifestPath = resolve(root, "contracts/coda/capabilities.json");
 const output = (value) => console.log(JSON.stringify(value, null, 2));
 const load = async (path) => JSON.parse(await readFile(resolve(path), "utf8"));
 const manifest = await load(manifestPath);
@@ -20,19 +20,19 @@ async function generateAsset(asset, targetArgument) {
     return;
   }
   const generated = generateGdscript(checked.plan);
-  const target = resolve(targetArgument ?? `.gseos/generated/${asset.event_id.replaceAll(".", "_")}.gd`);
+  const target = resolve(targetArgument ?? `.coda/generated/${asset.event_id.replaceAll(".", "_")}.gd`);
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, generated.source, "utf8");
   await writeFile(`${target}.map.json`, `${JSON.stringify(generated.source_map, null, 2)}\n`, "utf8");
-  const generatedRoot = resolve(root, ".gseos/generated");
+  const generatedRoot = resolve(root, ".coda/generated");
   const relativeTarget = target.startsWith(`${generatedRoot}/`) ? target.slice(`${generatedRoot}/`.length) : null;
   if (relativeTarget) {
-    const stagingTarget = resolve(root, "gseos/generated", relativeTarget);
+    const stagingTarget = resolve(root, "coda/generated", relativeTarget);
     await mkdir(dirname(stagingTarget), { recursive: true });
     await writeFile(stagingTarget, generated.source, "utf8");
     await writeFile(`${stagingTarget}.map.json`, `${JSON.stringify(generated.source_map, null, 2)}\n`, "utf8");
   }
-  output({ receipt: checked.receipt, plan: checked.plan, generated: { path: target, staging_path: relativeTarget ? `gseos/generated/${relativeTarget}` : null, fingerprint: generated.fingerprint } });
+  output({ receipt: checked.receipt, plan: checked.plan, generated: { path: target, staging_path: relativeTarget ? `coda/generated/${relativeTarget}` : null, fingerprint: generated.fingerprint } });
 }
 
 try {
@@ -59,15 +59,15 @@ try {
   } else if (command === "manifest") { const result = validateCapabilityManifest(manifest); output(result); if (!result.ok) process.exitCode = 1; }
   else if (command === "project") {
     const asset = await load(args[0]);
-    const aliasPath = args[1] ?? "gseos/fixtures/ui.reward.apply.alias-registry.json";
+    const aliasPath = args[1] ?? "coda/fixtures/ui.reward.apply.alias-registry.json";
     const aliasRegistry = await load(aliasPath);
     let sourceMap = args[2] && args[2] !== "none" ? await load(args[2]) : null;
     if (!args[2] && !sourceMap) {
-      try { sourceMap = await load(resolve(root, `.gseos/generated/${asset.event_id.replaceAll(".", "_")}.gd.map.json`)); } catch { sourceMap = null; }
+      try { sourceMap = await load(resolve(root, `.coda/generated/${asset.event_id.replaceAll(".", "_")}.gd.map.json`)); } catch { sourceMap = null; }
     }
     const result = buildSemanticProjectionMap(asset, manifest, aliasRegistry, { sourceMap });
     output(result);
     if (!result.receipt.ok) process.exitCode = 1;
   }
   else throw new Error("用法：coda <validate|parse|parse-check|text-check|format|generate|text-generate|manifest|project> <path> [mode/output]");
-} catch (error) { output({ ok: false, diagnostics: [{ code: "GSEOS_CLI_ERROR", message: error.message, path: "/" }] }); process.exitCode = 64; }
+} catch (error) { output({ ok: false, diagnostics: [{ code: "CODA_CLI_ERROR", message: error.message, path: "/" }] }); process.exitCode = 64; }

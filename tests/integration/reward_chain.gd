@@ -1,6 +1,6 @@
 extends SceneTree
 
-const REWARD_RUNNER := preload("res://addons/gseos/runtime/reward_event_runner.gd")
+const REWARD_RUNNER := preload("res://addons/coda/runtime/reward_event_runner.gd")
 
 var registry: CODA_EventRegistry
 var capability_registry: CODA_CapabilityRegistry
@@ -21,7 +21,7 @@ func _start() -> void:
 
 	hud = Node.new()
 	hud.name = "HUD"
-	hud.set_meta("_gseos_fields", {"score": 100})
+	hud.set_meta("_coda_fields", {"score": 100})
 	root.add_child(hud)
 	var score_value := Label.new()
 	score_value.name = "ScoreValue"
@@ -47,7 +47,7 @@ func _on_reward_completed(result: Dictionary) -> void:
 
 func _verify_intermediate_animation() -> void:
 	await create_timer(0.25).timeout
-	var fields: Dictionary = hud.get_meta("_gseos_fields", {})
+	var fields: Dictionary = hud.get_meta("_coda_fields", {})
 	var intermediate_score := int(fields.get("score", 100))
 	if intermediate_score <= 100 or intermediate_score >= 125:
 		failures.append("visible score tween did not pass through an intermediate value: %d" % intermediate_score)

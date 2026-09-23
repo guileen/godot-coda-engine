@@ -16,7 +16,7 @@ config/features=PackedStringArray("4.7")
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gseos/plugin.cfg")
+enabled=PackedStringArray("res://addons/coda/plugin.cfg")
 
 [rendering]
 

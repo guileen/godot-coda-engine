@@ -2,7 +2,7 @@
   "report_type": "C1TOfflineSemanticMatrixReport",
   "schema_version": 1,
   "status": "PASS_SCOPED_REFERENCE_ONLY",
-  "implementation": "packages/local-core/src/gseos/transition-harness.js",
+  "implementation": "packages/local-core/src/coda/transition-harness.js",
   "tested_cases": [
     { "case": "execute", "expected": "execute" },
     { "case": "external-writer", "expected": "reject/EXTERNAL_WRITER_ACTIVE" },

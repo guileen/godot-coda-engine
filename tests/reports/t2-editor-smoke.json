@@ -20,12 +20,12 @@
   "native_editor_launch": {
     "godot": "4.7.2-stable official ed1daf0bf",
     "dock_visible": true,
-    "screenshot": "<temporary-output>/gseos-godot-editor-final.png",
+    "screenshot": "<temporary-output>/coda-godot-editor-final.png",
     "interaction_note": "The isolated native editor was launched and driven by PID-targeted macOS input; the repeatable harness completed with persisted asset checks."
   },
   "native_gui_command": "npm run test:godot:gui",
   "native_gui_result": "passed",
   "native_gui_actions": ["create", "select", "rename", "text_preview", "failed_import_protection", "draft_condition_commit", "delete"],
   "manual_gui_evidence": true,
-  "manual_gui_note": "Native GUI evidence is repeatable through scripts/gseos-native-gui-acceptance.sh; screenshots captured during the run are temporary local outputs and are not repository artifacts."
+  "manual_gui_note": "Native GUI evidence is repeatable through scripts/coda-native-gui-acceptance.sh; screenshots captured during the run are temporary local outputs and are not repository artifacts."
 }

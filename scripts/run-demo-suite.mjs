@@ -15,7 +15,7 @@ import {
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const reportsDir = resolve(root, "tests/reports/demos");
-const manifest = JSON.parse(await readFile(resolve(root, "contracts/gseos/capabilities.json"), "utf8"));
+const manifest = JSON.parse(await readFile(resolve(root, "contracts/coda/capabilities.json"), "utf8"));
 const registry = createSchemaRegistry(manifest);
 const report = (demo_id, title, status, evidence, boundary) => ({ report_type: "CODA_DemoReport", schema_version: 1, demo_id, title, status, evidence, boundary });
 
@@ -48,7 +48,7 @@ const motionLowered = motionParsed.receipt.ok ? lowerToExecutionPlan(motionParse
 if (!motionLowered.plan) throw new Error(`C1-L source-to-plan failed: ${JSON.stringify(motionLowered.receipt.diagnostics)}`);
 await writeFile(resolve(root, "demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json"), `${JSON.stringify(motionLowered.plan, null, 2)}\n`);
 
-const reward = await loadJson("gseos/events/ui.reward.apply.gse.json");
+const reward = await loadJson("coda/events/ui.reward.apply.gse.json");
 const rewardPlan = lowerToExecutionPlan(reward, registry);
 const rewardGenerated = generateGdscript(rewardPlan.plan);
 const d1Replay = await replayEvidence("d1-semantic-authoring.replay.json");
@@ -63,8 +63,8 @@ await writeReport("d1-semantic-authoring.json", report("D1", "Semantic authoring
   replay: d1Replay,
 }, "Does not authorize arbitrary GDScript editing or bypass source ownership."));
 
-const behaviorAsset = await loadJson("gseos/events/aibi.behavior.runtime.gse.json");
-const behaviorManifest = await loadJson("contracts/gseos/aibi-behavior-capabilities.json");
+const behaviorAsset = await loadJson("coda/events/aibi.behavior.runtime.gse.json");
+const behaviorManifest = await loadJson("contracts/coda/aibi-behavior-capabilities.json");
 const behavior = compileBehaviorRuntime(behaviorAsset, createSchemaRegistry(behaviorManifest));
 const interrupted = new BehaviorRuntime(behavior.plan);
 for (const event_id of ["wake_word", "speech_end", "llm_response", "interrupt", "tts_done"]) { interrupted.enqueue(event_id); interrupted.drain(); }

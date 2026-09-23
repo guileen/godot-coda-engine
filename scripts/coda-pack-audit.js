@@ -20,18 +20,18 @@ const entries = execFileSync("unzip", ["-Z1", zipPath], { encoding: "utf8" })
 const allowed = (entry) => entry === "project.godot"
   || entry === "project.binary"
   || entry.startsWith(".godot/")
-  || entry.startsWith("gseos/generated/")
-  || entry.startsWith("addons/gseos/runtime/");
+  || entry.startsWith("coda/generated/")
+  || entry.startsWith("addons/coda/runtime/");
 const required = [
   "project.godot",
-  "gseos/generated/ui_reward_apply.gdc",
-  "gseos/generated/ui_reward_apply.gd.map.json",
-  "addons/gseos/runtime/event_registry.gdc",
-  "addons/gseos/runtime/generated_runtime_facade.gdc",
-  "addons/gseos/runtime/main.gdc",
-  "addons/gseos/runtime/main.tscn.remap",
-  "addons/gseos/runtime/reward_capabilities.gdc",
-  "addons/gseos/runtime/reward_event_runner.gdc",
+  "coda/generated/ui_reward_apply.gdc",
+  "coda/generated/ui_reward_apply.gd.map.json",
+  "addons/coda/runtime/event_registry.gdc",
+  "addons/coda/runtime/generated_runtime_facade.gdc",
+  "addons/coda/runtime/main.gdc",
+  "addons/coda/runtime/main.tscn.remap",
+  "addons/coda/runtime/reward_capabilities.gdc",
+  "addons/coda/runtime/reward_event_runner.gdc",
 ];
 const forbiddenEntries = entries.filter((entry) => !allowed(entry));
 const missing = required.filter((entry) => !entries.includes(entry));
@@ -44,7 +44,7 @@ const result = {
   required_missing: missing,
   forbidden_entries: forbiddenEntries,
   forbidden_runtime_symbols: forbiddenSymbols.filter((symbol) => entries.some((entry) => entry.includes(symbol))),
-  included_prefixes: ["gseos/generated/", "addons/gseos/runtime/"],
+  included_prefixes: ["coda/generated/", "addons/coda/runtime/"],
 };
 console.log(JSON.stringify(result, null, 2));
 if (!result.ok) process.exitCode = 1;

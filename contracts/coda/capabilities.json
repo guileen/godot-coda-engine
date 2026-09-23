@@ -1,0 +1,14 @@
+{
+  "manifest_type": "CODA_CapabilityManifest",
+  "schema_version": 1,
+  "capabilities": [
+    { "id": "read", "version": 1, "kind": "read", "params": [{ "id": "target", "type": "NodeRef" }, { "id": "field", "type": "Text" }], "result": "Any", "main_thread": true, "awaitable": false, "cancellation": "not_applicable", "e0": true },
+    { "id": "ui.animate_number", "version": 1, "kind": "capability", "params": [{ "id": "target", "type": "NodeRef" }, { "id": "from", "type": "Int" }, { "id": "to", "type": "Int" }, { "id": "duration", "type": "Duration" }], "result": "Void", "main_thread": true, "awaitable": true, "cancellation": "safe_point", "e0": true },
+    { "id": "ui.remove_node", "version": 1, "kind": "capability", "params": [{ "id": "target", "type": "NodeRef" }], "result": "Void", "main_thread": true, "awaitable": false, "cancellation": "not_applicable", "e0": true },
+    { "id": "ui.create_reward_row", "version": 1, "kind": "capability", "params": [{ "id": "owner", "type": "NodeRef" }, { "id": "value", "type": "Int" }], "result": "NodeRef", "main_thread": true, "awaitable": false, "cancellation": "not_applicable", "e0": true },
+    { "id": "ui.set_text", "version": 1, "kind": "capability", "params": [{ "id": "target", "type": "NodeRef" }, { "id": "content", "type": "Text" }], "result": "Void", "main_thread": true, "awaitable": false, "cancellation": "not_applicable", "e0": true }
+  ],
+  "topics": [
+    { "id": "combat.hit_resolved", "version": 1, "payload": "HitResolved", "policy": "isolate_listener_errors" }
+  ]
+}

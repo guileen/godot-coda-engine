@@ -8,9 +8,9 @@
 !.env.example
 packages/local-core/coverage/
 node_modules/
-.gseos/generated/
-.gseos/generated.manifest.json
-gseos/generated/
+.coda/generated/
+.coda/generated.manifest.json
+coda/generated/
 .pages/
 website/*.import
 brand/*.import

@@ -340,7 +340,7 @@ DecisionRecord                       RuntimeObservation
 
 PhysicsPolicy Compiler、Dynamics/Solver Adapter 与 C1-T Hook 不同：它们有明确状态空间、每 tick 数据依赖、数值语义和证据义务。它们仍无独立执行权，但不能被塞进一个泛化 `plan_modifier` 来绕过模型、预算、有效域和误差审计。`ReactiveFieldPolicy` 是派生的闭环策略，不是 EventAsset 的第二逻辑源。
 
-当前 C1-P.0 的可审查落档入口是 [`contracts/c1p/contract-index.json`](../contracts/c1p/contract-index.json)，其中索引十个顶层 schema；最小设计 fixture 位于 [`gseos/fixtures/c1p/contract-pack.json`](../gseos/fixtures/c1p/contract-pack.json)。这组文件只冻结字段、责任边界、候选权、硬安全优先、anytime 终止语义和三类收敛的记录口径，不授权 field/solver/physics backend 实现，也不替代目标设备校准。
+当前 C1-P.0 的可审查落档入口是 [`contracts/c1p/contract-index.json`](../contracts/c1p/contract-index.json)，其中索引十个顶层 schema；最小设计 fixture 位于 [`coda/fixtures/c1p/contract-pack.json`](../coda/fixtures/c1p/contract-pack.json)。这组文件只冻结字段、责任边界、候选权、硬安全优先、anytime 终止语义和三类收敛的记录口径，不授权 field/solver/physics backend 实现，也不替代目标设备校准。
 
 ## 何时才叫“更好的物理引擎”
 
