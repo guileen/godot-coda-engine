@@ -26,7 +26,7 @@ if (manifest.manifest_type !== "GSEOSCapabilityManifest" || manifest.schema_vers
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
 if (asset.asset_type !== "EventAsset" || asset.schema_version !== 1) failures.push("奖励演示必须是 EventAsset@1。");
 if (!asset.root?.length) failures.push("奖励演示必须包含结构化节点树。");
-const { assetFingerprint, buildSemanticProjectionMap, createSchemaRegistry, generateGdscript, lowerToExecutionPlan, validateAliasRegistry, validateSemanticProjectionMap } = await import("../src/gseos/index.js");
+const { assetFingerprint, buildSemanticProjectionMap, createSchemaRegistry, generateGdscript, lowerToExecutionPlan, validateAliasRegistry, validateSemanticProjectionMap } = await import("../src/coda/index.js");
 const aliasRegistry = JSON.parse(await readFile(resolve(root, "gseos/fixtures/ui.reward.apply.alias-registry.json"), "utf8"));
 const semanticMap = JSON.parse(await readFile(resolve(root, "gseos/fixtures/ui.reward.apply.semantic-map.json"), "utf8"));
 const p3Report = JSON.parse(await readFile(resolve(root, "tests/reports/p3-technical-baseline.json"), "utf8"));

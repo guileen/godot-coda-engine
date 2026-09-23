@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { summarizeUserObservationReport, validateUserObservationReport } from "../packages/local-core/src/gseos/index.js";
+import { summarizeUserObservationReport, validateUserObservationReport } from "../packages/local-core/src/coda/index.js";
 
 const target = process.argv[2];
 if (!target) {

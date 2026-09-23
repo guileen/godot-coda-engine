@@ -5,6 +5,7 @@
 - 新生成的 GDScript 标记使用 CODA 名称；编辑器与校验器继续识别旧 GSEOS 标记，旧项目不会被批量改写。旧项目重新生成时才切换到新标记。
 - 崩溃恢复测试的新环境变量使用 CODA 前缀；旧 GSEOS 前缀继续兼容，并由恢复测试覆盖。
 - CODA CLI 已使用 CODA 命名入口；旧 GSEOS CLI 文件路径和 `npm run gseos` 继续作为兼容入口。
+- local-core 的主实现已迁至 CODA 命名目录；旧 `src/gseos/` 模块路径继续转接到相同 API。
 - 为 CODA 公开 GitHub 发布流程准备仓库。
 - 增加按语言组织的公开文档和双语 GitHub Pages 网站。
 - 增加贡献、安全、行为准则、issue 和 Pull Request 指南。

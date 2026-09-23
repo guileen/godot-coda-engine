@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createSchemaRegistry, generateGdscript, lowerToExecutionPlan } from "../packages/local-core/src/gseos/index.js";
+import { createSchemaRegistry, generateGdscript, lowerToExecutionPlan } from "../packages/local-core/src/coda/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));

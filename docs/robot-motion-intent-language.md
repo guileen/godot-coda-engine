@@ -163,7 +163,7 @@ LLM/作者高层意图 → CODA parse + static contract checks
 
 机器人路径使用 `RobotIntentBackend@1`（当前标识 `robot.motion@1`），将同一意图落为 `RobotMotionEnvelope`，交给受信任的 robot Adapter 和独立 Safety Mechanism，再由硬件侧产生适配器拥有的电机命令包。CODA/LLM 永远没有直接 PWM、力矩或 raw-servo 写权；机器人还必须使用实测校准的误差 envelope。
 
-两条路径的差异不是换一套自然语言，而是换 backend contract、资源 registry、误差/安全包络和 receipt。`packages/local-core/src/gseos/intent-backend.js` 提供当前最小的契约级分流，测试验证同一 `social.wave@1` 同时得到两个不同 envelope，且不产生直接写硬件的指令。
+两条路径的差异不是换一套自然语言，而是换 backend contract、资源 registry、误差/安全包络和 receipt。`packages/local-core/src/coda/intent-backend.js` 提供当前最小的契约级分流，测试验证同一 `social.wave@1` 同时得到两个不同 envelope，且不产生直接写硬件的指令。
 
 ## C1-L 新增的五个语言概念
 

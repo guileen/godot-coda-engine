@@ -2,7 +2,7 @@
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildSemanticProjectionMap, createSchemaRegistry, generateGdscript, lowerToExecutionPlan, parseGse, roundTripEventAsset, validateCapabilityManifest, validateEventAsset, verifyManagedArtifact } from "./gseos/index.js";
+import { buildSemanticProjectionMap, createSchemaRegistry, generateGdscript, lowerToExecutionPlan, parseGse, roundTripEventAsset, validateCapabilityManifest, validateEventAsset, verifyManagedArtifact } from "./coda/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const manifestPath = resolve(root, "contracts/gseos/capabilities.json");
@@ -49,7 +49,7 @@ try {
       if (!checked.receipt.ok) process.exitCode = 1;
     }
   } else if (command === "format") {
-    const source = await readFile(resolve(args[0]), "utf8"); const parsed = parseGse(source); if (!parsed.receipt.ok) { output(parsed); process.exitCode = 1; } else { const { formatGse } = await import("./gseos/index.js"); process.stdout.write(formatGse(parsed.asset, args[1] ?? "preserve")); }
+    const source = await readFile(resolve(args[0]), "utf8"); const parsed = parseGse(source); if (!parsed.receipt.ok) { output(parsed); process.exitCode = 1; } else { const { formatGse } = await import("./coda/index.js"); process.stdout.write(formatGse(parsed.asset, args[1] ?? "preserve")); }
   } else if (command === "generate") {
     await generateAsset(await load(args[0]), args[1]);
   } else if (command === "text-generate") {

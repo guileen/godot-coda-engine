@@ -11,7 +11,7 @@
 - `settleLease({ lease_ref, generation, status, now_tick })`：为当前 lease 形成唯一 terminal receipt。
 - `snapshot()`：返回可 canonical-JSON 编码的状态，用于检查拒绝路径没有局部写入。
 
-每个操作返回 `{ accepted, response, ledger }`。不接受的请求必须返回协议 `reject`、`partial_write:false`，且 ledger 与调用前一致；receipt 必须绑定协议所要求的 generation/epoch/有效时域。Mock 的实现位于 [`mock-embodiment-adapter.js`](../packages/local-core/src/gseos/mock-embodiment-adapter.js)，独立撤权端口参考实现位于 [`mock-safety-authority.js`](../packages/local-core/src/gseos/mock-safety-authority.js)。
+每个操作返回 `{ accepted, response, ledger }`。不接受的请求必须返回协议 `reject`、`partial_write:false`，且 ledger 与调用前一致；receipt 必须绑定协议所要求的 generation/epoch/有效时域。Mock 的实现位于 [`mock-embodiment-adapter.js`](../packages/local-core/src/coda/mock-embodiment-adapter.js)，独立撤权端口参考实现位于 [`mock-safety-authority.js`](../packages/local-core/src/coda/mock-safety-authority.js)。
 
 ## 运行一致性套件
 

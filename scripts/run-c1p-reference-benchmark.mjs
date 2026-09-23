@@ -64,7 +64,7 @@ const report = {
   report_type: "C1PReferenceBenchmark",
   schema_version: 1,
   status: "PASS_REFERENCE_HOST_PROFILE_MEASURED",
-  implementation: "packages/local-core/src/gseos/physics-reference.js",
+  implementation: "packages/local-core/src/coda/physics-reference.js",
   options,
   cascade: runReferenceCascade(options).value,
   anytime: runAnytimeReference({ ...options, budgets: [8, 200, 4000] }),
