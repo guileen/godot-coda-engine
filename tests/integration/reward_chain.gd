@@ -73,7 +73,7 @@ func _verify_reward() -> void:
 			push_error(failure)
 		quit(1)
 	else:
-		print("GSEOS reward chain integration passed")
+		print("CODA reward chain integration passed")
 		hud.queue_free()
 		registry.clear()
 		capability_registry.clear()

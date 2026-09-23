@@ -43,7 +43,7 @@ func _start() -> void:
 		if not saw_duration or not saw_target:
 			failures.append("generated runner trace did not retain capability slot locations")
 	if failures.is_empty():
-		print("GSEOS generated runner integration passed")
+		print("CODA generated runner integration passed")
 	else:
 		for failure in failures:
 			push_error(failure)

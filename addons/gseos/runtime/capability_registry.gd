@@ -12,7 +12,7 @@ func resolve(target: String) -> Dictionary:
 func invoke(target: String, args: Dictionary) -> Variant:
 	var entry: Dictionary = resolve(target)
 	if entry.is_empty():
-		push_error("GSEOS capability not registered: " + target)
+		push_error("CODA capability not registered: " + target)
 		return null
 	return entry.adapter.call(args)
 

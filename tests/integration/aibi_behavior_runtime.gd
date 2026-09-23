@@ -57,7 +57,7 @@ func _initialize() -> void:
 			push_error(failure)
 		quit(1)
 	else:
-		print("GSEOS AIBI behavior runtime Godot integration passed")
+		print("CODA AIBI behavior runtime Godot integration passed")
 		quit(0)
 
 func _record_capability(args: Dictionary) -> Dictionary:

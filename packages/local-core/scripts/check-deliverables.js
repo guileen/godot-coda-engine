@@ -22,7 +22,7 @@ for (const path of await filesUnder(resolve(root, "contracts"))) {
 }
 
 const manifest = JSON.parse(await readFile(resolve(root, "contracts/gseos/capabilities.json"), "utf8"));
-if (manifest.manifest_type !== "GSEOSCapabilityManifest" || manifest.schema_version !== 1) failures.push("GSEOS capability manifest 必须是 @1。");
+if (manifest.manifest_type !== "GSEOSCapabilityManifest" || manifest.schema_version !== 1) failures.push("CODA capability manifest 必须是 @1。");
 const asset = JSON.parse(await readFile(resolve(root, "gseos/events/ui.reward.apply.gse.json"), "utf8"));
 if (asset.asset_type !== "EventAsset" || asset.schema_version !== 1) failures.push("奖励演示必须是 EventAsset@1。");
 if (!asset.root?.length) failures.push("奖励演示必须包含结构化节点树。");
@@ -34,7 +34,7 @@ if (!validateAliasRegistry(aliasRegistry).ok) failures.push("奖励演示 AliasR
 if (!validateSemanticProjectionMap(semanticMap).ok) failures.push("奖励演示 SemanticProjectionMap fixture 未通过确定性校验。");
 const regeneratedMap = buildSemanticProjectionMap(asset, manifest, aliasRegistry).map;
 if (!regeneratedMap || JSON.stringify(regeneratedMap) !== JSON.stringify(semanticMap)) failures.push("奖励演示 SemanticProjectionMap fixture 与输入不可再生地漂移。");
-if (!createSchemaRegistry(manifest).manifest) failures.push("GSEOS schema registry 未能加载 manifest。");
+if (!createSchemaRegistry(manifest).manifest) failures.push("CODA schema registry 未能加载 manifest。");
 const generatedBaseline = generateGdscript(lowerToExecutionPlan(asset, createSchemaRegistry(manifest)).plan);
 if (p3Report.fixtures?.event_asset?.asset_fingerprint !== assetFingerprint(asset)) failures.push("P3 技术验收报告中的 EventAsset 指纹已过期。");
 if (p3Report.fixtures?.semantic_projection?.contract_fingerprint !== semanticMap.contract_fingerprint || p3Report.fixtures?.semantic_projection?.node_count !== semanticMap.nodes.length) failures.push("P3 技术验收报告中的 SPM 指纹或节点数已过期。");

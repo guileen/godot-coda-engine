@@ -225,7 +225,7 @@ func _start() -> void:
 	for suffix in ["", ".ownership.json", ".coda", ".gse.json", ".gse.json.ownership.json", ".tmp", ".ownership.json.tmp", ".coda.tmp", ".coda.bak", ".gse.json.bak", ".gse.json.ownership.json.bak", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp", ".coda.candidate"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("res://.gseos/text-owned-transaction" + suffix))
 	if failures.is_empty():
-		print("GSEOS editor asset transaction integration passed")
+		print("CODA editor asset transaction integration passed")
 		quit(0)
 	else:
 		for failure in failures:

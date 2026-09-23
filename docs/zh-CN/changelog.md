@@ -2,6 +2,7 @@
 
 ## 未发布
 
+- 新生成的 GDScript 标记使用 CODA 名称；编辑器与校验器继续识别旧 GSEOS 标记，旧项目不会被批量改写。旧项目重新生成时才切换到新标记。
 - 为 CODA 公开 GitHub 发布流程准备仓库。
 - 增加按语言组织的公开文档和双语 GitHub Pages 网站。
 - 增加贡献、安全、行为准则、issue 和 Pull Request 指南。

@@ -30,7 +30,7 @@ func _initialize() -> void:
 			push_error(failure)
 		quit(1)
 	else:
-		print("GSEOS headless runtime integration passed")
+		print("CODA headless runtime integration passed")
 		registry.clear()
 		quit(0)
 

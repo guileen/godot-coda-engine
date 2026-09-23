@@ -46,7 +46,7 @@ func _start() -> void:
 		failures.append("owner invalidation did not cancel late callback")
 
 	if failures.is_empty():
-		print("GSEOS competition cleanup integration passed")
+		print("CODA competition cleanup integration passed")
 		quit(0)
 	else:
 		for failure in failures:
