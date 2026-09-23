@@ -1,5 +1,5 @@
 import { assetFingerprint, validateEventAsset } from "./asset.js";
-import { gseosDiagnostic } from "./diagnostics.js";
+import { codaDiagnostic } from "./diagnostics.js";
 import { formatGse, parseGse } from "./frontend.js";
 
 const refPattern = /^[-\w.]+@\d+$/u;

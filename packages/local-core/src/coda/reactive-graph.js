@@ -1,4 +1,4 @@
-import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt } from "./diagnostics.js";
 
 const NODE_KINDS = new Set(["observe", "evaluate_guard", "request_candidate", "verify_candidate", "execution_admission", "lease_barrier", "adapter_command", "emit_receipt", "terminal"]);
 const EDGE_OUTCOMES = new Set(["pass", "reject", "unknown", "timeout", "failure", "terminal"]);
@@ -6,13 +6,13 @@ const EDGE_OUTCOMES = new Set(["pass", "reject", "unknown", "timeout", "failure"
 /** Validate graph closure and prove every reachable Adapter command follows a passing admission edge. */
 export function validateReactiveExecutionGraph(graph) {
   const diagnostics = [];
-  const add = (code, message, extra = {}) => diagnostics.push(gseosDiagnostic(code, message, extra));
+  const add = (code, message, extra = {}) => diagnostics.push(codaDiagnostic(code, message, extra));
   if (!graph || typeof graph !== "object" || graph.graph_type !== "ReactiveExecutionGraph" || graph.schema_version !== 1) {
-    return gseosReceipt([gseosDiagnostic("INVALID_REACTIVE_GRAPH_HEADER", "ReactiveExecutionGraph 必须使用受支持的类型和版本。")]);
+    return codaReceipt([codaDiagnostic("INVALID_REACTIVE_GRAPH_HEADER", "ReactiveExecutionGraph 必须使用受支持的类型和版本。")]);
   }
   if (typeof graph.graph_id !== "string" || !/^[-\w.]+@1$/u.test(graph.graph_id) || typeof graph.parent_effect_ref !== "string" || !/^[-\w.]+@\d+$/u.test(graph.parent_effect_ref) || typeof graph.work_budget_ref !== "string" || !/^[-\w.]+@\d+$/u.test(graph.work_budget_ref) || typeof graph.source_ref !== "string" || graph.source_ref.length === 0) add("INVALID_REACTIVE_GRAPH_BINDING", "Reactive graph 必须绑定版本化 graph/effect/work-budget 与 source 引用。", { graph_id: graph.graph_id });
   if (graph.generated_only !== true || graph.arbitrary_source_execution !== false || graph.adapter_authority_without_admission !== false) add("REACTIVE_GRAPH_AUTHORITY_BOUNDARY", "Reactive graph 必须是生成物，禁止任意源码执行和准入前 Adapter 权限。", { graph_id: graph.graph_id });
-  if (!Array.isArray(graph.nodes) || graph.nodes.length === 0 || !Array.isArray(graph.edges) || !Array.isArray(graph.terminal_nodes)) return gseosReceipt([gseosDiagnostic("INVALID_REACTIVE_GRAPH_SHAPE", "Reactive graph 必须包含非空 nodes、edges 与 terminal_nodes 数组。", { graph_id: graph.graph_id })]);
+  if (!Array.isArray(graph.nodes) || graph.nodes.length === 0 || !Array.isArray(graph.edges) || !Array.isArray(graph.terminal_nodes)) return codaReceipt([codaDiagnostic("INVALID_REACTIVE_GRAPH_SHAPE", "Reactive graph 必须包含非空 nodes、edges 与 terminal_nodes 数组。", { graph_id: graph.graph_id })]);
 
   const nodes = new Map();
   for (const node of graph.nodes) {
@@ -56,5 +56,5 @@ export function validateReactiveExecutionGraph(graph) {
   }
   const reachable = new Set([...visited].map((item) => item.slice(0, item.lastIndexOf("\u0000"))));
   for (const id of nodes.keys()) if (!reachable.has(id)) add("UNREACHABLE_REACTIVE_GRAPH_NODE", "Reactive graph 不允许不可达节点。", { graph_id: graph.graph_id, node_id: id });
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }

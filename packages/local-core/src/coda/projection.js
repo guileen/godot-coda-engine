@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { assetFingerprint, stableStringify, validateEventAsset } from "./asset.js";
-import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt } from "./diagnostics.js";
 
 export const PROJECTION_SCHEMA_VERSION = 1;
 export const ALIAS_REGISTRY_SCHEMA_VERSION = 1;
@@ -80,7 +80,7 @@ function equalValue(left, right) {
 }
 
 function diagnostic(code, message, extra = {}) {
-  return gseosDiagnostic(code, message, extra);
+  return codaDiagnostic(code, message, extra);
 }
 
 function validTargetId(targetId) {
@@ -116,7 +116,7 @@ function validateAliasEntry(entry, path, diagnostics) {
 
 export function validateAliasRegistry(registry) {
   const diagnostics = [];
-  if (!registry || typeof registry !== "object" || Array.isArray(registry)) return gseosReceipt([diagnostic("INVALID_ALIAS_REGISTRY", "AliasRegistry 必须是对象。", { path: "/" })]);
+  if (!registry || typeof registry !== "object" || Array.isArray(registry)) return codaReceipt([diagnostic("INVALID_ALIAS_REGISTRY", "AliasRegistry 必须是对象。", { path: "/" })]);
   if (registry.registry_type !== "AliasRegistry") diagnostics.push(diagnostic("INVALID_ALIAS_REGISTRY_TYPE", "registry_type 必须为 AliasRegistry。", { path: "/registry_type" }));
   if (registry.schema_version !== ALIAS_REGISTRY_SCHEMA_VERSION) diagnostics.push(diagnostic("UNSUPPORTED_ALIAS_REGISTRY_VERSION", "AliasRegistry 版本不受支持。", { path: "/schema_version" }));
   if (!normalizeText(registry.registry_version)) diagnostics.push(diagnostic("MISSING_ALIAS_REGISTRY_VERSION", "registry_version 不能为空。", { path: "/registry_version" }));
@@ -140,7 +140,7 @@ export function validateAliasRegistry(registry) {
       }
     }
   }
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 function localeValue(values, locale, fallbackLocale = "en") {
@@ -158,12 +158,12 @@ export function resolveAlias(registry, query, { locale = registry?.default_local
   const checked = validateAliasRegistry(registry);
   if (!checked.ok) return { target_id: null, receipt: checked };
   const direct = normalizeText(query);
-  if (!direct) return { target_id: null, receipt: gseosReceipt([diagnostic("EMPTY_ALIAS_QUERY", "别名查询不能为空。", { path: "/query" })]) };
+  if (!direct) return { target_id: null, receipt: codaReceipt([diagnostic("EMPTY_ALIAS_QUERY", "别名查询不能为空。", { path: "/query" })]) };
   if (validTargetId(direct)) {
     const entries = entriesForTarget(registry, direct);
-    if (!entries.length) return { target_id: null, receipt: gseosReceipt([diagnostic("UNKNOWN_ALIAS_TARGET", `未找到别名目标：${direct}。`, { target_id: direct })]) };
+    if (!entries.length) return { target_id: null, receipt: codaReceipt([diagnostic("UNKNOWN_ALIAS_TARGET", `未找到别名目标：${direct}。`, { target_id: direct })]) };
     const selected = entries.at(-1);
-    return { target_id: direct, layer: selected.layer, entry: selected.entry, label: localeValue(selected.entry.labels, locale, registry.default_locale), receipt: gseosReceipt() };
+    return { target_id: direct, layer: selected.layer, entry: selected.entry, label: localeValue(selected.entry.labels, locale, registry.default_locale), receipt: codaReceipt() };
   }
   const key = normalizeAlias(direct);
   for (const layer of [...LAYERS].reverse()) {
@@ -173,13 +173,13 @@ export function resolveAlias(registry, query, { locale = registry?.default_local
       if (names.some((name) => normalizeAlias(name) === key)) matches.push(entry);
     }
     const targets = [...new Set(matches.map((entry) => entry.target_id))];
-    if (targets.length > 1) return { target_id: null, receipt: gseosReceipt([diagnostic("AMBIGUOUS_ALIAS", `别名存在多个候选：${direct}。`, { target_id: targets.join(",") })]) };
+    if (targets.length > 1) return { target_id: null, receipt: codaReceipt([diagnostic("AMBIGUOUS_ALIAS", `别名存在多个候选：${direct}。`, { target_id: targets.join(",") })]) };
     if (targets.length === 1) {
       const entry = matches.find((item) => item.target_id === targets[0]);
-      return { target_id: targets[0], layer, entry, label: localeValue(entry.labels, locale, registry.default_locale), receipt: gseosReceipt() };
+      return { target_id: targets[0], layer, entry, label: localeValue(entry.labels, locale, registry.default_locale), receipt: codaReceipt() };
     }
   }
-  return { target_id: null, receipt: gseosReceipt([diagnostic("ALIAS_NOT_FOUND", `未找到别名：${direct}。`, { target_id: direct })]) };
+  return { target_id: null, receipt: codaReceipt([diagnostic("ALIAS_NOT_FOUND", `未找到别名：${direct}。`, { target_id: direct })]) };
 }
 
 function contractFingerprint(manifest) {
@@ -256,7 +256,7 @@ function walkNodes(nodes, prefix = ["root"], output = []) {
 
 export function validateSemanticProjectionMap(map) {
   const diagnostics = [];
-  if (!map || typeof map !== "object" || Array.isArray(map)) return gseosReceipt([diagnostic("INVALID_SEMANTIC_MAP", "SemanticProjectionMap 必须是对象。", { path: "/" })]);
+  if (!map || typeof map !== "object" || Array.isArray(map)) return codaReceipt([diagnostic("INVALID_SEMANTIC_MAP", "SemanticProjectionMap 必须是对象。", { path: "/" })]);
   if (map.projection_type !== "SemanticProjectionMap") diagnostics.push(diagnostic("INVALID_SEMANTIC_MAP_TYPE", "projection_type 必须为 SemanticProjectionMap。", { path: "/projection_type" }));
   if (map.schema_version !== PROJECTION_SCHEMA_VERSION) diagnostics.push(diagnostic("UNSUPPORTED_SEMANTIC_MAP_VERSION", "SemanticProjectionMap 版本不受支持。", { path: "/schema_version" }));
   for (const field of ["event_id", "asset_fingerprint", "contract_fingerprint", "alias_registry_version"]) if (!normalizeText(map[field])) diagnostics.push(diagnostic("MISSING_SEMANTIC_MAP_FIELD", `缺少投影字段：${field}。`, { path: `/${field}` }));
@@ -273,12 +273,12 @@ export function validateSemanticProjectionMap(map) {
       paths.add(slot.path);
     }
   }
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 export function validateRuntimeTrace(trace) {
   const diagnostics = [];
-  if (!trace || typeof trace !== "object" || Array.isArray(trace)) return gseosReceipt([diagnostic("INVALID_RUNTIME_TRACE", "RuntimeTrace 必须是对象。", { path: "/" })]);
+  if (!trace || typeof trace !== "object" || Array.isArray(trace)) return codaReceipt([diagnostic("INVALID_RUNTIME_TRACE", "RuntimeTrace 必须是对象。", { path: "/" })]);
   if (trace.trace_type !== "RuntimeTrace") diagnostics.push(diagnostic("INVALID_RUNTIME_TRACE_TYPE", "trace_type 必须为 RuntimeTrace。", { path: "/trace_type" }));
   if (trace.schema_version !== 1) diagnostics.push(diagnostic("UNSUPPORTED_RUNTIME_TRACE_VERSION", "RuntimeTrace 版本不受支持。", { path: "/schema_version" }));
   if (trace.run_id === undefined || trace.run_id === null) diagnostics.push(diagnostic("MISSING_RUNTIME_RUN_ID", "RuntimeTrace 必须包含 run_id。", { path: "/run_id" }));
@@ -288,12 +288,12 @@ export function validateRuntimeTrace(trace) {
     if (step?.step_id === undefined || !normalizeText(step?.node_id) || !normalizeText(step?.slot)) diagnostics.push(diagnostic("INVALID_RUNTIME_STEP", "运行步骤必须包含 step_id、node_id 和 slot。", { path: `/steps/${index}` }));
     if (!["started", "completed", "failed", "cancelled", "skipped"].includes(step?.status)) diagnostics.push(diagnostic("INVALID_RUNTIME_STEP_STATUS", `不支持的运行步骤状态：${step?.status}。`, { path: `/steps/${index}/status` }));
   }
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 export function validateSemanticCandidate(candidate) {
   const diagnostics = [];
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return gseosReceipt([diagnostic("INVALID_SEMANTIC_CANDIDATE", "SemanticCandidate 必须是对象。", { path: "/" })]);
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return codaReceipt([diagnostic("INVALID_SEMANTIC_CANDIDATE", "SemanticCandidate 必须是对象。", { path: "/" })]);
   if (candidate.candidate_type !== "SemanticCandidate") diagnostics.push(diagnostic("INVALID_SEMANTIC_CANDIDATE_TYPE", "candidate_type 必须为 SemanticCandidate。", { path: "/candidate_type" }));
   if (candidate.schema_version !== CANDIDATE_SCHEMA_VERSION) diagnostics.push(diagnostic("UNSUPPORTED_SEMANTIC_CANDIDATE_VERSION", "SemanticCandidate 版本不受支持。", { path: "/schema_version" }));
   for (const field of ["candidate_id", "status"]) if (!normalizeText(candidate[field])) diagnostics.push(diagnostic("MISSING_SEMANTIC_CANDIDATE_FIELD", `缺少候选字段：${field}。`, { path: `/${field}` }));
@@ -301,7 +301,7 @@ export function validateSemanticCandidate(candidate) {
   if (!candidate.source || !normalizeText(candidate.source.kind)) diagnostics.push(diagnostic("MISSING_SEMANTIC_CANDIDATE_SOURCE", "候选必须声明来源。", { path: "/source" }));
   if (!candidate.confidence || !["low", "medium", "high"].includes(candidate.confidence.state)) diagnostics.push(diagnostic("INVALID_SEMANTIC_CANDIDATE_CONFIDENCE", "候选必须声明置信状态。", { path: "/confidence" }));
   if (candidate.authoritative_target_id !== undefined || candidate.write_confirmed === true) diagnostics.push(diagnostic("CANDIDATE_CANNOT_AUTHORIZE_WRITE", "候选不能建立权威锚点或静默确认写回。", { path: "/" }));
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 export function buildSemanticProjectionMap(asset, manifest, registry, { sourceMap = null } = {}) {
@@ -312,7 +312,7 @@ export function buildSemanticProjectionMap(asset, manifest, registry, { sourceMa
   diagnostics.push(...manifestCheck.diagnostics);
   const aliasCheck = validateAliasRegistry(registry);
   diagnostics.push(...aliasCheck.diagnostics);
-  if (diagnostics.some((item) => item.severity === "error")) return { map: null, receipt: gseosReceipt(diagnostics) };
+  if (diagnostics.some((item) => item.severity === "error")) return { map: null, receipt: codaReceipt(diagnostics) };
   const refs = referenceIds(asset, manifest);
   const nodes = [];
   for (const { node, path } of walkNodes(asset.root)) {
@@ -346,7 +346,7 @@ export function buildSemanticProjectionMap(asset, manifest, registry, { sourceMa
   const map = { projection_type: "SemanticProjectionMap", schema_version: PROJECTION_SCHEMA_VERSION, event_id: asset.event_id, asset_fingerprint: assetFingerprint(asset), contract_fingerprint: contractFingerprint(manifest), alias_registry_version: registry.registry_version, nodes };
   const mapCheck = validateSemanticProjectionMap(map);
   diagnostics.push(...mapCheck.diagnostics);
-  return { map: mapCheck.ok ? map : null, receipt: gseosReceipt(diagnostics) };
+  return { map: mapCheck.ok ? map : null, receipt: codaReceipt(diagnostics) };
 }
 
 function valueMatchesType(value, type) {
@@ -377,7 +377,7 @@ export function createSemanticPatch({ asset, manifest, registry, projection, ope
     return { op: "replace", slot_id: slot.slot_id, path: slot.path, expected: clone(getPointer(asset, slot.path)), value: clone(operation.value), type: slot.type };
   });
   const patch = { patch_type: "SemanticPatch", schema_version: PATCH_SCHEMA_VERSION, event_id: asset?.event_id, base_asset_fingerprint: assetFingerprint(asset), contract_fingerprint: contractFingerprint(manifest), alias_registry_version: registry?.registry_version, operations: normalized };
-  return { patch, receipt: gseosReceipt(diagnostics) };
+  return { patch, receipt: codaReceipt(diagnostics) };
 }
 
 export function previewSemanticPatch(asset, patch, { manifest, registry, projection } = {}) {
@@ -402,7 +402,7 @@ export function previewSemanticPatch(asset, patch, { manifest, registry, project
   const assetCheck = validateEventAsset(next, { capabilities: manifest?.capabilities ?? [] });
   diagnostics.push(...assetCheck.diagnostics);
   const ok = !diagnostics.some((item) => item.severity === "error");
-  return { ok, asset: ok ? next : clone(asset), before: clone(asset), after: ok ? next : clone(asset), changed: ok && !equalValue(asset, next), receipt: gseosReceipt(diagnostics) };
+  return { ok, asset: ok ? next : clone(asset), before: clone(asset), after: ok ? next : clone(asset), changed: ok && !equalValue(asset, next), receipt: codaReceipt(diagnostics) };
 }
 
 export function applySemanticPatch(asset, patch, context = {}) {

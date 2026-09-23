@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { assetFingerprint, stableStringify, validateEventAsset } from "./asset.js";
-import { gseosDiagnostic, gseosReceipt, sourceRef } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt, sourceRef } from "./diagnostics.js";
 
 const STABLE_ID = /^[a-z][a-z0-9]*(?:\.[a-z0-9]+)*$/;
 const SIMPLE_ID = /^[a-z][a-z0-9._-]*$/;
 
-function diagnostic(code, message, path, extra = {}) { return gseosDiagnostic(code, message, { path, ...extra }); }
+function diagnostic(code, message, path, extra = {}) { return codaDiagnostic(code, message, { path, ...extra }); }
 function indexBy(items, key) { return new Map((items ?? []).map((item) => [item[key], item])); }
 function extension(asset) { return asset?.behavior_runtime; }
 function validValue(field, value) {
@@ -30,7 +30,7 @@ function ref(asset, path, nodeId = undefined, fieldId = undefined) { return sour
 export function validateBehaviorRuntime(asset, registry = null) {
   const diagnostics = [...validateEventAsset(asset, { capabilities: registry?.manifest?.capabilities ?? [] }).diagnostics];
   const behavior = extension(asset);
-  if (!behavior || typeof behavior !== "object" || Array.isArray(behavior)) return gseosReceipt([...diagnostics, diagnostic("BEHAVIOR_EXTENSION_REQUIRED", "C0 行为必须保存在 EventAsset.behavior_runtime。", "/behavior_runtime")]);
+  if (!behavior || typeof behavior !== "object" || Array.isArray(behavior)) return codaReceipt([...diagnostics, diagnostic("BEHAVIOR_EXTENSION_REQUIRED", "C0 行为必须保存在 EventAsset.behavior_runtime。", "/behavior_runtime")]);
   if (typeof behavior.behavior_type !== "string" || !/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(behavior.behavior_type)) diagnostics.push(diagnostic("INVALID_BEHAVIOR_TYPE", "behavior_type 必须是稳定的小写行为类型 ID。", "/behavior_runtime/behavior_type"));
   if (behavior.schema_version !== 1) diagnostics.push(diagnostic("UNSUPPORTED_BEHAVIOR_VERSION", "C0 只支持 behavior_runtime@1。", "/behavior_runtime/schema_version"));
   if (typeof behavior.behavior_id !== "string" || !STABLE_ID.test(behavior.behavior_id)) diagnostics.push(diagnostic("INVALID_BEHAVIOR_ID", "behavior_id 必须是稳定小写点分 ID。", "/behavior_runtime/behavior_id"));
@@ -80,7 +80,7 @@ export function validateBehaviorRuntime(asset, registry = null) {
       else if (!validValue(field, value)) diagnostics.push(diagnostic("BLACKBOARD_WRITE_OUT_OF_RANGE", "Blackboard 写入值不符合类型或范围。", `${base}/blackboard_writes/${fieldId}`));
     }
   }
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 export function compileBehaviorRuntime(asset, registry = null) {
@@ -136,5 +136,5 @@ export function validateBehaviorRuntimeTrace(trace) {
   const diagnostics = [];
   if (trace?.trace_type !== "BehaviorRuntimeTrace" || trace?.schema_version !== 1) diagnostics.push(diagnostic("INVALID_BEHAVIOR_TRACE", "行为轨迹必须是 BehaviorRuntimeTrace@1。", "/"));
   for (const [index, entry] of (trace?.entries ?? []).entries()) { if (entry?.entry_id !== index + 1) diagnostics.push(diagnostic("INVALID_TRACE_ENTRY_ID", "轨迹 entry_id 必须连续且确定。", `/entries/${index}/entry_id`)); if (!entry?.source_ref?.event_id || !entry?.source_ref?.path) diagnostics.push(diagnostic("MISSING_TRACE_SOURCE_REF", "每条行为轨迹必须可回溯到 EventAsset。", `/entries/${index}/source_ref`)); }
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }

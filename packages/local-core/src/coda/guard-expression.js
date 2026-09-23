@@ -1,4 +1,4 @@
-import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt } from "./diagnostics.js";
 
 const ARITY = {
   eq: [2, 2], neq: [2, 2], lt: [2, 2], lte: [2, 2], gt: [2, 2], gte: [2, 2],
@@ -8,9 +8,9 @@ const ARITY = {
 /** Validate a closed typed guard AST against the observation bindings visible to its owner. */
 export function validateGuardExpression(guard, { known_observation_refs = null, max_depth = 32 } = {}) {
   const diagnostics = [];
-  const add = (code, path, message) => diagnostics.push(gseosDiagnostic(code, message, { path }));
+  const add = (code, path, message) => diagnostics.push(codaDiagnostic(code, message, { path }));
   if (!guard || typeof guard !== "object" || guard.guard_type !== "GuardExpression" || guard.guard_version !== 1 || typeof guard.guard_id !== "string" || typeof guard.condition_ref !== "string" || !/^[a-zA-Z_][a-zA-Z0-9_]*$/u.test(guard.condition_ref) || guard.unknown_policy !== "reject_or_yield_safety" || !guard.source_ref || typeof guard.source_ref.event_id !== "string" || typeof guard.source_ref.node_id !== "string" || typeof guard.source_ref.path !== "string" || !guard.source_ref.path.startsWith("/")) {
-    return gseosReceipt([gseosDiagnostic("INVALID_GUARD_HEADER", "Guard 必须使用 GuardExpression@1 且对未知值 fail-closed。")]);
+    return codaReceipt([codaDiagnostic("INVALID_GUARD_HEADER", "Guard 必须使用 GuardExpression@1 且对未知值 fail-closed。")]);
   }
   const known = new Set(known_observation_refs ?? []);
   const walk = (node, path, depth) => {
@@ -31,5 +31,5 @@ export function validateGuardExpression(guard, { known_observation_refs = null, 
     node.operands.forEach((operand, index) => walk(operand, `${path}/operands/${index}`, depth + 1));
   };
   walk(guard.expression, "/expression", 0);
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }

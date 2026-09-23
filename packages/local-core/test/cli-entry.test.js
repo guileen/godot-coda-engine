@@ -23,6 +23,8 @@ test("CODA CLI entry and retired GSEOS entry preserve the same manifest contract
 
 test("CODA core module path and retired GSEOS module path expose the same API", () => {
   assert.deepEqual(Object.keys(legacyApi).sort(), Object.keys(codaApi).sort());
+  assert.equal(codaApi.gseosDiagnostic, codaApi.codaDiagnostic);
+  assert.equal(codaApi.gseosReceipt, codaApi.codaReceipt);
 });
 
 test("every retired GSEOS module path forwards to its CODA counterpart", async () => {

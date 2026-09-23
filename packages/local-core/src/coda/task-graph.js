@@ -1,5 +1,5 @@
 import { assetFingerprint } from "./asset.js";
-import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt } from "./diagnostics.js";
 import { validateGuardExpression } from "./guard-expression.js";
 import { lowerToExecutionPlan } from "./planner.js";
 
@@ -9,15 +9,15 @@ const TASK_EDGE_RELATIONS = new Set(["requires", "observes", "guards", "hands_of
 /** Validate graph identity, source ownership, references, dependency agreement and acyclicity. */
 export function validateTaskGraph(graph) {
   const diagnostics = [];
-  const add = (code, message, extra = {}) => diagnostics.push(gseosDiagnostic(code, message, extra));
+  const add = (code, message, extra = {}) => diagnostics.push(codaDiagnostic(code, message, extra));
   if (!graph || typeof graph !== "object" || graph.graph_type !== "TaskGraph" || graph.graph_version !== 1) {
-    return gseosReceipt([gseosDiagnostic("INVALID_TASK_GRAPH_HEADER", "TaskGraph 必须声明受支持的图类型和版本。")]);
+    return codaReceipt([codaDiagnostic("INVALID_TASK_GRAPH_HEADER", "TaskGraph 必须声明受支持的图类型和版本。")]);
   }
   if (typeof graph.event_id !== "string" || !/^[a-z][a-z0-9_.-]*$/u.test(graph.event_id)) add("INVALID_TASK_GRAPH_EVENT", "TaskGraph event_id 格式无效。", { event_id: graph.event_id });
   if (typeof graph.source_fingerprint !== "string" || !/^sha256:[a-f0-9]{64}$/u.test(graph.source_fingerprint)) add("INVALID_TASK_GRAPH_FINGERPRINT", "TaskGraph 必须绑定 SHA-256 source fingerprint。", { event_id: graph.event_id });
   if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) add("TASK_GRAPH_EMPTY", "TaskGraph 必须至少包含一个节点。", { event_id: graph.event_id });
   if (!Array.isArray(graph.edges)) add("INVALID_TASK_GRAPH_EDGES", "TaskGraph edges 必须是数组。", { event_id: graph.event_id });
-  if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) return gseosReceipt(diagnostics);
+  if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) return codaReceipt(diagnostics);
 
   const nodes = new Map();
   for (const [index, node] of graph.nodes.entries()) {
@@ -121,7 +121,7 @@ export function validateTaskGraph(graph) {
     }
   }
   if (visitedCount !== nodes.size) add("TASK_GRAPH_CYCLE", "TaskGraph 必须是有向无环图。", { event_id: graph.event_id });
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 /** Lower MotionIntent sequences and guarded branches with explicit any-predecessor joins. */
@@ -133,14 +133,14 @@ export function lowerToTaskGraph(asset, registry, { guard_bindings = {}, known_o
   if (instructions.length === 0) {
     return {
       task_graph: null,
-      receipt: gseosReceipt([gseosDiagnostic("TASK_GRAPH_EMPTY", "空执行计划不能生成 TaskGraph。", { event_id: asset.event_id })]),
+      receipt: codaReceipt([codaDiagnostic("TASK_GRAPH_EMPTY", "空执行计划不能生成 TaskGraph。", { event_id: asset.event_id })]),
     };
   }
   const nodes = [];
   const edges = [];
   const makeIntentNode = (instruction, branchContext) => ({ node_id: instruction.source_ref.node_id, kind: "intent", contract_ref: instruction.target, source_ref: instruction.source_ref, ...(branchContext.length > 0 ? { branch_context: structuredClone(branchContext) } : {}) });
   const lowerSequence = (sequence, branchContext = []) => {
-    if (!Array.isArray(sequence) || sequence.length === 0) return { error: gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_BRANCH_ARM", "每个受支持的控制流分支必须包含至少一个可 lower 的节点；未生成部分图。", { event_id: asset.event_id }) };
+    if (!Array.isArray(sequence) || sequence.length === 0) return { error: codaDiagnostic("TASK_GRAPH_UNSUPPORTED_BRANCH_ARM", "每个受支持的控制流分支必须包含至少一个可 lower 的节点；未生成部分图。", { event_id: asset.event_id }) };
     let entry = null;
     let frontier = [];
     let frontierIsAlternative = false;
@@ -161,16 +161,16 @@ export function lowerToTaskGraph(asset, registry, { guard_bindings = {}, known_o
         continue;
       }
       if (instruction.opcode !== "Branch") {
-        return { error: gseosDiagnostic("TASK_GRAPH_UNSUPPORTED_INSTRUCTION", `TaskGraph lowering 暂不支持此组合中的 ${instruction.opcode}；未生成部分图。`, { event_id: asset.event_id, node_id: instruction.source_ref?.node_id }) };
+        return { error: codaDiagnostic("TASK_GRAPH_UNSUPPORTED_INSTRUCTION", `TaskGraph lowering 暂不支持此组合中的 ${instruction.opcode}；未生成部分图。`, { event_id: asset.event_id, node_id: instruction.source_ref?.node_id }) };
       }
       const branch = instruction;
     const guard = guard_bindings[branch.source_ref.node_id];
     const guardReceipt = validateGuardExpression(guard, { known_observation_refs });
     if (!guard || !guardReceipt.ok || branch.condition?.kind !== "ref" || guard.condition_ref !== branch.condition.name || guard.source_ref.event_id !== asset.event_id || guard.source_ref.node_id !== branch.source_ref.node_id || guard.source_ref.path !== branch.source_ref.path) {
-        return { error: gseosDiagnostic("TASK_GRAPH_GUARD_UNBOUND", "Branch 必须绑定同一 source node/path 的有效 GuardExpression@1。", { event_id: asset.event_id, node_id: branch.source_ref.node_id, diagnostics: guardReceipt.diagnostics }) };
+        return { error: codaDiagnostic("TASK_GRAPH_GUARD_UNBOUND", "Branch 必须绑定同一 source node/path 的有效 GuardExpression@1。", { event_id: asset.event_id, node_id: branch.source_ref.node_id, diagnostics: guardReceipt.diagnostics }) };
     }
       const containsObservationRef = (expression) => expression?.node_type === "observation_ref" || (expression?.node_type === "operation" && expression.operands.some(containsObservationRef));
-      if (!containsObservationRef(guard.expression)) return { error: gseosDiagnostic("TASK_GRAPH_GUARD_NOT_OBSERVATION_BOUND", "可 lower 的分支 Guard 必须依赖至少一个已绑定 observation。", { event_id: asset.event_id, node_id: branch.source_ref.node_id }) };
+      if (!containsObservationRef(guard.expression)) return { error: codaDiagnostic("TASK_GRAPH_GUARD_NOT_OBSERVATION_BOUND", "可 lower 的分支 Guard 必须依赖至少一个已绑定 observation。", { event_id: asset.event_id, node_id: branch.source_ref.node_id }) };
       const guardNode = { node_id: branch.source_ref.node_id, kind: "guard", contract_ref: guard.guard_id, source_ref: branch.source_ref, ...(branchContext.length > 0 ? { branch_context: structuredClone(branchContext) } : {}) };
       nodes.push(guardNode);
       if (entry === null) entry = guardNode.node_id;
@@ -195,7 +195,7 @@ export function lowerToTaskGraph(asset, registry, { guard_bindings = {}, known_o
     return { entry, terminals: frontier };
   };
   const loweredSequence = lowerSequence(instructions);
-  if (loweredSequence.error) return { task_graph: null, receipt: gseosReceipt([loweredSequence.error]) };
+  if (loweredSequence.error) return { task_graph: null, receipt: codaReceipt([loweredSequence.error]) };
 
   const task_graph = {
       graph_type: "TaskGraph",

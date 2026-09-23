@@ -1,6 +1,6 @@
 import { assetFingerprint, validateEventAsset } from "./asset.js";
 import { bindEventAsset } from "./frontend.js";
-import { gseosDiagnostic, gseosReceipt, sourceRef } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt, sourceRef } from "./diagnostics.js";
 
 const SUPPORTED_COMMANDS = new Set(["if", "let", "read", "do", "await", "motion_intent", "publish", "return", "escape"]);
 
@@ -13,14 +13,14 @@ function validateMotionIntent(node, asset) {
   const diagnostics = [];
   const params = node.params ?? {};
   const args = params.args ?? {};
-  if (!/^[-\w.]+@\d+$/u.test(String(params.intent ?? ""))) diagnostics.push(gseosDiagnostic("INVALID_MOTION_INTENT", "motion_intent 必须使用带版本的意图标识。", { event_id: asset.event_id, node_id: node.node_id }));
-  for (const field of ["target", "resources", "priority", "safety_profile", "on_no_solution"]) if (args[field] === undefined) diagnostics.push(gseosDiagnostic("MISSING_MOTION_INTENT_CONTRACT", `机器人意图缺少硬契约字段：${field}。`, { event_id: asset.event_id, node_id: node.node_id, target_id: field }));
+  if (!/^[-\w.]+@\d+$/u.test(String(params.intent ?? ""))) diagnostics.push(codaDiagnostic("INVALID_MOTION_INTENT", "motion_intent 必须使用带版本的意图标识。", { event_id: asset.event_id, node_id: node.node_id }));
+  for (const field of ["target", "resources", "priority", "safety_profile", "on_no_solution"]) if (args[field] === undefined) diagnostics.push(codaDiagnostic("MISSING_MOTION_INTENT_CONTRACT", `机器人意图缺少硬契约字段：${field}。`, { event_id: asset.event_id, node_id: node.node_id, target_id: field }));
   const priority = literalArgument(args, "priority");
-  if (priority !== undefined && (!Number.isInteger(priority) || priority < 0 || priority > 100)) diagnostics.push(gseosDiagnostic("INVALID_MOTION_INTENT_PRIORITY", "priority 必须是 0..100 的整数。", { event_id: asset.event_id, node_id: node.node_id, target_id: "priority" }));
+  if (priority !== undefined && (!Number.isInteger(priority) || priority < 0 || priority > 100)) diagnostics.push(codaDiagnostic("INVALID_MOTION_INTENT_PRIORITY", "priority 必须是 0..100 的整数。", { event_id: asset.event_id, node_id: node.node_id, target_id: "priority" }));
   const resources = literalArgument(args, "resources");
-  if (resources !== undefined && (typeof resources !== "string" || !resources.includes("@"))) diagnostics.push(gseosDiagnostic("INVALID_MOTION_INTENT_RESOURCES", "resources 必须列出带版本的资源能力。", { event_id: asset.event_id, node_id: node.node_id, target_id: "resources" }));
+  if (resources !== undefined && (typeof resources !== "string" || !resources.includes("@"))) diagnostics.push(codaDiagnostic("INVALID_MOTION_INTENT_RESOURCES", "resources 必须列出带版本的资源能力。", { event_id: asset.event_id, node_id: node.node_id, target_id: "resources" }));
   const fallback = literalArgument(args, "on_no_solution");
-  if (fallback !== undefined && !["reject", "fallback", "safe_stop"].includes(fallback)) diagnostics.push(gseosDiagnostic("INVALID_MOTION_INTENT_FALLBACK", "on_no_solution 只能是 reject、fallback 或 safe_stop。", { event_id: asset.event_id, node_id: node.node_id, target_id: "on_no_solution" }));
+  if (fallback !== undefined && !["reject", "fallback", "safe_stop"].includes(fallback)) diagnostics.push(codaDiagnostic("INVALID_MOTION_INTENT_FALLBACK", "on_no_solution 只能是 reject、fallback 或 safe_stop。", { event_id: asset.event_id, node_id: node.node_id, target_id: "on_no_solution" }));
   return diagnostics;
 }
 
@@ -67,18 +67,18 @@ export function checkEventAsset(asset, registry) {
         const result = registry?.checkCapability?.(capability, { awaitable: awaited });
         if (result && !result.ok) diagnostics.push(...result.diagnostics.map((item) => ({ ...item, event_id: asset.event_id, node_id: node.node_id })));
       }
-      if (!SUPPORTED_COMMANDS.has(node.command_id)) diagnostics.push(gseosDiagnostic("BACKEND_UNSUPPORTED", `${node.command_id} 不在 E0 首发后端范围内。`, { event_id: asset.event_id, node_id: node.node_id }));
+      if (!SUPPORTED_COMMANDS.has(node.command_id)) diagnostics.push(codaDiagnostic("BACKEND_UNSUPPORTED", `${node.command_id} 不在 E0 首发后端范围内。`, { event_id: asset.event_id, node_id: node.node_id }));
       if (node.command_id === "motion_intent") diagnostics.push(...validateMotionIntent(node, asset));
       if (node.command_id === "publish") {
         const topic = registry?.topic?.(params.topic);
-        if (!topic) diagnostics.push(gseosDiagnostic("TOPIC_VERSION_MISMATCH", `事件主题未登记：${params.topic}。`, { event_id: asset.event_id, node_id: node.node_id, target_id: params.topic }));
+        if (!topic) diagnostics.push(codaDiagnostic("TOPIC_VERSION_MISMATCH", `事件主题未登记：${params.topic}。`, { event_id: asset.event_id, node_id: node.node_id, target_id: params.topic }));
       }
-      if (node.command_id === "escape" && (!Array.isArray(params.inputs) || !Array.isArray(params.outputs))) diagnostics.push(gseosDiagnostic("INVALID_ESCAPE_CONTRACT", "escape 必须声明 inputs 和 outputs 数组。", { event_id: asset.event_id, node_id: node.node_id }));
+      if (node.command_id === "escape" && (!Array.isArray(params.inputs) || !Array.isArray(params.outputs))) diagnostics.push(codaDiagnostic("INVALID_ESCAPE_CONTRACT", "escape 必须声明 inputs 和 outputs 数组。", { event_id: asset.event_id, node_id: node.node_id }));
       walk(Object.values(node.children ?? {}).flat());
     }
   };
   walk(asset.root);
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 export function lowerToExecutionPlan(asset, registry) {
@@ -106,5 +106,5 @@ export function lowerToExecutionPlan(asset, registry) {
   };
   walk(asset.root);
   const plan = { plan_type: "ExecutionPlan", plan_version: 1, event_id: asset.event_id, asset_fingerprint: assetFingerprint(asset), instructions };
-  return { plan, receipt: gseosReceipt() };
+  return { plan, receipt: codaReceipt() };
 }

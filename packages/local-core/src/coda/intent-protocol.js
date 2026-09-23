@@ -1,12 +1,12 @@
-import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt } from "./diagnostics.js";
 
 const versionedRef = /^[-\w.]+@\d+$/u;
 const terminalStatuses = new Set(["rejected", "stale", "cancelled", "preempted", "completed", "failed"]);
 
 export function validateIntentProtocolRequest(request) {
   const diagnostics = [];
-  const add = (code, message, path) => diagnostics.push(gseosDiagnostic(code, message, { path }));
-  if (!request || typeof request !== "object" || request.protocol !== "IntentProtocol" || request.schema_version !== 1) return gseosReceipt([gseosDiagnostic("INVALID_INTENT_PROTOCOL_HEADER", "请求必须使用 IntentProtocol@1。")]);
+  const add = (code, message, path) => diagnostics.push(codaDiagnostic(code, message, { path }));
+  if (!request || typeof request !== "object" || request.protocol !== "IntentProtocol" || request.schema_version !== 1) return codaReceipt([codaDiagnostic("INVALID_INTENT_PROTOCOL_HEADER", "请求必须使用 IntentProtocol@1。")]);
   if (typeof request.request_id !== "string" || request.request_id.length === 0) add("INVALID_INTENT_REQUEST_ID", "request_id 必须非空。", "/request_id");
   if (!["invoke", "amend", "interrupt", "pause", "resume", "cancel"].includes(request.operation)) add("INVALID_INTENT_OPERATION", "operation 必须使用 IntentProtocol@1 定义的操作。", "/operation");
   for (const [key, value] of [["skill_ref", request.skill_ref], ["parameter_schema_ref", request.parameter_schema_ref]]) if (typeof value !== "string" || !versionedRef.test(value)) add("INVALID_INTENT_VERSIONED_REF", `${key} 必须是版本化引用。`, `/${key}`);
@@ -23,13 +23,13 @@ export function validateIntentProtocolRequest(request) {
   if (request.priority !== undefined && (!Number.isInteger(request.priority) || request.priority < 0 || request.priority > 100)) add("INVALID_INTENT_PRIORITY", "priority 必须在 0–100 范围内。", "/priority");
   const allowed = new Set(["protocol", "schema_version", "request_id", "operation", "skill_ref", "instance_id", "generation", "issued_at", "deadline", "priority", "parameter_schema_ref", "parameters", "constraints_ref", "continuation_ref", "authority_ref"]);
   for (const key of Object.keys(request)) if (!allowed.has(key)) add("UNKNOWN_INTENT_REQUEST_FIELD", `IntentProtocol@1 不允许字段 ${key}。`, `/${key}`);
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 export function validateIntentProtocolReceipt(receipt) {
   const diagnostics = [];
-  const add = (code, message, path) => diagnostics.push(gseosDiagnostic(code, message, { path }));
-  if (!receipt || typeof receipt !== "object" || receipt.receipt_type !== "IntentReceipt" || receipt.schema_version !== 1) return gseosReceipt([gseosDiagnostic("INVALID_INTENT_RECEIPT_HEADER", "receipt 必须使用 IntentReceipt@1。")]);
+  const add = (code, message, path) => diagnostics.push(codaDiagnostic(code, message, { path }));
+  if (!receipt || typeof receipt !== "object" || receipt.receipt_type !== "IntentReceipt" || receipt.schema_version !== 1) return codaReceipt([codaDiagnostic("INVALID_INTENT_RECEIPT_HEADER", "receipt 必须使用 IntentReceipt@1。")]);
   if (typeof receipt.request_id !== "string" || receipt.request_id.length === 0) add("INVALID_INTENT_RECEIPT_REQUEST_ID", "request_id 必须非空。", "/request_id");
   if (typeof receipt.instance_id !== "string" || receipt.instance_id.length === 0) add("INVALID_INTENT_RECEIPT_INSTANCE_ID", "instance_id 必须非空。", "/instance_id");
   if (!Number.isInteger(receipt.generation) || receipt.generation < 0) add("INVALID_INTENT_RECEIPT_GENERATION", "generation 必须是非负整数。", "/generation");
@@ -47,7 +47,7 @@ export function validateIntentProtocolReceipt(receipt) {
   if (receipt.source_ref !== undefined && typeof receipt.source_ref !== "string") add("INVALID_INTENT_RECEIPT_SOURCE", "source_ref 必须是字符串。", "/source_ref");
   const allowed = new Set(["receipt_type", "schema_version", "request_id", "instance_id", "generation", "status", "terminal", "phase_id", "degradation_refs", "diagnostics", "source_ref"]);
   for (const key of Object.keys(receipt)) if (!allowed.has(key)) add("UNKNOWN_INTENT_RECEIPT_FIELD", `IntentReceipt@1 不允许字段 ${key}。`, `/${key}`);
-  return gseosReceipt(diagnostics);
+  return codaReceipt(diagnostics);
 }
 
 export function createIntentProtocolState() {
@@ -69,15 +69,15 @@ export function applyIntentProtocolRequest(state, request) {
     diagnostics: diagnostics.map((item) => ({ code: item.code })),
     ...(request?.skill_ref ? { source_ref: request.skill_ref } : {}),
   });
-  if (invalidState) return { state: baseState, receipt: receipt("rejected", true, [gseosDiagnostic("INVALID_INTENT_PROTOCOL_STATE", "IntentProtocolState@1 状态容器无效。")]) };
+  if (invalidState) return { state: baseState, receipt: receipt("rejected", true, [codaDiagnostic("INVALID_INTENT_PROTOCOL_STATE", "IntentProtocolState@1 状态容器无效。")]) };
   const validation = validateIntentProtocolRequest(request);
   if (!validation.ok) return { state: baseState, receipt: receipt("rejected", true, validation.diagnostics) };
-  if (Object.hasOwn(baseState.request_ids, request.request_id)) return { state: baseState, receipt: receipt("stale", true, [gseosDiagnostic("INTENT_REQUEST_REPLAY", "request_id 已处理；重放请求不改变实例状态。")]) };
+  if (Object.hasOwn(baseState.request_ids, request.request_id)) return { state: baseState, receipt: receipt("stale", true, [codaDiagnostic("INTENT_REQUEST_REPLAY", "request_id 已处理；重放请求不改变实例状态。")]) };
 
   const instance = baseState.instances[request.instance_id];
   const reject = (code, status = "rejected") => {
     baseState.request_ids[request.request_id] = { instance_id: request.instance_id, generation: request.generation };
-    return { state: baseState, receipt: receipt(status, true, [gseosDiagnostic(code, "IntentProtocol 请求与实例当前状态不兼容。")]) };
+    return { state: baseState, receipt: receipt(status, true, [codaDiagnostic(code, "IntentProtocol 请求与实例当前状态不兼容。")]) };
   };
   const active = instance && !instance.terminal;
   if (request.operation === "invoke") {
@@ -118,7 +118,7 @@ export function applyIntentProtocolRequest(state, request) {
 export function settleIntentProtocolInstance(state, { request_id, instance_id, generation, status } = {}) {
   const validState = state?.state_type === "IntentProtocolState" && state.schema_version === 1 && state.instances && typeof state.instances === "object" && state.request_ids && typeof state.request_ids === "object";
   const nextState = validState ? structuredClone(state) : createIntentProtocolState();
-  const diagnostic = (code) => [gseosDiagnostic(code, "终态 receipt 与当前实例 generation 或终态不兼容。")];
+  const diagnostic = (code) => [codaDiagnostic(code, "终态 receipt 与当前实例 generation 或终态不兼容。")];
   const makeReceipt = (receiptStatus, codes = []) => ({
     receipt_type: "IntentReceipt", schema_version: 1, request_id: request_id ?? "invalid", instance_id: instance_id ?? "invalid",
     generation: Number.isInteger(generation) && generation >= 0 ? generation : 0, status: receiptStatus, terminal: true,

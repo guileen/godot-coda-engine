@@ -1,4 +1,4 @@
-import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
+import { codaDiagnostic, codaReceipt } from "./diagnostics.js";
 
 function literal(value) {
   return value && typeof value === "object" && value.kind === "literal" ? value.value : value;
@@ -31,9 +31,9 @@ function replaceCapabilityBindings(value, from, to) {
  */
 export function lowerMotionIntentToBackend(instruction, backend) {
   const diagnostics = [];
-  if (instruction?.opcode !== "MotionIntent") diagnostics.push(gseosDiagnostic("INVALID_MOTION_INTENT_PLAN", "backend lowering 只接受 MotionIntent 计划指令。"));
-  if (!["game", "robot"].includes(backend)) diagnostics.push(gseosDiagnostic("UNKNOWN_INTENT_BACKEND", "intent backend 必须是 game 或 robot。", { target_id: backend }));
-  if (diagnostics.length) return { envelope: null, receipt: gseosReceipt(diagnostics) };
+  if (instruction?.opcode !== "MotionIntent") diagnostics.push(codaDiagnostic("INVALID_MOTION_INTENT_PLAN", "backend lowering 只接受 MotionIntent 计划指令。"));
+  if (!["game", "robot"].includes(backend)) diagnostics.push(codaDiagnostic("UNKNOWN_INTENT_BACKEND", "intent backend 必须是 game 或 robot。", { target_id: backend }));
+  if (diagnostics.length) return { envelope: null, receipt: codaReceipt(diagnostics) };
 
   const args = motionArgs(instruction);
   const common = {
@@ -68,7 +68,7 @@ export function lowerMotionIntentToBackend(instruction, backend) {
         adapter_command: "robot.motion.request@1",
         motor_write: "adapter_owned_only",
       };
-  return { envelope, receipt: gseosReceipt() };
+  return { envelope, receipt: codaReceipt() };
 }
 
 /**
@@ -78,20 +78,20 @@ export function lowerMotionIntentToBackend(instruction, backend) {
 export function lowerMotionIntentForProfile(instruction, profile) {
   const diagnostics = [];
   if (profile?.profile_type !== "IntentBackendProfile" || profile?.schema_version !== 1 || typeof profile?.profile_id !== "string" || !profile.profile_id) {
-    diagnostics.push(gseosDiagnostic("INVALID_INTENT_BACKEND_PROFILE", "目标必须是完整的 IntentBackendProfile@1。"));
+    diagnostics.push(codaDiagnostic("INVALID_INTENT_BACKEND_PROFILE", "目标必须是完整的 IntentBackendProfile@1。"));
   }
   if (!Array.isArray(profile?.capabilities) || profile.capabilities.some((item) => typeof item !== "string" || !/^[-\w.]+@\d+$/u.test(item)) || new Set(profile.capabilities).size !== (profile.capabilities ?? []).length) {
-    diagnostics.push(gseosDiagnostic("INVALID_INTENT_BACKEND_PROFILE", "Profile capabilities 必须是无重复的能力 ID 数组。"));
+    diagnostics.push(codaDiagnostic("INVALID_INTENT_BACKEND_PROFILE", "Profile capabilities 必须是无重复的能力 ID 数组。"));
   }
   const lowered = lowerMotionIntentToBackend(instruction, profile?.backend);
   diagnostics.push(...lowered.receipt.diagnostics);
-  if (diagnostics.length) return { envelope: null, receipt: gseosReceipt(diagnostics) };
+  if (diagnostics.length) return { envelope: null, receipt: codaReceipt(diagnostics) };
 
   const available = new Set(profile.capabilities);
   const required = requiredBackendCapabilities(instruction, profile.backend);
   const fallbackMap = profile.capability_fallbacks ?? {};
   if (!fallbackMap || typeof fallbackMap !== "object" || Array.isArray(fallbackMap) || Object.entries(fallbackMap).some(([from, to]) => !/^[-\w.]+@\d+$/u.test(from) || typeof to !== "string" || !/^[-\w.]+@\d+$/u.test(to))) {
-    return { envelope: null, receipt: gseosReceipt([gseosDiagnostic("INVALID_INTENT_BACKEND_PROFILE", "capability_fallbacks 必须是能力到能力的显式映射。")]) };
+    return { envelope: null, receipt: codaReceipt([codaDiagnostic("INVALID_INTENT_BACKEND_PROFILE", "capability_fallbacks 必须是能力到能力的显式映射。")]) };
   }
   let envelope = lowered.envelope;
   const resolved = [];
@@ -112,10 +112,10 @@ export function lowerMotionIntentForProfile(instruction, profile) {
   if (missing.length) {
     return {
       envelope: null,
-      receipt: gseosReceipt([gseosDiagnostic("INTENT_BACKEND_CAPABILITY_UNSUPPORTED", "目标 Profile 缺少意图所需能力，且没有可用的显式 fallback。", { target_id: profile.profile_id, missing_capabilities: missing })]),
+      receipt: codaReceipt([codaDiagnostic("INTENT_BACKEND_CAPABILITY_UNSUPPORTED", "目标 Profile 缺少意图所需能力，且没有可用的显式 fallback。", { target_id: profile.profile_id, missing_capabilities: missing })]),
     };
   }
   envelope.target_profile = profile.profile_id;
   envelope.capability_resolution = resolved;
-  return { envelope, receipt: gseosReceipt() };
+  return { envelope, receipt: codaReceipt() };
 }
