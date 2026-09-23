@@ -392,8 +392,11 @@ func _transaction_artifacts_exist(asset_path: String) -> bool:
 	return false
 
 func _test_crash_at(point: String) -> void:
-	if not OS.is_debug_build() or not OS.get_cmdline_user_args().has("--enable-authoring-crash-injection") or OS.get_environment("GSEOS_TEST_CRASH_AT") != point: return
-	var marker_path := OS.get_environment("GSEOS_TEST_CRASH_MARKER")
+	var crash_point := OS.get_environment("CODA_TEST_CRASH_AT")
+	if crash_point.is_empty(): crash_point = OS.get_environment("GSEOS_TEST_CRASH_AT")
+	if not OS.is_debug_build() or not OS.get_cmdline_user_args().has("--enable-authoring-crash-injection") or crash_point != point: return
+	var marker_path := OS.get_environment("CODA_TEST_CRASH_MARKER")
+	if marker_path.is_empty(): marker_path = OS.get_environment("GSEOS_TEST_CRASH_MARKER")
 	if marker_path.is_empty(): return
 	var marker := FileAccess.open(marker_path, FileAccess.WRITE)
 	if marker == null: return
