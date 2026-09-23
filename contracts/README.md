@@ -1,4 +1,8 @@
-# GSEOS contracts / GSEOS 共享契约
+# CODA contracts / CODA 共享契约
+
+The `gseos/` path and `GSEOS*` schema identifiers are retained as compatibility names for existing projects. New product-facing material should use CODA.
+
+`gseos/` 路径和 `GSEOS*` schema 标识暂时作为既有项目的兼容名称保留。新的产品文案统一使用 CODA。
 
 This directory is the versioned boundary consumed by the Node local core and the Godot plugin. `contracts/gseos/event-asset.schema.json` defines `EventAsset@1`; `contracts/gseos/capabilities.json` defines the initial capability/topic ABI. Incompatible changes must add an explicit version and migration function.
 

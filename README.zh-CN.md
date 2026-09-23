@@ -58,7 +58,7 @@ npm run coda -- text-generate examples/reward-claim.coda
 godot --editor --path .
 ```
 
-从修改 [`examples/reward-claim.coda`](examples/reward-claim.coda) 里的奖励流程开始，再运行一次 `text-check`。生成文件位于 `.gseos/generated/`；它们是输出，不应手动修改。
+从修改 [`examples/reward-claim.coda`](examples/reward-claim.coda) 里的奖励流程开始，再运行一次 `text-check`。生成文件位于隐藏的 `.gseos/generated/` 兼容目录；它们是输出，不应手动修改。
 
 想先直接看效果时，按上面的“不看代码，直接体验”步骤即可。
 

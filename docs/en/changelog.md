@@ -8,5 +8,5 @@
 
 ## 0.1.0 — implementation baseline
 
-- Delivered the GSEOS E0 structured-event pipeline, runtime boundary, Godot editor surface, reward fixture, deterministic tests, headless integration, and runtime export audit.
+- Delivered the first CODA E0 structured-event pipeline (then branded GSEOS), runtime boundary, Godot editor surface, reward fixture, deterministic tests, headless integration, and runtime export audit.
 - This entry records the implementation baseline; it is not a license grant or a public release announcement.
