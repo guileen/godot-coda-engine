@@ -38,7 +38,7 @@ This produces a generated GDScript runner and a JSON source map under `.gseos/ge
 godot --editor --path .
 ```
 
-Enable the `CODA Event Editor` plugin if it is not already enabled. The event dock reads assets from `gseos/events/` and rebuilds its preview from the structured asset.
+Enable the `CODA Event Editor` plugin if it is not already enabled. The “CODA Events” dock reads flows from `gseos/events/` and has separate “Flow” and “Step settings” pages. Select a step to review or edit it; adding a draft step opens its settings page automatically, where you can fill the fields and confirm it.
 
 ## 5. Run the checks
 

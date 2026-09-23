@@ -38,7 +38,7 @@ npm run coda -- generate gseos/events/ui.reward.apply.gse.json
 godot --editor --path .
 ```
 
-如果尚未启用，请启用 `CODA Event Editor` 插件。事件面板从 `gseos/events/` 读取资产，并从结构化资产重新构建预览。
+如果尚未启用，请启用 `CODA Event Editor` 插件。右侧的“CODA 事件”面板从 `gseos/events/` 读取流程。面板分为“流程”和“步骤设置”两页：先在“流程”中选择一条步骤，再在“步骤设置”中查看或修改；新增草稿步骤后也会自动切到设置页，按提示填完后确认。
 
 ## 5. 运行校验
 

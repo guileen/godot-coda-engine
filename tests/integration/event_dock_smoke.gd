@@ -27,6 +27,10 @@ func _start() -> void:
 	var dock = DOCK.new()
 	root.add_child(dock)
 	await process_frame
+	if dock._toolbar.get_child_count() != 2:
+		failures.append("Event Dock primary toolbar is still crowded with more than two actions")
+	if dock._editor_tabs.get_tab_title(0) != "流程" or dock._editor_tabs.get_tab_title(1) != "步骤设置":
+		failures.append("Event Dock narrow layout did not separate the flow and step settings pages")
 	if dock._event_list.item_count < 1:
 		failures.append("Event Dock did not discover the reward EventAsset")
 	var reward_index: int = dock._asset_paths.find("res://gseos/events/ui.reward.apply.gse.json")
@@ -40,6 +44,10 @@ func _start() -> void:
 	dock._on_event_selected(reward_index)
 	if dock._tree.get_root() == null or dock._tree.get_root().get_child_count() < 1:
 		failures.append("Event Dock did not rebuild the asset tree")
+	dock._tree.get_root().get_first_child().select(0)
+	dock._on_tree_selected()
+	if dock._editor_tabs.current_tab != 1:
+		failures.append("Selecting a flow step did not open its settings page")
 	dock._command_search.text = "条件"
 	dock._refresh_command_options()
 	if dock._command_select.item_count != 2 or String(dock._command_select.get_item_metadata(1)) != "if":
@@ -104,6 +112,8 @@ func _start() -> void:
 		dock._insert_draft_node()
 		if dock._draft_asset.root.size() != 1 or not dock._draft_asset.root[0].get("draft", false):
 			failures.append("Event Dock did not create an in-memory draft node")
+		if dock._editor_tabs.current_tab != 1:
+			failures.append("New draft step did not open its settings page")
 		if not dock._selected_asset.root.is_empty():
 			failures.append("draft insertion changed the committed asset")
 		var invalid_slot := dock._append_to_slot(dock._selected_asset.duplicate(true), {"parent_id": "missing", "slot": "then"}, {"node_id": "bad", "command_id": "let"})

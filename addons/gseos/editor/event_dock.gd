@@ -6,6 +6,8 @@ var _undo_redo: EditorUndoRedoManager
 var _store := GSEOS_AssetStore.new()
 var _event_list := ItemList.new()
 var _tree := Tree.new()
+var _toolbar := HBoxContainer.new()
+var _editor_tabs := TabContainer.new()
 var _status := Label.new()
 var _name_edit := LineEdit.new()
 var _slot_select := OptionButton.new()
@@ -65,7 +67,7 @@ const MORE_ACTIONS := {
 	"migrate": 4, "new_embodied": 5, "delete": 6, "duplicate": 7,
 	"move_up": 8, "move_down": 9, "undo": 10, "redo": 11,
 	"commit_projection": 12, "cancel_projection": 13, "source_map": 14,
-	"inspect_generated": 15, "diagnostics": 16,
+	"inspect_generated": 15, "diagnostics": 16, "refresh": 17,
 }
 const CONDITION_OPERATORS := ["==", "!=", ">", ">=", "<", "<="]
 
@@ -79,15 +81,13 @@ func _ready() -> void:
 	title.text = "CODA 事件"
 	title.add_theme_font_size_override("font_size", 16)
 	add_child(title)
-	var toolbar := HBoxContainer.new()
-	toolbar.add_child(_button("新建事件", _new_event))
-	toolbar.add_child(_button("刷新", _reload))
+	_toolbar.add_child(_button("新建事件", _new_event))
 	var more_button := MenuButton.new()
 	more_button.text = "更多操作"
 	more_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_build_more_menu(more_button.get_popup())
-	toolbar.add_child(more_button)
-	add_child(toolbar)
+	_toolbar.add_child(more_button)
+	add_child(_toolbar)
 	var name_row := HBoxContainer.new()
 	var name_label := Label.new()
 	name_label.text = "流程名称"
@@ -122,18 +122,31 @@ func _ready() -> void:
 	_event_list.item_selected.connect(_on_event_selected)
 	add_child(_event_list)
 	_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_tree.custom_minimum_size.x = 280
 	_tree.item_selected.connect(_on_tree_selected)
-	var content := HSplitContainer.new()
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(_tree)
-	_inspector.custom_minimum_size.x = 320
+	_tree.custom_minimum_size.y = 220
+	var flow_page := VBoxContainer.new()
+	var flow_hint := Label.new()
+	flow_hint.text = "选择一个步骤查看或修改；分支会显示在步骤下方。"
+	flow_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	flow_page.add_child(flow_hint)
+	_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	flow_page.add_child(_tree)
+	var edit_page := ScrollContainer.new()
+	edit_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_inspector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inspector.custom_minimum_size.x = 0
 	_inspector_title.text = "节点检查器"
 	_inspector.add_child(_inspector_title)
 	_inspector_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspector.add_child(_inspector_hint)
-	content.add_child(_inspector)
-	add_child(content)
+	edit_page.add_child(_inspector)
+	_editor_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_editor_tabs.add_child(flow_page)
+	_editor_tabs.set_tab_title(0, "流程")
+	_editor_tabs.add_child(edit_page)
+	_editor_tabs.set_tab_title(1, "步骤设置")
+	_editor_tabs.current_tab = 0
+	add_child(_editor_tabs)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_status)
 	_build_text_import_panel()
@@ -152,6 +165,8 @@ func _labeled_control(label_text: String, control: Control) -> HBoxContainer:
 	return row
 
 func _build_more_menu(menu: PopupMenu) -> void:
+	menu.add_item("刷新流程列表", MORE_ACTIONS.refresh)
+	menu.add_separator()
 	menu.add_item("重载所选流程", MORE_ACTIONS.reload_external)
 	menu.add_item("导入流程文本…", MORE_ACTIONS.text_import)
 	menu.add_item("恢复中断的保存", MORE_ACTIONS.recover_transaction)
@@ -176,7 +191,8 @@ func _build_more_menu(menu: PopupMenu) -> void:
 	menu.id_pressed.connect(_on_more_action)
 
 func _on_more_action(action_id: int) -> void:
-	if action_id == MORE_ACTIONS.reload_external: _reload_selected_from_disk()
+	if action_id == MORE_ACTIONS.refresh: _reload()
+	elif action_id == MORE_ACTIONS.reload_external: _reload_selected_from_disk()
 	elif action_id == MORE_ACTIONS.recover_transaction: _recover_selected_transaction()
 	elif action_id == MORE_ACTIONS.text_import: _open_text_import()
 	elif action_id == MORE_ACTIONS.migrate: _migrate_selected_to_text_owned()
@@ -230,6 +246,7 @@ func _on_event_selected(index: int) -> void:
 	if index < 0 or index >= _asset_paths.size():
 		return
 	_selected_path = _asset_paths[index]
+	_editor_tabs.current_tab = 0
 	var loaded := _store.load_asset(_selected_path)
 	if not loaded.receipt.ok:
 		_selected_asset = {}
@@ -339,6 +356,7 @@ func _on_tree_selected() -> void:
 	var selected := _find_node((_draft_asset if not _draft_asset.is_empty() else _selected_asset).get("root", []), _selected_node_id)
 	var label := String(COMMAND_DEFINITIONS.get(String(selected.get("command_id", "")), {}).get("label", "步骤"))
 	_status.text = "已选中：%s" % label
+	_editor_tabs.current_tab = 1
 	_render_inspector()
 	_refresh_slot_options()
 
@@ -1219,7 +1237,8 @@ func _insert_draft_node() -> void:
 	_draft_node_id = node_id
 	_selected_node_id = node_id
 	_rebuild_tree()
-	_status.text = "新步骤已加入草稿；请按右侧说明补全，再确认这一步。流程尚未保存。"
+	_editor_tabs.current_tab = 1
+	_status.text = "新步骤已加入草稿；请在“步骤设置”页按说明补全，再确认这一步。流程尚未保存。"
 
 func _confirm_draft() -> void:
 	if _draft_asset.is_empty() or _draft_node_id.is_empty():
