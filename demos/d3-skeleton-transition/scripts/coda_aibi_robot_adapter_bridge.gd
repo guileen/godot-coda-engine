@@ -21,6 +21,7 @@ var _generation := -1
 var _plan_id := ""
 var _active_duration_ms := 0.0
 var _elapsed_ms := 0.0
+var _phase_segments: Array[Dictionary] = []
 var _was_executing := false
 var _head_bone := -1
 
@@ -56,6 +57,7 @@ func submit_transition_plan(plan: Dictionary, generation: int, tick_hz := 60.0) 
 	if segments.is_empty():
 		return _reject("empty_transition_plan")
 	var points: Array[Dictionary] = []
+	var phase_segments: Array[Dictionary] = []
 	var elapsed_ticks := 0
 	var previous_end: Dictionary = {}
 	for index in range(segments.size()):
@@ -79,9 +81,15 @@ func submit_transition_plan(plan: Dictionary, generation: int, tick_hz := 60.0) 
 			if speed > speed_limit + 0.001:
 				return _reject("joint_speed_limit:%s" % name)
 		elapsed_ticks += duration_ticks
+		var end_ms := float(elapsed_ticks) * 1000.0 / tick_hz
 		points.append({
-			"t_ms": float(elapsed_ticks) * 1000.0 / tick_hz,
+			"t_ms": end_ms,
 			"joints": finish.duplicate(true),
+		})
+		phase_segments.append({
+			"phase_id": String(segment.get("segment_id", "segment.%d" % index)),
+			"start_ms": end_ms - float(duration_ticks) * 1000.0 / tick_hz,
+			"end_ms": end_ms,
 		})
 		previous_end = finish
 	var result: Dictionary = backend.submit_trajectory(points)
@@ -89,6 +97,7 @@ func submit_transition_plan(plan: Dictionary, generation: int, tick_hz := 60.0) 
 		return _reject("aibi_trajectory_rejected:%s" % String(result.get("error", "unknown")))
 	_generation = generation
 	_plan_id = String(plan.get("plan_id", ""))
+	_phase_segments = phase_segments
 	_active_duration_ms = float(points.back().t_ms)
 	_elapsed_ms = 0.0
 	_was_executing = true
@@ -125,6 +134,7 @@ func interrupt_to(joint_targets: Dictionary, generation: int, transition_ms := 2
 		return _reject("aibi_interrupt_rejected:%s" % String(result.get("error", "unknown")))
 	_generation = generation
 	_plan_id = "recovery.safe_neutral"
+	_phase_segments = [{"phase_id": "safety.recovery", "start_ms": 0.0, "end_ms": duration}]
 	_active_duration_ms = duration
 	_elapsed_ms = 0.0
 	_was_executing = true
@@ -148,6 +158,24 @@ func progress() -> float:
 	if is_executing():
 		return clampf(_elapsed_ms / maxf(1.0, _active_duration_ms), 0.0, 1.0)
 	return 1.0
+
+func phase_snapshot() -> Dictionary:
+	if _phase_segments.is_empty():
+		return {"state": "idle", "phase_id": "idle", "segment_index": 0, "segment_count": 0, "segment_progress": 0.0, "overall_progress": 1.0}
+	var at_ms := clampf(_elapsed_ms, 0.0, _active_duration_ms)
+	for index in range(_phase_segments.size()):
+		var segment: Dictionary = _phase_segments[index]
+		if at_ms <= float(segment.end_ms) or index == _phase_segments.size() - 1:
+			var duration_ms := maxf(1.0, float(segment.end_ms) - float(segment.start_ms))
+			return {
+				"state": "executing" if _was_executing else "completed",
+				"phase_id": segment.phase_id,
+				"segment_index": index + 1,
+				"segment_count": _phase_segments.size(),
+				"segment_progress": clampf((at_ms - float(segment.start_ms)) / duration_ms, 0.0, 1.0),
+				"overall_progress": progress(),
+			}
+	return {"state": "completed", "phase_id": _phase_segments.back().phase_id, "segment_index": _phase_segments.size(), "segment_count": _phase_segments.size(), "segment_progress": 1.0, "overall_progress": 1.0}
 
 func can_start_plan(plan: Dictionary) -> bool:
 	var segments: Array = plan.get("segments", [])
@@ -177,6 +205,7 @@ func reset() -> void:
 	_plan_id = ""
 	_active_duration_ms = 0.0
 	_elapsed_ms = 0.0
+	_phase_segments.clear()
 	_was_executing = false
 	_sync_from_backend()
 

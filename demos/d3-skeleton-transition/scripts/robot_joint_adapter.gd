@@ -11,6 +11,7 @@ var joints: Dictionary = {}
 var current: Dictionary = {}
 var _trajectory: Array[Dictionary] = []
 var _trajectory_time_ms := 0.0
+var _phase_segments: Array[Dictionary] = []
 var _generation := -1
 var _last_plan_id := ""
 
@@ -33,6 +34,7 @@ func submit_transition_plan(plan: Dictionary, generation: int, tick_hz := 60.0) 
 	if not _pose_matches(segments[0].get("start", {})):
 		return _reject("plan_start_state_mismatch")
 	var points: Array[Dictionary] = []
+	var phase_segments: Array[Dictionary] = []
 	var elapsed_ticks := 0
 	var previous_end: Dictionary = {}
 	for index in range(segments.size()):
@@ -53,7 +55,13 @@ func submit_transition_plan(plan: Dictionary, generation: int, tick_hz := 60.0) 
 			if speed > max_speed + 0.001:
 				return _reject("joint_speed_limit:%s" % joint_id)
 		elapsed_ticks += duration_ticks
-		points.append({"t_ms": float(elapsed_ticks) * 1000.0 / tick_hz, "joints": finish.duplicate(true)})
+		var end_ms := float(elapsed_ticks) * 1000.0 / tick_hz
+		points.append({"t_ms": end_ms, "joints": finish.duplicate(true)})
+		phase_segments.append({
+			"phase_id": String(segment.get("segment_id", "segment.%d" % index)),
+			"start_ms": end_ms - float(duration_ticks) * 1000.0 / tick_hz,
+			"end_ms": end_ms,
+		})
 		previous_end = finish
 	for point in points:
 		for joint_name in point.joints:
@@ -64,6 +72,7 @@ func submit_transition_plan(plan: Dictionary, generation: int, tick_hz := 60.0) 
 			if value < float(bounds.min_deg) or value > float(bounds.max_deg):
 				return _reject("joint_limit:%s" % String(joint_name))
 	_trajectory = points
+	_phase_segments = phase_segments
 	_trajectory_time_ms = 0.0
 	_generation = generation
 	_last_plan_id = String(plan.get("plan_id", ""))
@@ -96,6 +105,7 @@ func interrupt_to(joint_targets: Dictionary, generation: int, transition_ms := 2
 		{"t_ms": 0.0, "joints": start_pose},
 		{"t_ms": transition_duration, "joints": safe_targets},
 	]
+	_phase_segments = [{"phase_id": "safety.recovery", "start_ms": 0.0, "end_ms": transition_duration}]
 	_trajectory_time_ms = 0.0
 	_generation = generation
 	_last_plan_id = "recovery.safe_neutral"
@@ -126,6 +136,24 @@ func progress() -> float:
 		return 1.0
 	return clampf(_trajectory_time_ms / maxf(1.0, float(_trajectory.back().t_ms)), 0.0, 1.0)
 
+func phase_snapshot() -> Dictionary:
+	if _phase_segments.is_empty():
+		return {"state": "idle", "phase_id": "idle", "segment_index": 0, "segment_count": 0, "segment_progress": 0.0, "overall_progress": 1.0}
+	var at_ms := clampf(_trajectory_time_ms, 0.0, float(_trajectory.back().t_ms) if not _trajectory.is_empty() else _phase_segments.back().end_ms)
+	for index in range(_phase_segments.size()):
+		var segment: Dictionary = _phase_segments[index]
+		if at_ms <= float(segment.end_ms) or index == _phase_segments.size() - 1:
+			var duration_ms := maxf(1.0, float(segment.end_ms) - float(segment.start_ms))
+			return {
+				"state": "executing" if is_executing() else "completed",
+				"phase_id": segment.phase_id,
+				"segment_index": index + 1,
+				"segment_count": _phase_segments.size(),
+				"segment_progress": clampf((at_ms - float(segment.start_ms)) / duration_ms, 0.0, 1.0),
+				"overall_progress": progress(),
+			}
+	return {"state": "completed", "phase_id": _phase_segments.back().phase_id, "segment_index": _phase_segments.size(), "segment_count": _phase_segments.size(), "segment_progress": 1.0, "overall_progress": 1.0}
+
 func generation() -> int:
 	return _generation
 
@@ -148,6 +176,7 @@ func set_pose(generation: int, pose: Dictionary) -> bool:
 func reset() -> void:
 	_trajectory.clear()
 	_trajectory_time_ms = 0.0
+	_phase_segments.clear()
 	_generation = -1
 	_last_plan_id = ""
 	for joint_name in current.keys():

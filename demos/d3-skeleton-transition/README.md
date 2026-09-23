@@ -23,7 +23,7 @@ CODA_AIBI_ROBOT_JOINT_ADAPTER="/本机/aibi/godot/scripts/robot_joint_adapter.gd
 
 桥接层先检查计划、起始姿态、关节限位、速度与 generation，再调用 AIBI 的 `submit_trajectory` / `interrupt_to`；它补上 CODA 的 generation/回执边界，并把 AIBI 适配器当前关节值投影到 GDBot Skeleton3D。没有设置该路径时，仍运行内置参考 Adapter。此接线只验证本机 AIBI Godot Adapter API 与 GDBot 仿真，不触发真实执行器。
 
-`A` 播放 CODA 的攻击收势计划，`D` 播放高位防御计划；更高优先级请求会先撤销旧 generation 并从当前关节状态回到安全中立位，再提交新计划。`I` 只做安全收敛，`R` 重置仿真。左侧面板显示来源 EventAsset、计划 ID、Adapter 回执和 generation。
+`A` 播放 CODA 的攻击收势计划，`D` 播放高位防御计划；更高优先级请求会先撤销旧 generation 并从当前关节状态回到安全中立位，再提交新计划。`I` 只做安全收敛，`R` 重置仿真。进度条下方会显示计划当前阶段（例如“转入目标姿态”“回到中立姿态”）及该阶段进度；左侧记录区显示来源 EventAsset、计划 ID、Adapter 回执和 generation。
 
 无窗口 smoke test：
 

@@ -19,6 +19,7 @@ var status_label: Label
 var trace_label: Label
 var gate_label: Label
 var timeline: ProgressBar
+var phase_label: Label
 var attack_button: Button
 var guard_button: Button
 var interrupt_button: Button
@@ -62,6 +63,8 @@ func _process(delta: float) -> void:
 	_sync_demo_controls()
 	if timeline != null:
 		timeline.value = robot_adapter.progress() * 100.0
+	if phase_label != null:
+		phase_label.text = _format_motion_phase(robot_adapter.phase_snapshot())
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -425,14 +428,20 @@ func _build_overlay() -> void:
 	timeline.size = Vector2(390.0, 22.0)
 	timeline.show_percentage = false
 	panel.add_child(timeline)
+	phase_label = Label.new()
+	phase_label.position = Vector2(20.0, 534.0)
+	phase_label.size = Vector2(390.0, 24.0)
+	phase_label.add_theme_font_size_override("font_size", 13)
+	phase_label.modulate = Color("c3d2e5")
+	panel.add_child(phase_label)
 	var evidence_title := Label.new()
-	evidence_title.position = Vector2(20.0, 536.0)
+	evidence_title.position = Vector2(20.0, 558.0)
 	evidence_title.text = "执行记录与回执（核对用）"
 	evidence_title.add_theme_color_override("font_color", Color("9fb6d4"))
 	panel.add_child(evidence_title)
 	trace_label = Label.new()
-	trace_label.position = Vector2(20.0, 560.0)
-	trace_label.size = Vector2(390.0, 128.0)
+	trace_label.position = Vector2(20.0, 582.0)
+	trace_label.size = Vector2(390.0, 106.0)
 	trace_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	trace_label.add_theme_font_size_override("font_size", 12)
 	panel.add_child(trace_label)
@@ -489,6 +498,26 @@ func _update_panel(color_name: String, phase: String) -> void:
 	}
 	status_label.text = "%s\n当前动作：%s" % [phase_text, intent_labels.get(current_intent, current_intent)]
 	trace_label.text = "generation=%d · owner=%s\nDecisionRecord\n" % [transition_generation, lease_owner] + "\n".join(decision_entries.slice(maxi(0, decision_entries.size() - 3), decision_entries.size())) + "\nMotionAdapter · barrier=%s start=%s terminal=%s" % [adapter_receipt.get("barrier", "pending"), adapter_receipt.get("start", "pending"), adapter_receipt.get("terminal", "pending")] + "\nExpressionAdapter · face=%s terminal=%s gen=%s" % [expression_receipt.get("expression", "default"), expression_receipt.get("terminal", "pending"), expression_receipt.get("generation", 0)] + "\nRuntimeObservation\n" + "\n".join(observation_entries.slice(maxi(0, observation_entries.size() - 2), observation_entries.size()))
+	if phase_label != null and robot_adapter != null:
+		phase_label.text = _format_motion_phase(robot_adapter.phase_snapshot())
+
+func _format_motion_phase(snapshot: Dictionary) -> String:
+	var phase_names := {
+		"robot.attack.recover.approach": "攻击后收势 · 转入目标姿态",
+		"robot.attack.recover.return": "攻击后收势 · 回到中立姿态",
+		"robot.high.guard.approach": "高位防御 · 抬起头部防守",
+		"robot.high.guard.return": "高位防御 · 回到中立姿态",
+		"safety.recovery": "中断恢复 · 回到安全中立姿态",
+	}
+	var phase_id := String(snapshot.get("phase_id", "idle"))
+	var phase_name := String(phase_names.get(phase_id, "等待动作" if phase_id == "idle" else phase_id))
+	var count := int(snapshot.get("segment_count", 0))
+	if count <= 0:
+		return "动作步骤：%s" % phase_name
+	var index := int(snapshot.get("segment_index", 0))
+	var percent := roundi(float(snapshot.get("segment_progress", 0.0)) * 100.0)
+	var state := "进行中" if String(snapshot.get("state", "idle")) == "executing" else "已完成"
+	return "动作步骤 %d/%d：%s · %s %d%%" % [index, count, phase_name, state, percent]
 
 func _record_decision(kind: String, text: String) -> void:
 	decision_entries.append("[%s] %s" % [kind, text])
