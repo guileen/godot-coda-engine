@@ -2,7 +2,7 @@
   "report_type": "CODA_LauncherVisualDiagnostic",
   "schema_version": 1,
   "status": "PASS_DOM_INTERACTION_AND_THREE_VIEWPORT_CAPTURE; VISUAL_REFERENCE_COMPARISON_PENDING",
-  "source_revision": "working tree based on 801303d; pre-commit",
+  "source_revision": "working tree based on 0f60d5b; pre-commit",
   "source_fingerprints": [
     {
       "file": "demos/launcher/index.html",
@@ -10,7 +10,7 @@
     },
     {
       "file": "demos/launcher/demo-data.js",
-      "sha256": "aa3100dc182705016aa999bceb809154166fcfe0099e900a29b5fdd4a7bfd86d"
+      "sha256": "0082c7975984101fd3da27df7941e6abba0720d0fb0fb223cc32da6c91e5854a"
     }
   ],
   "source_of_truth": "implementation only; no approved reference supplied",
@@ -20,12 +20,12 @@
   "page_model_artifact": "page_model.json",
   "route": "demos/launcher/index.html",
   "environment": {
-    "browser": "Google Chrome headless via Playwright",
+    "browser": "Chromium via agent-browser",
     "language": "zh-CN",
     "color_scheme": "dark",
     "reduced_motion": "reduce",
     "device_scale_factor": 1,
-    "capture_time": "2026-09-22T23:25:34.197Z",
+    "capture_time": "2026-09-23T07:24:08.443Z",
     "errors": []
   },
   "captures": [

@@ -6,7 +6,7 @@
 
 `OFFLINE_REPORTS_IMPLEMENTED / REPORT_BOUND_LAUNCHER_IMPLEMENTED / D3_RUNTIME_SMOKE_AND_FACE_ADAPTER_PASS / THREE_VIEWPORT_DIAGNOSTICS_CAPTURED / VISUAL_REFERENCE_REGRESSION_PENDING`
 
-本目录目前冻结 Demo 规格和素材边界；它不宣称 C1-T/C1-P 运行时已经实现。实现必须先满足 `tasks.md` 中的 `G-DEMO-A`，并继续服从 `G-C1-T-*`、`G-C1-P-*` 和 P3 现有门禁。
+本目录包含 Demo 规格、素材登记及阶段性实现；D2/D3 已有 Godot runtime smoke，但不宣称 C1-T/C1-P 的完整运行时已经实现。实现必须满足 `tasks.md` 中的 `G-DEMO-A`，并继续服从 `G-C1-T-*`、`G-C1-P-*` 和 P3 现有门禁。
 
 ## Demo 入口
 
@@ -20,6 +20,12 @@
 | D6 | 失败与边界画廊 | [d6 report](../../tests/reports/demos/d6-failure-boundary-gallery.json) | Launcher 从报告绘制 reject/fallback case 与诊断；不是运行时场景 |
 
 ## 运行和查看约定
+
+### D3 交互体验
+
+从 Godot 项目管理器导入 [`demos/d3-skeleton-transition/project.godot`](../../demos/d3-skeleton-transition/project.godot)，打开后按“运行项目”。画面左侧提供“攻击后收势”“高位防御”“中断并回到安全姿态”按钮；可在动作执行时切换高位防御观察优先级抢占，也可点击表情按钮观察 GDBot 面部变化。下方的“模拟外部占用”和“模拟对象失效”用于查看拒绝行为，动作停止后可点“重置演示”恢复初始状态。底部记录区展示计划来源、generation、Adapter barrier 和终态回执，便于核对动作发生了什么。
+
+该演示当前驱动 GDBot 头部骨骼姿态及面部表情，不是全身运动控制器，也不代表真实机器人或硬件安全验证。
 
 每个 Demo 必须提供：
 

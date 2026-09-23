@@ -77,6 +77,7 @@ window.CODA_DEMO_REPORTS = {
     "command": "npm run demo:smoke && godot --headless --path demos/d3-skeleton-transition --script res://tests/d3_skeleton_transition_smoke.gd",
     "checks": [
       "scene loads",
+      "on-screen controls dispatch generated plans, interrupt, expression, failure injection and fixture reset",
       "real GDBot Skeleton3D is present",
       "Head bone is present",
       "attack intent increments generation and acquires lease",
@@ -98,6 +99,16 @@ window.CODA_DEMO_REPORTS = {
     "visual_evidence": [
       "tests/reports/demos/visual/d3-idle.png",
       "tests/reports/demos/visual/d3-interrupted.png"
+    ],
+    "visual_note": "These captures show the GDBot pose and runtime status before the clickable-control layout; recapture and inspect the current panel in the native Godot window before visual acceptance.",
+    "interactive_controls": [
+      "attack_recover: start CODA generated intent",
+      "high_guard: request higher-priority intent",
+      "interrupt: revoke current generation and converge safely",
+      "expression: happy/default/dizzy on the GDBot face adapter",
+      "external_writer: reject the next intent without a new generation",
+      "owner_lost: reject future intent and retain safety convergence",
+      "reset: available only when no transition is active"
     ],
     "fixture_sha256": "684c78f3c50f170508e339c41f3bc8acfaa6a46d67adc2528c2370d6240129fc",
     "visual_sha256": {
@@ -135,7 +146,8 @@ window.CODA_DEMO_REPORTS = {
     },
     "remaining_for_stage_acceptance": [
       "Calibrate C1-T technical thresholds and add full replay/observation correlation; this smoke does not prove naturalness.",
-      "Keep the generated plan step and runtime receipt versioned when the launcher grows a full source-to-plan UI action."
+      "Recapture the D3 window with current on-screen controls and inspect the live action in the native Godot window.",
+      "D3 currently demonstrates head-bone pose and face expression only; full-body control and hardware claims remain out of scope."
     ]
   },
   "D4": {

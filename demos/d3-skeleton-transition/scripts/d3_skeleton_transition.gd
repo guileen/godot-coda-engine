@@ -18,6 +18,12 @@ var status_label: Label
 var trace_label: Label
 var gate_label: Label
 var timeline: ProgressBar
+var attack_button: Button
+var guard_button: Button
+var interrupt_button: Button
+var external_writer_button: Button
+var owner_lost_button: Button
+var reset_button: Button
 var current_intent := "idle"
 var transition_generation := 0
 var lease_owner := "none"
@@ -52,6 +58,7 @@ func _process(delta: float) -> void:
 	if robot_adapter == null:
 		return
 	robot_adapter.tick(delta)
+	_sync_demo_controls()
 	if timeline != null:
 		timeline.value = robot_adapter.progress() * 100.0
 
@@ -187,15 +194,18 @@ func reset_fixture() -> void:
 	_active_priority = -1
 	_pending_plan = {}
 	current_intent = "idle"
+	_sync_demo_controls()
 	_record_decision("RESET", "fixture reset; no stale generation may write")
 
 func set_external_writer_active(active: bool) -> void:
 	external_writer_active = active
+	_sync_demo_controls()
 	if active:
 		_record_observation("ownership", "external writer active; next request must reject")
 
 func owner_lost() -> void:
 	owner_valid = false
+	_sync_demo_controls()
 	transition_generation += 1
 	robot_adapter.interrupt_to(SAFE_NEUTRAL_POSE, transition_generation, 320)
 	adapter_receipt["barrier"] = "owner_lost"
@@ -325,50 +335,147 @@ func _build_overlay() -> void:
 	panel.color = Color(0.025, 0.055, 0.11, 0.93)
 	layer.add_child(panel)
 	var title := Label.new()
-	title.text = "CODA / D3 Skeleton Transition"
+	title.text = "CODA / 具身姿态演示"
 	title.position = Vector2(20.0, 18.0)
 	title.add_theme_font_size_override("font_size", 22)
 	panel.add_child(title)
 	var subtitle := Label.new()
-	subtitle.text = "真实 GDBot 网格 · Skeleton3D · 有界姿态过渡"
+	subtitle.text = "GDBot 骨骼姿态演示 · 点击按钮即可体验"
 	subtitle.position = Vector2(20.0, 54.0)
 	subtitle.modulate = Color("9fb6d4")
 	panel.add_child(subtitle)
 	status_label = Label.new()
-	status_label.position = Vector2(20.0, 102.0)
-	status_label.size = Vector2(390.0, 86.0)
+	status_label.position = Vector2(20.0, 91.0)
+	status_label.size = Vector2(390.0, 64.0)
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.add_theme_font_size_override("font_size", 18)
 	panel.add_child(status_label)
 	gate_label = Label.new()
-	gate_label.position = Vector2(20.0, 204.0)
-	gate_label.size = Vector2(390.0, 156.0)
+	gate_label.position = Vector2(20.0, 164.0)
+	gate_label.size = Vector2(390.0, 108.0)
 	gate_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	gate_label.text = "硬门\n● snapshot valid\n● lease full / generation matched\n● pose limits enforced\n● deadline reserve: 320 ms\n● external writer: CODA-owned"
+	gate_label.text = "执行边界\n✓ 动作来自 CODA 生成的计划\n✓ 中断后旧动作不能继续写姿态\n✓ 其他脚本占用或对象失效时拒绝新动作\n本示例只演示 GDBot 头部骨骼姿态，不是全身或真机控制。"
 	gate_label.modulate = Color("75d6a2")
 	panel.add_child(gate_label)
 	var help := Label.new()
-	help.position = Vector2(20.0, 378.0)
-	help.text = "A  攻击收势    D  高位防御\nH  开心表情    N  默认表情    Z  眩晕表情\nI  抢占并安全收敛\nX  外部 writer 占用\nO  owner 销毁    R  重置 fixture"
-	help.add_theme_font_size_override("font_size", 18)
+	help.position = Vector2(20.0, 278.0)
+	help.size = Vector2(390.0, 32.0)
+	help.text = "先点一个动作观察头部转向；执行中可切换防御或中断。"
+	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	help.modulate = Color("c3d2e5")
 	panel.add_child(help)
+	var action_row := HBoxContainer.new()
+	action_row.position = Vector2(20.0, 314.0)
+	action_row.size = Vector2(390.0, 42.0)
+	action_row.add_theme_constant_override("separation", 8)
+	attack_button = _demo_button("攻击后收势")
+	attack_button.pressed.connect(func(): request_intent("robot.attack_recover@1"))
+	guard_button = _demo_button("高位防御")
+	guard_button.pressed.connect(func(): request_intent("robot.high_guard@1"))
+	action_row.add_child(attack_button)
+	action_row.add_child(guard_button)
+	panel.add_child(action_row)
+	interrupt_button = _demo_button("中断并回到安全姿态")
+	interrupt_button.position = Vector2(20.0, 362.0)
+	interrupt_button.size = Vector2(390.0, 40.0)
+	interrupt_button.pressed.connect(func(): request_intent("interrupt"))
+	panel.add_child(interrupt_button)
+	var expression_row := HBoxContainer.new()
+	expression_row.position = Vector2(20.0, 410.0)
+	expression_row.size = Vector2(390.0, 40.0)
+	expression_row.add_theme_constant_override("separation", 6)
+	var expression_title := Label.new()
+	expression_title.text = "表情"
+	expression_title.custom_minimum_size.x = 42.0
+	expression_row.add_child(expression_title)
+	for expression in [{"label": "开心", "id": "happy"}, {"label": "自然", "id": "default"}, {"label": "眩晕", "id": "dizzy"}]:
+		var expression_button := _demo_button(String(expression.label))
+		expression_button.pressed.connect(func(): request_expression(String(expression.id)))
+		expression_row.add_child(expression_button)
+	panel.add_child(expression_row)
+	var test_row := HBoxContainer.new()
+	test_row.position = Vector2(20.0, 456.0)
+	test_row.size = Vector2(390.0, 40.0)
+	test_row.add_theme_constant_override("separation", 6)
+	external_writer_button = _demo_button("模拟外部占用")
+	external_writer_button.pressed.connect(func(): set_external_writer_active(not external_writer_active))
+	owner_lost_button = _demo_button("模拟对象失效")
+	owner_lost_button.pressed.connect(owner_lost)
+	reset_button = _demo_button("重置演示")
+	reset_button.pressed.connect(_reset_demo)
+	test_row.add_child(external_writer_button)
+	test_row.add_child(owner_lost_button)
+	test_row.add_child(reset_button)
+	panel.add_child(test_row)
 	timeline = ProgressBar.new()
-	timeline.position = Vector2(20.0, 488.0)
+	timeline.position = Vector2(20.0, 508.0)
 	timeline.size = Vector2(390.0, 22.0)
 	timeline.show_percentage = false
 	panel.add_child(timeline)
+	var evidence_title := Label.new()
+	evidence_title.position = Vector2(20.0, 536.0)
+	evidence_title.text = "执行记录与回执（核对用）"
+	evidence_title.add_theme_color_override("font_color", Color("9fb6d4"))
+	panel.add_child(evidence_title)
 	trace_label = Label.new()
-	trace_label.position = Vector2(20.0, 536.0)
-	trace_label.size = Vector2(390.0, 150.0)
+	trace_label.position = Vector2(20.0, 560.0)
+	trace_label.size = Vector2(390.0, 128.0)
 	trace_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	trace_label.add_theme_font_size_override("font_size", 14)
+	trace_label.add_theme_font_size_override("font_size", 12)
 	panel.add_child(trace_label)
+	_sync_demo_controls()
+
+func _demo_button(label: String) -> Button:
+	var button := Button.new()
+	button.text = label
+	button.custom_minimum_size.y = 38.0
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return button
+
+func _sync_demo_controls() -> void:
+	if external_writer_button != null:
+		external_writer_button.text = "释放外部占用" if external_writer_active else "模拟外部占用"
+	if owner_lost_button != null:
+		owner_lost_button.disabled = not owner_valid
+	if reset_button != null:
+		reset_button.disabled = robot_adapter != null and robot_adapter.is_executing()
+
+func _reset_demo() -> void:
+	reset_fixture()
+	_update_panel("green", "RESET")
 
 func _update_panel(color_name: String, phase: String) -> void:
-	var color := Color("75d6a2") if color_name == "green" else Color("80bfff")
+	_sync_demo_controls()
+	var color := Color("75d6a2") if color_name == "green" else Color("ff8080") if color_name == "red" else Color("80bfff")
 	status_label.modulate = color
-	status_label.text = "%s  %s\nintent: %s\ngeneration: %d · owner: %s" % [phase, current_intent, current_intent, transition_generation, lease_owner]
-	trace_label.text = "DecisionRecord\n" + "\n".join(decision_entries.slice(maxi(0, decision_entries.size() - 3), decision_entries.size())) + "\n\nMotionAdapter\n" + "barrier=%s start=%s terminal=%s" % [adapter_receipt.get("barrier", "pending"), adapter_receipt.get("start", "pending"), adapter_receipt.get("terminal", "pending")] + "\nExpressionAdapter\n" + "face=%s barrier=%s terminal=%s gen=%s" % [expression_receipt.get("expression", "default"), expression_receipt.get("barrier", "pending"), expression_receipt.get("terminal", "pending"), expression_receipt.get("generation", 0)] + "\n\nRuntimeObservation\n" + "\n".join(observation_entries.slice(maxi(0, observation_entries.size() - 2), observation_entries.size()))
+	var phase_labels := {
+		"DECISION": "演示已就绪，等待操作",
+		"OBSERVED": "状态记录已更新",
+		"EXECUTING GENERATED PLAN": "正在执行 CODA 生成的动作",
+		"SAFE CONVERGENCE": "正在回到安全姿态",
+		"COMPLETED": "动作执行完成",
+		"OWNER LOST": "演示对象失效，拒绝新动作",
+		"RECOVERY REJECTED": "安全回中请求被拒绝",
+		"REJECTED": "动作未执行：没有可用的计划",
+		"REJECTED / OWNER LOST": "动作未执行：演示对象已失效",
+		"REJECTED / EXTERNAL WRITER": "动作未执行：其他脚本正在占用",
+		"REJECTED / PLAN MISSING": "动作未执行：缺少生成计划",
+		"REJECTED / ADAPTER": "动作未执行：姿态适配器拒绝计划",
+		"REJECTED / START STATE": "动作未执行：当前姿态与计划起点不一致",
+		"EXPRESSION HAPPY": "表情已切换：开心",
+		"EXPRESSION DEFAULT": "表情已切换：自然",
+		"EXPRESSION DIZZY": "表情已切换：眩晕",
+		"RESET": "已重置，可以重新开始",
+	}
+	var phase_text := String(phase_labels.get(phase, "表情已更新" if phase.begins_with("EXPRESSION ") else "状态：%s" % phase))
+	var intent_labels := {
+		"idle": "中立姿态",
+		"robot.attack.recover": "攻击后收势",
+		"robot.high.guard": "高位防御",
+		"安全收敛": "回到中立姿态",
+	}
+	status_label.text = "%s\n当前动作：%s" % [phase_text, intent_labels.get(current_intent, current_intent)]
+	trace_label.text = "generation=%d · owner=%s\nDecisionRecord\n" % [transition_generation, lease_owner] + "\n".join(decision_entries.slice(maxi(0, decision_entries.size() - 3), decision_entries.size())) + "\nMotionAdapter · barrier=%s start=%s terminal=%s" % [adapter_receipt.get("barrier", "pending"), adapter_receipt.get("start", "pending"), adapter_receipt.get("terminal", "pending")] + "\nExpressionAdapter · face=%s terminal=%s gen=%s" % [expression_receipt.get("expression", "default"), expression_receipt.get("terminal", "pending"), expression_receipt.get("generation", 0)] + "\nRuntimeObservation\n" + "\n".join(observation_entries.slice(maxi(0, observation_entries.size() - 2), observation_entries.size()))
 
 func _record_decision(kind: String, text: String) -> void:
 	decision_entries.append("[%s] %s" % [kind, text])
