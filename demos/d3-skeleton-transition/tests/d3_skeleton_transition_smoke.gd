@@ -24,6 +24,11 @@ func _initialize() -> void:
 	var plans: Dictionary = instance.get("motion_plans")
 	_check(plans.has("robot.attack_recover@1") and plans.has("robot.high_guard@1"), "both CODA motion intents must have generated TransitionPlans")
 	var adapter = instance.get("robot_adapter")
+	var configured_aibi_path := OS.get_environment("CODA_AIBI_ROBOT_JOINT_ADAPTER")
+	if not configured_aibi_path.is_empty():
+		var wrapped_aibi_adapter: Variant = adapter.get("backend") if adapter != null else null
+		_check(wrapped_aibi_adapter != null, "configured AIBI source must be the active trajectory backend")
+		_check(wrapped_aibi_adapter != null and String(wrapped_aibi_adapter.get_script().resource_path) == configured_aibi_path, "D3 must load the exact configured AIBI RobotJointAdapter source")
 	var initial_generation := int(instance.get("transition_generation"))
 	instance.attack_button.pressed.emit()
 	_check(instance.reset_button.disabled, "reset button must not interrupt a live transition by teleporting the pose")
@@ -76,7 +81,7 @@ func _initialize() -> void:
 	_check(String(instance.get("adapter_receipt").get("terminal", "")) == "owner_lost", "owner loss must close an owner_lost terminal receipt")
 	instance.queue_free()
 	if failures.is_empty():
-		print("D3 generated TransitionPlan → Adapter → Skeleton3D smoke passed")
+		print("D3 generated TransitionPlan → Adapter → Skeleton3D smoke passed (AIBI source active: %s)" % str(not configured_aibi_path.is_empty()))
 		quit(0)
 	else:
 		for failure in failures:

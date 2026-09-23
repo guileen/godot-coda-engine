@@ -6,6 +6,7 @@ extends Node3D
 const GDBOT_SCENE := preload("res://addons/gdquest_gdbot/gdbot_skin.tscn")
 const EXPRESSION_ADAPTER_SCRIPT := preload("res://scripts/d3_expression_adapter.gd")
 const ROBOT_ADAPTER_SCRIPT := preload("res://scripts/gdbot_robot_adapter.gd")
+const AIBI_ADAPTER_BRIDGE_SCRIPT := preload("res://scripts/coda_aibi_robot_adapter_bridge.gd")
 const SAFE_NEUTRAL_POSE := {"head_pitch": 0.0, "head_yaw": 0.0, "head_roll": 0.0}
 
 var gdbot: Node3D
@@ -79,7 +80,7 @@ func request_intent(intent: String) -> void:
 	if intent == "interrupt":
 		_interrupt_to_safe("user_interrupt")
 		return
-	if not plan_loaded:
+	if robot_adapter == null or not plan_loaded:
 		_record_decision("REJECT", "CODA MotionIntent plan unavailable; no Adapter write")
 		_update_panel("red", "REJECTED")
 		return
@@ -207,14 +208,15 @@ func owner_lost() -> void:
 	owner_valid = false
 	_sync_demo_controls()
 	transition_generation += 1
-	robot_adapter.interrupt_to(SAFE_NEUTRAL_POSE, transition_generation, 320)
+	if robot_adapter != null:
+		robot_adapter.interrupt_to(SAFE_NEUTRAL_POSE, transition_generation, 320)
 	adapter_receipt["barrier"] = "owner_lost"
 	adapter_receipt["terminal"] = "owner_lost"
 	_record_observation("owner_lost", "parent owner lost; Adapter safety convergence owns the only remaining writer")
 	_update_panel("red", "OWNER LOST")
 
 func apply_transition_sample(generation: int, pose: Vector3) -> bool:
-	if not owner_valid or generation != transition_generation:
+	if robot_adapter == null or not owner_valid or generation != transition_generation:
 		_record_decision("STALE_REJECT", "generation=%d cannot write current generation=%d" % [generation, transition_generation])
 		return false
 	return robot_adapter.set_pose(generation, {"head_pitch": pose.x, "head_yaw": pose.y, "head_roll": pose.z})
@@ -246,7 +248,18 @@ func _current_pose() -> Vector3:
 
 
 func _build_robot_adapter() -> void:
-	robot_adapter = ROBOT_ADAPTER_SCRIPT.new(skeleton)
+	var aibi_adapter_path := OS.get_environment("CODA_AIBI_ROBOT_JOINT_ADAPTER")
+	if not aibi_adapter_path.is_empty():
+		var aibi_adapter_script: Variant = load(aibi_adapter_path)
+		if aibi_adapter_script == null:
+			push_error("CODA_AIBI_ROBOT_JOINT_ADAPTER could not be loaded: %s" % aibi_adapter_path)
+			return
+		var aibi_adapter: Variant = aibi_adapter_script.new()
+		robot_adapter = AIBI_ADAPTER_BRIDGE_SCRIPT.new(aibi_adapter, skeleton)
+		_record_decision("ADAPTER", "AIBI RobotJointAdapter connected through CODA lease/plan bridge")
+	else:
+		robot_adapter = ROBOT_ADAPTER_SCRIPT.new(skeleton)
+		_record_decision("ADAPTER", "CODA reference RobotJointAdapter active; set CODA_AIBI_ROBOT_JOINT_ADAPTER to test AIBI source")
 	robot_adapter.command_rejected.connect(func(reason: String): _record_decision("ADAPTER_REJECT", reason))
 	robot_adapter.terminal_receipt.connect(_on_adapter_terminal)
 
