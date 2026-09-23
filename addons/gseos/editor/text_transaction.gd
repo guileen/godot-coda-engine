@@ -1,5 +1,5 @@
 @tool
-class_name GSEOS_TextTransaction
+class_name CODA_TextTransaction
 extends RefCounted
 
 var original_asset: Dictionary

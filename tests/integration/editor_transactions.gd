@@ -2,6 +2,7 @@ extends SceneTree
 
 const STORE := preload("res://addons/gseos/core/asset_store.gd")
 const TEXT_TRANSACTION := preload("res://addons/gseos/editor/text_transaction.gd")
+const LEGACY_TEXT_TRANSACTION := preload("res://addons/gseos/editor/gseos_text_transaction_compat.gd")
 
 var failures: Array[String] = []
 var test_path := "res://.gseos/editor-transaction-test.gse.json"
@@ -79,6 +80,11 @@ func _start() -> void:
 	store.save_asset(test_path, original, owner_next, 2)
 
 	var transaction := TEXT_TRANSACTION.new()
+	var legacy_transaction := LEGACY_TEXT_TRANSACTION.new()
+	legacy_transaction.begin(original, "legacy compatibility")
+	var legacy_preview := legacy_transaction.preview(original.duplicate(true))
+	if not legacy_preview.has("changed") or not legacy_preview.has("diff"):
+		failures.append("legacy GSEOS text transaction name did not preserve the CODA transaction API")
 	transaction.begin(original, "event ui.reward.apply")
 	var changed := original.duplicate(true)
 	changed["display_name"] = "临时修改"
