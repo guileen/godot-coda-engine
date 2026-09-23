@@ -10,6 +10,8 @@
 
 ## Demo 入口
 
+给试玩者的简明说明见[体验说明](体验说明.md)。macOS 上可在仓库文件夹中双击“体验 CODA 事件编辑器.command”“体验奖励流程.command”或“体验具身演示.command”直接进入对应界面；试玩者不需要查找代码或打开终端。
+
 | ID | 名称 | 当前证据来源 | 实现状态 |
 | --- | --- | --- | --- |
 | D1 | 语义编排与来源定位 | [d1 report](../../tests/reports/demos/d1-semantic-authoring.json) | 离线报告、source map 与 replay 绑定；Launcher 显示报告数据图示，无 demo 场景截图 |
