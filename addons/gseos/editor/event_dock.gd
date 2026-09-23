@@ -1106,7 +1106,7 @@ func _refresh_projection_map() -> void:
 	if _selected_path.is_empty():
 		return
 	var output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var asset_path := ProjectSettings.globalize_path(_selected_path)
 	var alias_path := ProjectSettings.globalize_path("res://gseos/fixtures/ui.reward.apply.alias-registry.json")
 	var exit_code := OS.execute("node", [cli, "project", asset_path, alias_path], output, true)
@@ -1234,7 +1234,7 @@ func _preview_generated_diff(asset: Dictionary) -> Dictionary:
 	file.store_string(JSON.stringify(asset, "  ") + "\n")
 	file.close()
 	var output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var exit_code := OS.execute("node", [cli, "generate", temp_asset, temp_generated], output, true)
 	if exit_code != 0:
 		DirAccess.remove_absolute(temp_asset)
@@ -1332,7 +1332,7 @@ func _generate_selected_asset() -> Dictionary:
 		var overridden = _generation_override.call(_selected_path)
 		return overridden if overridden is Dictionary else {"ok": bool(overridden)}
 	var output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var asset_path := ProjectSettings.globalize_path(_selected_path)
 	var exit_code := OS.execute("node", [cli, "generate", asset_path], output, true)
 	return {"ok": exit_code == 0, "message": " ".join(output)}
@@ -1393,7 +1393,7 @@ func _inspect_managed_artifact() -> void:
 
 func _restore_generated_artifact() -> void:
 	var output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var asset := ProjectSettings.globalize_path(_selected_path)
 	var exit_code := OS.execute("node", [cli, "generate", asset], output, true)
 	if exit_code == 0:
@@ -1909,7 +1909,7 @@ func _migrate_selected_to_text_owned() -> void:
 	file.store_string(source_text)
 	file.close()
 	var output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var exit_code := OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(temp_path)], output, true)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
 	var parsed = JSON.parse_string("\n".join(output))
@@ -1945,7 +1945,7 @@ func _preview_text_import() -> void:
 	file.store_string(_text_import_edit.text)
 	file.close()
 	var output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var exit_code := OS.execute("node", [cli, "parse-check", ProjectSettings.globalize_path(temp_path)], output, true)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
 	var parsed = JSON.parse_string("\n".join(output))

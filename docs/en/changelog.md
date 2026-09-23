@@ -4,6 +4,7 @@
 
 - New generated GDScript uses the CODA marker. The editor and verifier still recognize legacy GSEOS markers; existing projects are not rewritten in bulk and switch markers only when regenerated.
 - New crash-recovery test runs use CODA-prefixed environment variables. Legacy GSEOS-prefixed variables remain supported and are covered by the recovery test.
+- The CODA CLI now uses a CODA-named entry point. The old GSEOS CLI file path and `npm run gseos` remain as compatibility entry points.
 - Prepared the repository for the CODA public GitHub publication flow.
 - Added localized public documentation and a bilingual GitHub Pages site.
 - Added contribution, security, conduct, issue, and pull-request guidance.

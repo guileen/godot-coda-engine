@@ -56,7 +56,7 @@ func _run() -> void:
 
 func _parse(path: String) -> Dictionary:
 	var output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var exit_code := OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(path)], output, true)
 	if exit_code != 0: _fail("GSE parse failed for " + path)
 	var parsed = JSON.parse_string("\n".join(output))

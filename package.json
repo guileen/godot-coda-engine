@@ -9,8 +9,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "core": "node packages/local-core/src/gseos-cli.js",
-    "coda": "node packages/local-core/src/gseos-cli.js",
+    "core": "node packages/local-core/src/coda-cli.js",
+    "coda": "node packages/local-core/src/coda-cli.js",
     "gseos": "node packages/local-core/src/gseos-cli.js",
     "test": "node --test packages/local-core/test/*.test.js",
     "check": "node packages/local-core/scripts/check-deliverables.js",

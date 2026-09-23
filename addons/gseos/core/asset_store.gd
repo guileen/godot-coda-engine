@@ -142,7 +142,7 @@ func save_text_owned_asset(asset_path: String, source_path: String, source_text:
 	source_file.store_string(source_text)
 	source_file.close()
 	var parse_output: Array[String] = []
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var parse_exit := OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(source_temp)], parse_output, true)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(source_temp))
 	var parsed = JSON.parse_string("\n".join(parse_output))

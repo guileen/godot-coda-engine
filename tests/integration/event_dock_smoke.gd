@@ -264,7 +264,7 @@ func _start() -> void:
 			failures.append("Event Dock projection confirmation did not write back the slot")
 	STORE.new().save_asset(reward_asset_path, reward_backup)
 	var restore_output: Array[String] = []
-	OS.execute("node", [ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js"), "generate", ProjectSettings.globalize_path("res://gseos/events/ui.reward.apply.gse.json")], restore_output, true)
+	OS.execute("node", [ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js"), "generate", ProjectSettings.globalize_path("res://gseos/events/ui.reward.apply.gse.json")], restore_output, true)
 	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
 	dock._selected_node_id = "reward-check"
 	dock._rebuild_tree()

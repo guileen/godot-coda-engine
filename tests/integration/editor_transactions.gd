@@ -100,7 +100,7 @@ func _start() -> void:
 	var text_source_file := FileAccess.open(text_source_path, FileAccess.WRITE)
 	text_source_file.store_string(text_source)
 	text_source_file.close()
-	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/gseos-cli.js")
+	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var parse_output: Array[String] = []
 	OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(text_source_path)], parse_output, true)
 	var parsed_text = JSON.parse_string("\n".join(parse_output))
