@@ -1,5 +1,5 @@
 @tool
-class_name GSEOS_CapabilityManifest
+class_name CODA_CapabilityManifest
 extends RefCounted
 
 var capabilities: Dictionary = {}

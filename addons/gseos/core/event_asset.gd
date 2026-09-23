@@ -1,5 +1,5 @@
 @tool
-class_name GSEOS_EventAsset
+class_name CODA_EventAsset
 extends RefCounted
 
 const SCHEMA_VERSION := 1

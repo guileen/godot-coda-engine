@@ -1,6 +1,9 @@
 extends SceneTree
 
 const STORE := preload("res://addons/gseos/core/asset_store.gd")
+const LEGACY_STORE := preload("res://addons/gseos/core/gseos_asset_store_compat.gd")
+const LEGACY_EVENT_ASSET := preload("res://addons/gseos/core/gseos_event_asset_compat.gd")
+const LEGACY_CAPABILITY_MANIFEST := preload("res://addons/gseos/core/gseos_capability_manifest_compat.gd")
 const TEXT_TRANSACTION := preload("res://addons/gseos/editor/text_transaction.gd")
 const LEGACY_TEXT_TRANSACTION := preload("res://addons/gseos/editor/gseos_text_transaction_compat.gd")
 
@@ -15,6 +18,15 @@ func _start() -> void:
 	var original: Dictionary = JSON.parse_string(source_file.get_as_text())
 	original["test_unknown"] = {"nested": true}
 	var store := STORE.new()
+	var legacy_asset := LEGACY_EVENT_ASSET.new()
+	if not legacy_asset.from_dictionary(original).ok:
+		failures.append("legacy GSEOS event asset name did not preserve the CODA validation API")
+	var legacy_store := LEGACY_STORE.new()
+	if not legacy_store.load_asset("res://gseos/events/ui.reward.apply.gse.json").receipt.ok:
+		failures.append("legacy GSEOS asset store name did not preserve the CODA loading API")
+	var legacy_manifest := LEGACY_CAPABILITY_MANIFEST.new()
+	if not legacy_manifest.load_from_file().ok:
+		failures.append("legacy GSEOS capability manifest name did not preserve the CODA loading API")
 	var saved := store.save_asset(test_path, original)
 	if not saved.saved or not saved.receipt.ok:
 		failures.append("valid EventAsset transaction did not save")

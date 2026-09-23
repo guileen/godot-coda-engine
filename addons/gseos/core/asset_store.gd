@@ -1,5 +1,5 @@
 @tool
-class_name GSEOS_AssetStore
+class_name CODA_AssetStore
 extends RefCounted
 
 const ASSET_EXTENSION := ".gse.json"
@@ -14,7 +14,7 @@ func load_asset(path: String) -> Dictionary:
 	var parsed = JSON.parse_string(raw.replace("\uFEFF", ""))
 	if not parsed is Dictionary:
 		return {"asset": {}, "receipt": _receipt("INVALID_JSON", "EventAsset JSON 无效，原文件保持不变。")}
-	var asset := GSEOS_EventAsset.new()
+	var asset := CODA_EventAsset.new()
 	var receipt: Dictionary = asset.from_dictionary(parsed)
 	if not receipt.ok:
 		return {"asset": asset.data, "receipt": receipt, "raw": raw, "ownership": {}, "ownership_receipt": receipt, "ownership_persisted": false}
@@ -66,7 +66,7 @@ func load_ownership(path: String, asset: Dictionary) -> Dictionary:
 	return {"record": parsed, "receipt": {"ok": true, "diagnostics": []}, "persisted": true}
 
 func save_asset(path: String, asset: Dictionary, expected_asset: Variant = null, expected_owner_revision: int = -1, authoring_mode: String = "graph_owned") -> Dictionary:
-	var checker := GSEOS_EventAsset.new()
+	var checker := CODA_EventAsset.new()
 	var receipt: Dictionary = checker.from_dictionary(asset)
 	if not receipt.ok:
 		return {"receipt": receipt, "saved": false}
@@ -132,7 +132,7 @@ func save_text_owned_asset(asset_path: String, source_path: String, source_text:
 		return {"receipt": _receipt("INVALID_AUTHORING_SOURCE_REF", "text_owned 源必须位于项目内并使用相对路径。"), "saved": false}
 	if not asset_path.ends_with(ASSET_EXTENSION) or source_path != asset_path.trim_suffix(ASSET_EXTENSION) + ".coda":
 		return {"receipt": _receipt("INVALID_AUTHORING_SOURCE_REF", "text_owned 源必须是派生 EventAsset 同路径的 canonical .coda 源。"), "saved": false}
-	var checker := GSEOS_EventAsset.new()
+	var checker := CODA_EventAsset.new()
 	var receipt: Dictionary = checker.from_dictionary(asset)
 	if not receipt.ok: return {"receipt": receipt, "saved": false}
 	if source_text.is_empty(): return {"receipt": _receipt("TEXT_AUTHORING_SOURCE_EMPTY", "text_owned 源不能为空。"), "saved": false}
@@ -148,7 +148,7 @@ func save_text_owned_asset(asset_path: String, source_path: String, source_text:
 	var parsed = JSON.parse_string("\n".join(parse_output))
 	if parse_exit != 0 or not parsed is Dictionary or not parsed.get("receipt", {}).get("ok", false) or not parsed.get("asset") is Dictionary:
 		return {"receipt": _receipt("TEXT_AUTHORING_SOURCE_INVALID", "text_owned 源未通过 GSE parse；本次事务未写入。"), "saved": false}
-	var parsed_checker := GSEOS_EventAsset.new()
+	var parsed_checker := CODA_EventAsset.new()
 	var parsed_asset_receipt: Dictionary = parsed_checker.from_dictionary(parsed.asset)
 	if not parsed_asset_receipt.ok or _fingerprint(parsed_checker.data) != _fingerprint(checker.data):
 		return {"receipt": _receipt("TEXT_AUTHORING_PROJECTION_MISMATCH", "候选 EventAsset 与 text_owned 源解析结果不一致。"), "saved": false}

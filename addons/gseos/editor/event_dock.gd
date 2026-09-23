@@ -3,7 +3,7 @@ extends VBoxContainer
 
 var _editor_interface: EditorInterface
 var _undo_redo: EditorUndoRedoManager
-var _store := GSEOS_AssetStore.new()
+var _store := CODA_AssetStore.new()
 var _event_list := ItemList.new()
 var _tree := Tree.new()
 var _toolbar := HBoxContainer.new()
