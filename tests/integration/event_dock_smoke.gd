@@ -40,6 +40,12 @@ func _start() -> void:
 	dock._on_event_selected(reward_index)
 	if dock._tree.get_root() == null or dock._tree.get_root().get_child_count() < 1:
 		failures.append("Event Dock did not rebuild the asset tree")
+	dock._command_search.text = "条件"
+	dock._refresh_command_options()
+	if dock._command_select.item_count != 2 or String(dock._command_select.get_item_metadata(1)) != "if":
+		failures.append("Event Dock step search did not find the matching condition step")
+	dock._command_search.text = ""
+	dock._refresh_command_options()
 	dock._selected_node_id = "reward-check"
 	dock._show_source_map_location()
 	if not dock._status.text.contains("ui_reward_apply.gd:7") or not dock._status.text.contains("field=condition"):
@@ -216,10 +222,19 @@ func _start() -> void:
 	dock._on_event_selected(dock._asset_paths.find(dock._selected_path))
 	dock._selected_node_id = "reward-check"
 	dock._rebuild_tree()
-	dock._condition_edit.text = "{\"op\":\">\",\"left\":{\"ref\":\"reward\"},\"right\":10}"
+	dock._render_inspector()
+	for index in dock._condition_left_select.item_count:
+		var candidate = dock._condition_left_select.get_item_metadata(index)
+		if candidate is Dictionary and String(candidate.get("id", "")) == "reward":
+			dock._condition_left_select.select(index)
+	dock._refresh_condition_operator_choices(">")
+	dock._condition_right_edit.text = "10"
 	dock._apply_condition_edit()
+	if dock._selected_asset.root[0].params.condition.right == 10 or dock._projection_pending_asset.root[0].params.condition.right != 10:
+		failures.append("Event Dock condition preview wrote early or missed its candidate value")
+	dock._commit_projection_preview()
 	if dock._selected_asset.root[0].params.condition.right != 10:
-		failures.append("Event Dock did not commit a composite condition edit")
+		failures.append("Event Dock did not commit the confirmed condition edit")
 	var restored_reward_asset := FileAccess.open(reward_asset_path, FileAccess.WRITE)
 	restored_reward_asset.store_string(reward_asset_raw)
 	restored_reward_asset.close()
@@ -259,7 +274,7 @@ func _start() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_asset_path + suffix))
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(embodied_source_path + suffix))
 	if failures.is_empty():
-		print("GSEOS Event Dock smoke integration passed")
+		print("CODA Event Dock smoke integration passed")
 		quit(0)
 	else:
 		for failure in failures:

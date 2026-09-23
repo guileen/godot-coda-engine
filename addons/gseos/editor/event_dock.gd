@@ -9,11 +9,18 @@ var _tree := Tree.new()
 var _status := Label.new()
 var _name_edit := LineEdit.new()
 var _slot_select := OptionButton.new()
+var _command_search := LineEdit.new()
 var _command_select := OptionButton.new()
 var _inspector := VBoxContainer.new()
 var _inspector_title := Label.new()
 var _inspector_hint := Label.new()
-var _condition_edit := LineEdit.new()
+var _condition_edit := TextEdit.new()
+var _condition_left_select: OptionButton
+var _condition_operator_select: OptionButton
+var _condition_right_edit: LineEdit
+var _condition_advanced_toggle: CheckButton
+var _condition_simple_panel: VBoxContainer
+var _condition_advanced_panel: VBoxContainer
 var _text_import_panel := PanelContainer.new()
 var _text_import_edit := TextEdit.new()
 var _text_import_status := Label.new()
@@ -60,6 +67,7 @@ const MORE_ACTIONS := {
 	"commit_projection": 12, "cancel_projection": 13, "source_map": 14,
 	"inspect_generated": 15, "diagnostics": 16,
 }
+const CONDITION_OPERATORS := ["==", "!=", ">", ">=", "<", "<="]
 
 func configure(editor_interface: EditorInterface) -> void:
 	_editor_interface = editor_interface
@@ -99,6 +107,10 @@ func _ready() -> void:
 	insert_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	insert_help.add_theme_color_override("font_color", get_theme_color("font_color", "Label").lerp(Color.TRANSPARENT, 0.25))
 	insert_section.add_child(insert_help)
+	_command_search.placeholder_text = "按名称找步骤，例如“条件分支”"
+	_command_search.tooltip_text = "输入步骤名称筛选列表；选中后还要确认插入位置。"
+	_command_search.text_changed.connect(func(_text: String): _refresh_command_options())
+	insert_section.add_child(_labeled_control("找步骤", _command_search))
 	_slot_select.tooltip_text = "新步骤会放在你选的位置"
 	_command_select.tooltip_text = "选择新步骤要完成的动作"
 	insert_section.add_child(_labeled_control("放在", _slot_select))
@@ -273,7 +285,7 @@ func _flow_summary(node: Dictionary) -> String:
 	var command_id := String(node.get("command_id", ""))
 	var params: Dictionary = node.get("params", {})
 	match command_id:
-		"if": return _value_summary(params.get("condition", {}))
+		"if": return _condition_summary(params.get("condition", {}))
 		"read": return "%s.%s → %s" % [_reference_label(params.get("target", {}).get("ref", "对象")), params.get("field", "字段"), params.get("bind", "结果")]
 		"let": return "%s → %s" % [_value_summary(params.get("value", {})), params.get("name", "新值")]
 		"await", "do":
@@ -286,6 +298,13 @@ func _flow_summary(node: Dictionary) -> String:
 			if capability.begins_with("ui.set_text"): return "显示 +新积分"
 		"publish": return "奖励结算通知"
 	return ""
+
+func _condition_summary(condition) -> String:
+	if not condition is Dictionary or condition.is_empty():
+		return "请设置条件"
+	if condition.has_all(["left", "op", "right"]):
+		return "%s %s %s" % [_value_summary(condition.left), _condition_operator_label(String(condition.op)), _value_summary(condition.right)]
+	return _value_summary(condition)
 
 func _value_summary(value) -> String:
 	if value is Dictionary:
@@ -324,14 +343,23 @@ func _on_tree_selected() -> void:
 	_refresh_slot_options()
 
 func _refresh_command_options() -> void:
+	var selected_command := ""
+	if _command_select.selected >= 0:
+		selected_command = String(_command_select.get_item_metadata(_command_select.selected))
+	var needle := _command_search.text.strip_edges().to_lower() if _command_search != null else ""
 	_command_select.clear()
 	_command_select.add_item("请选择要添加的步骤…")
 	_command_select.set_item_metadata(0, "")
 	_command_select.select(0)
 	for command_id in COMMAND_DEFINITIONS.keys():
 		var definition: Dictionary = COMMAND_DEFINITIONS[command_id]
-		_command_select.add_item(definition.label)
+		var label := String(definition.get("label", ""))
+		if not needle.is_empty() and not label.to_lower().contains(needle) and not String(command_id).to_lower().contains(needle):
+			continue
+		_command_select.add_item(label)
 		_command_select.set_item_metadata(_command_select.item_count - 1, command_id)
+		if String(command_id) == selected_command:
+			_command_select.select(_command_select.item_count - 1)
 
 func _refresh_slot_options() -> void:
 	_slot_select.clear()
@@ -374,18 +402,9 @@ func _render_inspector() -> void:
 	if not descriptions.is_empty():
 		_inspector_hint.text += "\n" + String(descriptions.get("zh-CN", ""))
 	if command_id == "if" and not node.get("draft", false):
-		var condition_row := HBoxContainer.new()
-		var condition_label := Label.new()
-		condition_label.text = "判断条件（高级）"
-		condition_label.custom_minimum_size.x = 80
-		condition_row.add_child(condition_label)
-		_condition_edit = LineEdit.new()
-		_condition_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_condition_edit.text = JSON.stringify(node.get("params", {}).get("condition", {}))
-		_condition_edit.tooltip_text = "结构化条件表达式；不熟悉该格式时请先编辑已有的中文流程槽位。"
-		condition_row.add_child(_condition_edit)
-		condition_row.add_child(_button("应用条件", _apply_condition_edit))
-		_inspector.add_child(condition_row)
+		_render_condition_editor(node)
+		_render_projection_preview_confirmation()
+		return
 	if not node.get("draft", false):
 		_render_projection_slots(projection_node)
 		return
@@ -399,6 +418,10 @@ func _render_inspector() -> void:
 	pending_label.text = "完成下面内容后，确认这一步。取消不会改动流程。"
 	pending_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspector.add_child(pending_label)
+	if command_id == "if":
+		_render_condition_editor(node)
+		_add_draft_confirm_actions()
+		return
 	if command_id in ["do", "await"]:
 		_render_draft_action_editor(command_id)
 		_add_draft_confirm_actions()
@@ -423,6 +446,256 @@ func _render_inspector() -> void:
 		_inspector.add_child(row)
 		_draft_param_controls[field] = edit
 	_add_draft_confirm_actions()
+
+func _render_condition_editor(node: Dictionary) -> void:
+	var current = node.get("params", {}).get("condition", {})
+	var simple: bool = false
+	if current is Dictionary:
+		simple = current.is_empty()
+	if not simple:
+		simple = _is_simple_condition(current)
+	var current_left = current.get("left") if current is Dictionary else null
+	var current_operator := String(current.get("op", "==")) if current is Dictionary else "=="
+	var current_right = current.get("right") if current is Dictionary else null
+	var heading := Label.new()
+	heading.text = "只有满足下面条件，才会运行“满足条件时”分支。"
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspector.add_child(heading)
+	_condition_simple_panel = VBoxContainer.new()
+	_condition_simple_panel.add_theme_constant_override("separation", 4)
+	_condition_left_select = OptionButton.new()
+	_condition_left_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_condition_left_select.add_item("选择一个已有的值…")
+	_condition_left_select.set_item_metadata(0, {})
+	var refs := _condition_references()
+	var selected_left_index := 0
+	for entry in refs:
+		_condition_left_select.add_item(String(entry.label))
+		_condition_left_select.set_item_metadata(_condition_left_select.item_count - 1, entry)
+		if current_left is Dictionary and String(current_left.get("ref", "")) == String(entry.id):
+			selected_left_index = _condition_left_select.item_count - 1
+	if not current_left == null and not _condition_left_is_listed(current_left, refs):
+		_condition_left_select.add_item("当前固定值：%s" % _condition_operand_label(current_left))
+		_condition_left_select.set_item_metadata(_condition_left_select.item_count - 1, {"kind": "literal", "value": current_left, "type": _condition_value_type(current_left)})
+		selected_left_index = _condition_left_select.item_count - 1
+	_condition_left_select.select(selected_left_index)
+	_condition_simple_panel.add_child(_labeled_control("判断哪个值", _condition_left_select))
+	_condition_operator_select = OptionButton.new()
+	for operator in CONDITION_OPERATORS:
+		_condition_operator_select.add_item(_condition_operator_label(operator))
+		_condition_operator_select.set_item_metadata(_condition_operator_select.item_count - 1, operator)
+	for operator_index in _condition_operator_select.item_count:
+		if String(_condition_operator_select.get_item_metadata(operator_index)) == current_operator:
+			_condition_operator_select.select(operator_index)
+			break
+	_condition_simple_panel.add_child(_labeled_control("关系", _condition_operator_select))
+	_condition_right_edit = LineEdit.new()
+	_condition_right_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_condition_right_edit.placeholder_text = "例如 0、true、金币 或已有值名称"
+	_condition_right_edit.tooltip_text = "输入常量，或输入前面步骤已经产生的值名称。"
+	if current is Dictionary and current.has("right"):
+		_condition_right_edit.text = _condition_operand_label(current_right)
+	_condition_simple_panel.add_child(_labeled_control("比较对象", _condition_right_edit))
+	_inspector.add_child(_condition_simple_panel)
+	_condition_advanced_toggle = CheckButton.new()
+	_condition_advanced_toggle.text = "高级表达式（JSON）"
+	_condition_advanced_toggle.button_pressed = not simple
+	_inspector.add_child(_condition_advanced_toggle)
+	_condition_advanced_panel = VBoxContainer.new()
+	_condition_edit = TextEdit.new()
+	_condition_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_condition_edit.custom_minimum_size.y = 82
+	_condition_edit.text = JSON.stringify(current)
+	_condition_edit.placeholder_text = "填写完整的条件表达式 JSON"
+	_condition_edit.tooltip_text = "面向熟悉 CODA 表达式结构的开发者。"
+	_condition_advanced_panel.add_child(_condition_edit)
+	if not node.get("draft", false):
+		_condition_advanced_panel.add_child(_button("预览条件修改", _apply_condition_edit))
+	_condition_advanced_panel.visible = not simple
+	_inspector.add_child(_condition_advanced_panel)
+	_condition_simple_panel.visible = simple
+	_condition_advanced_toggle.toggled.connect(_set_condition_advanced_mode)
+	_condition_left_select.item_selected.connect(func(_index: int): _refresh_condition_operator_choices(current_operator))
+	_condition_operator_select.item_selected.connect(func(_index: int): _update_condition_operator_hint())
+	_refresh_condition_operator_choices(current_operator)
+	_update_condition_operator_hint()
+	if not node.get("draft", false) and simple:
+		_condition_simple_panel.add_child(_button("预览条件修改", _apply_condition_edit))
+
+func _set_condition_advanced_mode(enabled: bool) -> void:
+	if _condition_simple_panel != null:
+		_condition_simple_panel.visible = not enabled
+	if _condition_advanced_panel != null:
+		_condition_advanced_panel.visible = enabled
+
+func _condition_references() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var seen := {}
+	for argument in _selected_asset.get("args", []):
+		var ref := String(argument.get("id", ""))
+		if ref.is_empty() or seen.has(ref): continue
+		seen[ref] = true
+		result.append({"kind": "ref", "id": ref, "label": "%s（%s）" % [argument.get("name", ref), ref], "type": String(argument.get("type", "Any"))})
+	_collect_condition_references(_selected_asset.get("root", []), result, seen)
+	return result
+
+func _collect_condition_references(nodes: Array, result: Array[Dictionary], seen: Dictionary) -> void:
+	for node in nodes:
+		var params: Dictionary = node.get("params", {})
+		var candidates := [params.get("name", ""), params.get("bind", ""), params.get("args", {}).get("bind", "")]
+		for value in candidates:
+			var ref := String(value)
+			if ref.is_empty() or seen.has(ref): continue
+			seen[ref] = true
+			result.append({"kind": "ref", "id": ref, "label": "流程值：%s" % ref, "type": "Any"})
+		for children in node.get("children", {}).values():
+			_collect_condition_references(children, result, seen)
+
+func _condition_left_is_listed(value, refs: Array[Dictionary]) -> bool:
+	if not value is Dictionary or not value.has("ref"):
+		return false
+	for entry in refs:
+		if String(entry.get("id", "")) == String(value.get("ref", "")):
+			return true
+	return false
+
+func _is_simple_condition(value) -> bool:
+	if not value is Dictionary or not value.has_all(["left", "op", "right"]):
+		return false
+	if String(value.get("op", "")) not in CONDITION_OPERATORS:
+		return false
+	return _is_simple_condition_operand(value.left) and _is_simple_condition_operand(value.right)
+
+func _is_simple_condition_operand(value) -> bool:
+	if value is Dictionary:
+		return value.size() == 1 and value.has("ref")
+	return value is String or value is int or value is float or value is bool
+
+func _condition_operand_label(value) -> String:
+	if value is Dictionary and value.has("ref"):
+		return String(value.get("ref", ""))
+	if value is String:
+		return value
+	return JSON.stringify(value)
+
+func _condition_value_type(value) -> String:
+	if value is bool: return "Bool"
+	if value is int: return "Int"
+	if value is float: return "Float"
+	if value is String: return "Text"
+	if value is Dictionary and value.has("ref"):
+		for argument in _selected_asset.get("args", []):
+			if String(argument.get("id", "")) == String(value.ref): return String(argument.get("type", "Any"))
+	return "Any"
+
+func _condition_operator_label(operator: String) -> String:
+	return {"==": "等于", "!=": "不等于", ">": "大于", ">=": "大于或等于", "<": "小于", "<=": "小于或等于"}.get(operator, operator)
+
+func _refresh_condition_operator_choices(preferred_operator: String) -> void:
+	if _condition_operator_select == null or _condition_left_select == null:
+		return
+	var selected_left = _condition_left_select.get_item_metadata(_condition_left_select.selected) if _condition_left_select.selected >= 0 else {}
+	var value_type := String(selected_left.get("type", "Any")) if selected_left is Dictionary else "Any"
+	var operators := CONDITION_OPERATORS if value_type in ["Int", "Float", "Duration", "Any"] else ["==", "!="]
+	_condition_operator_select.clear()
+	for operator in operators:
+		_condition_operator_select.add_item(_condition_operator_label(operator))
+		_condition_operator_select.set_item_metadata(_condition_operator_select.item_count - 1, operator)
+	var selected_operator := false
+	for index in _condition_operator_select.item_count:
+		if String(_condition_operator_select.get_item_metadata(index)) == preferred_operator:
+			_condition_operator_select.select(index)
+			selected_operator = true
+			break
+	if not selected_operator and _condition_operator_select.item_count > 0:
+		_condition_operator_select.select(0)
+	_update_condition_operator_hint()
+
+func _update_condition_operator_hint() -> void:
+	if _condition_right_edit == null or _condition_operator_select == null:
+		return
+	var operator := String(_condition_operator_select.get_item_metadata(_condition_operator_select.selected)) if _condition_operator_select.selected >= 0 else "=="
+	_condition_right_edit.tooltip_text = "“%s”右侧填常量或已有流程值。" % _condition_operator_label(operator)
+
+func _read_condition_editor() -> Dictionary:
+	if _condition_advanced_toggle != null and _condition_advanced_toggle.button_pressed:
+		var parsed = JSON.parse_string(_condition_edit.text)
+		if parsed is Dictionary and not parsed.is_empty():
+			return {"ok": true, "value": parsed}
+		return {"ok": false, "message": "高级条件需要完整的 JSON 表达式。"}
+	if _condition_left_select == null or _condition_operator_select == null or _condition_right_edit == null:
+		return {"ok": false, "message": "条件编辑器尚未准备好。"}
+	var left_index := _condition_left_select.selected
+	if left_index < 0:
+		return {"ok": false, "message": "请选择左侧要判断的值。"}
+	var left_data = _condition_left_select.get_item_metadata(left_index)
+	if not left_data is Dictionary or left_data.is_empty():
+		return {"ok": false, "message": "请选择左侧要判断的值。"}
+	var right_text := _condition_right_edit.text.strip_edges()
+	if right_text.is_empty():
+		return {"ok": false, "message": "请填写要比较的值。"}
+	var right = _parse_condition_operand(right_text)
+	if not right.ok:
+		return right
+	var operator := String(_condition_operator_select.get_item_metadata(_condition_operator_select.selected))
+	var left = left_data.get("value") if left_data.get("kind") == "literal" else {"ref": left_data.get("id", "")}
+	var left_type := String(left_data.get("type", "Any"))
+	var right_type := _condition_value_type(right.value)
+	if operator in [">", ">=", "<", "<="] and left_type not in ["Int", "Float", "Duration", "Any"]:
+		return {"ok": false, "message": "当前值类型不能使用数值比较。"}
+	if left_type != "Any" and right_type != "Any" and left_type != right_type and not (left_type in ["Int", "Float"] and right_type in ["Int", "Float"]):
+		return {"ok": false, "message": "两侧值类型不一致，请检查条件。"}
+	return {"ok": true, "value": {"left": left, "op": operator, "right": right.value}}
+
+func _parse_condition_operand(text: String) -> Dictionary:
+	if _is_flow_symbol(text):
+		return {"ok": true, "value": {"ref": text}}
+	if text in ["true", "false", "null"] or text.is_valid_float() or text.is_valid_int():
+		var parsed = JSON.parse_string(text)
+		return {"ok": true, "value": parsed}
+	if text.begins_with("\"") or text.begins_with("{") or text.begins_with("["):
+		var parsed = JSON.parse_string(text)
+		if parsed != null:
+			return {"ok": true, "value": parsed}
+		return {"ok": false, "message": "文本常量请用双引号括起。"}
+	return {"ok": true, "value": text}
+
+func _preview_condition_edit() -> void:
+	var parsed := _read_condition_editor()
+	if not parsed.ok:
+		_status.text = "%s；尚未修改流程。" % parsed.message
+		return
+	var next := _selected_asset.duplicate(true)
+	var node := _find_node(next.get("root", []), _selected_node_id)
+	if node.is_empty() or node.get("command_id") != "if":
+		_status.text = "当前选择不是条件分支；尚未修改流程。"
+		return
+	var before = node.get("params", {}).get("condition", {})
+	var params: Dictionary = node.get("params", {}).duplicate(true)
+	params["condition"] = parsed.value
+	node["params"] = params
+	var generated_preview := _preview_generated_diff(next)
+	if not generated_preview.ok:
+		_status.text = "条件预览失败：%s；尚未修改流程。" % generated_preview.message
+		return
+	_projection_pending_asset = next
+	_projection_pending_slot_id = "%s.condition" % _selected_node_id
+	_projection_preview_diff = "条件修改预览：\n- %s\n+ %s\n\n%s\n确认前不会写入流程。" % [_value_summary(before), _value_summary(parsed.value), generated_preview.message]
+	_render_inspector()
+	_status.text = "条件和生成结果已经预览；确认后才会保存。"
+
+func _render_projection_preview_confirmation() -> void:
+	if _projection_preview_diff.is_empty():
+		return
+	var diff := RichTextLabel.new()
+	diff.bbcode_enabled = false
+	diff.custom_minimum_size.y = 80
+	diff.text = _projection_preview_diff
+	_inspector.add_child(diff)
+	var preview_actions := HBoxContainer.new()
+	preview_actions.add_child(_button("确认这个修改", _commit_projection_preview))
+	preview_actions.add_child(_button("保留原样", _cancel_projection_preview))
+	_inspector.add_child(preview_actions)
 
 func _add_draft_confirm_actions() -> void:
 	var draft_actions := HBoxContainer.new()
@@ -978,6 +1251,12 @@ func _confirm_draft() -> void:
 			action_args[String(field_id)] = parsed.value
 		params["capability"] = capability_id
 		params["args"] = action_args
+	elif String(draft.get("command_id", "")) == "if":
+		var parsed_condition := _read_condition_editor()
+		if not parsed_condition.ok:
+			_status.text = "%s；流程尚未保存。" % parsed_condition.message
+			return
+		params["condition"] = parsed_condition.value
 	else:
 		for field in _draft_param_controls.keys():
 			var text := String(_draft_param_controls[field].text).strip_edges()
@@ -1185,22 +1464,7 @@ func _format_diagnostics(diagnostics: Array) -> String:
 func _apply_condition_edit() -> void:
 	if _selected_path.is_empty() or _selected_node_id.is_empty() or not _draft_asset.is_empty():
 		return
-	var parsed = JSON.parse_string(_condition_edit.text)
-	if parsed == null or not parsed is Dictionary:
-		_status.text = "condition 必须是 JSON 表达式对象；未写入资产。"
-		return
-	var next := _selected_asset.duplicate(true)
-	var node := _find_node(next.root, _selected_node_id)
-	if node.is_empty() or node.get("command_id") != "if":
-		_status.text = "当前选择不是 if 节点；未写入资产。"
-		return
-	var params: Dictionary = node.get("params", {}).duplicate(true)
-	params["condition"] = parsed
-	node["params"] = params
-	if not _write_asset_transaction(_selected_path, _selected_asset, next, "编辑 CODA 复合条件"):
-		return
-	_selected_asset = next
-	_rebuild_tree()
+	_preview_condition_edit()
 
 func _record_fallback_history(path: String, before: Dictionary, after: Dictionary, title: String) -> void:
 	if _fallback_history_index + 1 < _fallback_history.size():
