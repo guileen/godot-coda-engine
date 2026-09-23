@@ -1,0 +1,15 @@
+{
+  "contract_type": "ContinuationContract",
+  "schema_version": 1,
+  "contract_id": "godot.gdbot.head.reentry@1",
+  "resume_modes": ["exact_phase", "compatible_phase", "replan_remaining", "reject"],
+  "phase_progress_ref": "godot.gdbot.head.phase-progress@1",
+  "capture_region_ref": "godot.gdbot.head.capture-region@1",
+  "checkpoint_refs": [],
+  "viability_gate_ref": "godot.gdbot.head.kinematic-viability@1",
+  "bridge_planner_ref": "godot.gdbot.head.reentry-bridge@1",
+  "commit_alignment_ref": "godot.gdbot.head.commit-alignment@1",
+  "token_fields": ["skill_ref", "phase_id", "progress", "state_digest", "constraint_revision", "controller_revision", "lease_id", "generation"],
+  "on_no_solution": "reject",
+  "restore_old_generation": false
+}

@@ -65,8 +65,8 @@ window.CODA_DEMO_REPORTS = {
     "schema_version": 1,
     "demo_id": "D3",
     "title": "Skeleton3D intent transition",
-    "status": "PASS_RUNTIME_SMOKE_D3_DISTINCT_STATES_CAPTURED_ADAPTER_RECEIPT_VISIBLE",
-    "date": "2026-09-22",
+    "status": "PASS_RUNTIME_SMOKE_D3_CONTINUATION_REENTRY_BUILTIN_AND_AIBI",
+    "date": "2026-09-23",
     "asset": {
       "source": "/Users/gl/hz/aliyun-terraform/labs/game_toys/aibi/godot/addons/gdquest_gdbot/model/gdbot.glb",
       "copied_to": "demos/d3-skeleton-transition/addons/gdquest_gdbot/model/gdbot.glb",
@@ -87,12 +87,17 @@ window.CODA_DEMO_REPORTS = {
       "external writer is rejected at the ownership barrier without a new generation",
       "external writer rejection closes a terminal receipt without partial write",
       "owner loss blocks new requests and closes one owner_lost terminal receipt",
+      "user interruption captures the live generated-plan phase, progress, pose digest, revisions, generation and lease",
+      "safe recovery enables a re-entry candidate and rebuilds the remaining segments from the new measured pose",
+      "continuation acquires a fresh generation and lease; old generations are never restored",
+      "external writer rejects continuation without creating a generation",
+      "D3 continuation uses a declared contactless head-pose profile and heuristic evidence only; it does not claim dynamics viability",
       "Godot motion Adapter receipt exposes backend, adapter-only authority, barrier, start and terminal fields",
       "real GDBot FaceScreen target is present",
       "happy/default/dizzy expression intents reach the face animation Adapter",
       "external writer blocks expression generation without a partial face write"
     ],
-    "result": "D3 Skeleton3D transition smoke passed",
+    "result": "D3 Skeleton3D transition and safe-recovery continuation smoke passed with built-in and local AIBI RobotJointAdapter backends",
     "plan_consumed_by_runtime": true,
     "plan_source_ref_observed": "/root/0",
     "replay_evidence": "tests/reports/demos/replays/d3-skeleton-transition.replay.json",
@@ -105,6 +110,7 @@ window.CODA_DEMO_REPORTS = {
       "attack_recover: start CODA generated intent",
       "high_guard: request higher-priority intent",
       "interrupt: revoke current generation and converge safely",
+      "resume_remaining: after eligible safe recovery, replan unfinished segments under a new generation and lease",
       "expression: happy/default/dizzy on the GDBot face adapter",
       "external_writer: reject the next intent without a new generation",
       "owner_lost: reject future intent and retain safety convergence",
@@ -143,6 +149,17 @@ window.CODA_DEMO_REPORTS = {
         "generation"
       ],
       "external_writer_status": "rejected_without_new_generation"
+    },
+    "continuation_contract": {
+      "contract": "demos/d3-skeleton-transition/fixtures/continuation-contract.json",
+      "profile": "demos/d3-skeleton-transition/fixtures/continuation-profile.json",
+      "resume_mode": "replan_remaining",
+      "evidence_level": "heuristic",
+      "claims_dynamics_certificate": false,
+      "backends_smoked": [
+        "CODA reference Adapter",
+        "local AIBI RobotJointAdapter source"
+      ]
     },
     "remaining_for_stage_acceptance": [
       "Calibrate C1-T technical thresholds and add full replay/observation correlation; this smoke does not prove naturalness.",

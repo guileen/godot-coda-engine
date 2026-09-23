@@ -7,7 +7,11 @@ const GDBOT_SCENE := preload("res://addons/gdquest_gdbot/gdbot_skin.tscn")
 const EXPRESSION_ADAPTER_SCRIPT := preload("res://scripts/d3_expression_adapter.gd")
 const ROBOT_ADAPTER_SCRIPT := preload("res://scripts/gdbot_robot_adapter.gd")
 const AIBI_ADAPTER_BRIDGE_SCRIPT := preload("res://scripts/coda_aibi_robot_adapter_bridge.gd")
+const CONTINUATION_VIABILITY_SCRIPT := preload("res://scripts/d3_continuation_viability.gd")
 const SAFE_NEUTRAL_POSE := {"head_pitch": 0.0, "head_yaw": 0.0, "head_roll": 0.0}
+const CONTROLLER_REVISION := "godot.gdbot.head-controller@1"
+const CONSTRAINT_REVISION := "godot.gdbot.head-safe@1"
+const DEFAULT_CONTINUATION_PROFILE := {"head_pitch": {"min_deg": -15.0, "max_deg": 25.0, "max_speed_deg_s": 90.0}, "head_yaw": {"min_deg": -60.0, "max_deg": 60.0, "max_speed_deg_s": 120.0}, "head_roll": {"min_deg": -20.0, "max_deg": 20.0, "max_speed_deg_s": 90.0}}
 
 var gdbot: Node3D
 var skeleton: Skeleton3D
@@ -23,6 +27,7 @@ var phase_label: Label
 var attack_button: Button
 var guard_button: Button
 var interrupt_button: Button
+var resume_button: Button
 var external_writer_button: Button
 var owner_lost_button: Button
 var reset_button: Button
@@ -33,6 +38,11 @@ var decision_entries: Array[String] = []
 var observation_entries: Array[String] = []
 var motion_plans: Dictionary = {}
 var motion_plan: Dictionary = {}
+var continuation_contract: Dictionary = {}
+var continuation_profile: Dictionary = {}
+var continuation_token: Dictionary = {}
+var continuation_artifact: Dictionary = {}
+var continuation_result: Dictionary = {}
 var plan_loaded := false
 var _active_priority := -1
 var _pending_plan: Dictionary = {}
@@ -115,40 +125,48 @@ func request_intent(intent: String) -> void:
 		return
 	_start_plan(artifact)
 
-func _start_plan(artifact: Dictionary) -> void:
-	var plan: Dictionary = artifact.get("transition_plan", {})
+func _start_plan(artifact: Dictionary, plan_override: Dictionary = {}) -> bool:
+	var plan: Dictionary = plan_override if not plan_override.is_empty() else artifact.get("transition_plan", {})
 	if not robot_adapter.can_start_plan(plan):
 		_record_decision("REJECT", "计划起点与 Adapter 当前姿态不一致；拒绝写入")
 		adapter_receipt["barrier"] = "rejected"
 		adapter_receipt["terminal"] = "rejected"
 		_update_panel("red", "REJECTED / START STATE")
-		return
+		return false
+	var previous_generation := transition_generation
+	var previous_lease_owner := lease_owner
 	transition_generation += 1
 	lease_owner = "coda.transition.%d" % transition_generation
 	var admitted_plan := plan.duplicate(true)
 	# The generated plan is an immutable motion decision; the runtime binds it to this fresh lease epoch.
 	admitted_plan["lease"]["generation"] = transition_generation
+	admitted_plan["lease"]["lease_id"] = lease_owner
 	var submitted: Dictionary = robot_adapter.submit_transition_plan(admitted_plan, transition_generation)
 	if not submitted.get("ok", false):
+		transition_generation = previous_generation
+		lease_owner = previous_lease_owner
 		_record_decision("ADAPTER_REJECT", String(submitted.get("error", "unknown")))
 		adapter_receipt["barrier"] = "rejected"
 		adapter_receipt["terminal"] = "rejected"
 		_update_panel("red", "REJECTED / ADAPTER")
-		return
+		return false
 	motion_plan = artifact
 	current_intent = String(artifact.get("source_asset", "motion_intent"))
 	_active_priority = int(artifact.get("motion_envelope", {}).get("priority", 0))
 	adapter_receipt["barrier"] = "accepted"
 	adapter_receipt["start"] = "started"
 	adapter_receipt["terminal"] = "pending"
-	adapter_receipt["plan_id"] = plan.get("plan_id", "")
-	_record_decision("GENERATED_PLAN", "%s → %s" % [artifact.get("source_asset", ""), plan.get("plan_id", "")])
-	_record_observation("adapter_start", "generation=%d segments=%d" % [transition_generation, plan.get("segments", []).size()])
+	adapter_receipt["plan_id"] = admitted_plan.get("plan_id", "")
+	_record_decision("GENERATED_PLAN", "%s → %s" % [artifact.get("source_asset", ""), admitted_plan.get("plan_id", "")])
+	_record_observation("adapter_start", "generation=%d segments=%d" % [transition_generation, admitted_plan.get("segments", []).size()])
 	_update_panel("blue", "EXECUTING GENERATED PLAN")
+	return true
 
 func _interrupt_to_safe(reason: String, preserve_pending := false) -> void:
 	if robot_adapter == null or not owner_valid:
 		return
+	if reason == "user_interrupt" and current_intent != "安全收敛" and robot_adapter.is_executing() and not motion_plan.is_empty():
+		_capture_continuation_token()
 	_record_decision("INTERRUPT", "%s; revoke generation %d" % [reason, transition_generation])
 	var revoked_generation := transition_generation
 	transition_generation += 1
@@ -165,9 +183,163 @@ func _interrupt_to_safe(reason: String, preserve_pending := false) -> void:
 		_update_panel("red", "RECOVERY REJECTED")
 		return
 	current_intent = "安全收敛"
+	if not preserve_pending and reason != "user_interrupt":
+		continuation_token = {}
+		continuation_artifact = {}
 	adapter_receipt["start"] = "recovery_started"
 	_record_observation("generation_revoked", "generation=%d" % revoked_generation)
 	_update_panel("blue", "SAFE CONVERGENCE")
+
+func _capture_continuation_token() -> void:
+	var snapshot: Dictionary = robot_adapter.phase_snapshot()
+	var pose: Dictionary = robot_adapter.current.duplicate(true)
+	var skill_ref := String(motion_plan.get("motion_envelope", {}).get("intent", ""))
+	continuation_token = {
+		"skill_ref": skill_ref,
+		"phase_id": String(snapshot.get("phase_id", "")),
+		"segment_index": int(snapshot.get("segment_index", 0)),
+		"progress": float(snapshot.get("segment_progress", 0.0)),
+		"state_digest": _pose_digest(pose),
+		"pose": pose,
+		"generation": transition_generation,
+		"controller_revision": CONTROLLER_REVISION,
+		"constraint_revision": CONSTRAINT_REVISION,
+		"lease_id": lease_owner,
+	}
+	continuation_artifact = motion_plan.duplicate(true)
+	_record_observation("continuation_token", "%s · %s %.0f%% · generation=%d" % [skill_ref, continuation_token.phase_id, continuation_token.progress * 100.0, transition_generation])
+
+func request_continuation() -> void:
+	if continuation_token.is_empty() or continuation_artifact.is_empty() or robot_adapter == null:
+		_record_decision("CONTINUATION_REJECT", "没有可续接的中断动作")
+		return
+	if robot_adapter.is_executing():
+		_record_decision("CONTINUATION_REJECT", "当前动作尚未结束；不创建新 generation")
+		_update_panel("red", "REJECTED / CONTINUATION")
+		return
+	if not owner_valid or external_writer_active:
+		_record_decision("CONTINUATION_REJECT", "对象失效或其他脚本占用；不创建新 generation")
+		adapter_receipt["barrier"] = "rejected"
+		adapter_receipt["terminal"] = "rejected"
+		_update_panel("red", "REJECTED / EXTERNAL WRITER" if external_writer_active else "REJECTED / OWNER LOST")
+		return
+	var resumed_plan := _build_remaining_plan(continuation_artifact, continuation_token)
+	var profile_ok := plan_loaded and _continuation_profile_valid() and not continuation_contract.is_empty()
+	var pose: Dictionary = robot_adapter.current.duplicate(true)
+	var bounded := _pose_within_profile(pose)
+	var bridge_ok: bool = not resumed_plan.is_empty() and robot_adapter.can_start_plan(resumed_plan)
+	var estimated_ticks := 0
+	for segment in resumed_plan.get("segments", []):
+		estimated_ticks += int(segment.get("duration_ticks", 0))
+	var gates := {
+		"model_valid": profile_ok,
+		"contact_valid": profile_ok and continuation_profile.get("contact_mode") == "contactless_pose_only" and continuation_profile.get("contact_channels", []) is Array and continuation_profile.get("contact_channels", []).is_empty(),
+		"inputs_bounded": bounded,
+		"controller_valid": owner_valid and robot_adapter != null and not external_writer_active,
+		"capture_region": bounded and _pose_near_neutral(pose),
+		"bridge_residual_ok": bridge_ok,
+		"deadline_ok": estimated_ticks > 0 and estimated_ticks <= int(continuation_profile.get("max_plan_ticks", 0)),
+	}
+	var next_generation := transition_generation + 1
+	var current := {
+		"skill_ref": continuation_token.skill_ref,
+		"phase_id": String(robot_adapter.phase_snapshot().get("phase_id", "idle")),
+		"progress": float(robot_adapter.phase_snapshot().get("segment_progress", 0.0)),
+		"generation": next_generation,
+		"controller_revision": CONTROLLER_REVISION,
+		"constraint_revision": CONSTRAINT_REVISION,
+		"lease_id": "coda.transition.%d" % next_generation,
+	}
+	var interruption := {"state_digest": continuation_token.state_digest}
+	var candidates := [{"mode": "replan_remaining", "admitted": true, "remaining_task_set_ref": continuation_contract.get("contract_id", ""), "bridge_ref": "godot.gdbot.head.reentry-bridge@1"}]
+	continuation_result = CONTINUATION_VIABILITY_SCRIPT.evaluate(continuation_contract, continuation_token, interruption, current, gates, candidates, "heuristic")
+	if continuation_result.get("status") != "admitted":
+		_record_decision("CONTINUATION_REJECT", ",".join(continuation_result.get("diagnostics", [])))
+		_update_panel("red", "REJECTED / CONTINUATION")
+		return
+	var resume_artifact := continuation_artifact.duplicate(true)
+	_record_observation("continuation_admitted", "%s · 仿真恢复候选 · 无动力学证明" % continuation_result.resume_mode)
+	if _start_plan(resume_artifact, resumed_plan):
+		# Consume the one-shot token only after the Adapter accepts the new generation.
+		continuation_result["source_generation"] = continuation_token.generation
+		continuation_result["new_generation"] = transition_generation
+		continuation_token = {}
+		continuation_artifact = {}
+	else:
+		continuation_result["status"] = "reject"
+		continuation_result["resume_mode"] = ""
+		continuation_result["diagnostics"] = ["CONTINUATION_ADAPTER_REJECTED"]
+
+func _build_remaining_plan(artifact: Dictionary, token: Dictionary) -> Dictionary:
+	var source_plan: Dictionary = artifact.get("transition_plan", {})
+	var source_segments: Array = source_plan.get("segments", [])
+	var next_index := int(token.get("segment_index", 0)) - 1
+	if next_index < 0 or next_index >= source_segments.size():
+		return {}
+	var current_pose: Dictionary = robot_adapter.current.duplicate(true)
+	var remaining: Array[Dictionary] = []
+	var cursor := current_pose.duplicate(true)
+	var start_tick := 0
+	for index in range(next_index, source_segments.size()):
+		var source_segment: Dictionary = source_segments[index]
+		var finish: Dictionary = source_segment.get("end", {}).duplicate(true)
+		if not _pose_within_profile(finish):
+			return {}
+		var duration_ticks := int(source_segment.get("duration_ticks", 1))
+		if index == next_index:
+			duration_ticks = maxi(1, int(ceil(float(duration_ticks) * maxf(0.25, 1.0 - float(token.get("progress", 0.0))))))
+		for joint_name in finish:
+			var profile: Dictionary = continuation_profile.get("joint_profile", {}).get(String(joint_name), {})
+			if profile.is_empty():
+				return {}
+			var distance := absf(float(finish[joint_name]) - float(cursor.get(joint_name, 0.0)))
+			var required_ticks := int(ceil(distance / float(profile.max_speed_deg_s) * 60.0))
+			duration_ticks = maxi(duration_ticks, required_ticks)
+		var segment_id := "coda.reentry.%d.%s" % [index, String(source_segment.get("segment_id", "segment"))]
+		remaining.append({
+			"segment_id": segment_id,
+			"start_tick": start_tick,
+			"duration_ticks": duration_ticks,
+			"start": cursor.duplicate(true),
+			"end": finish.duplicate(true),
+			"end_tick": start_tick + duration_ticks,
+		})
+		cursor = finish
+		start_tick += duration_ticks
+	if remaining.is_empty():
+		return {}
+	var resumed := source_plan.duplicate(true)
+	resumed["plan_id"] = "%s.reentry.%d" % [source_plan.get("plan_id", "motion"), transition_generation + 1]
+	resumed["snapshot_ref"] = {"revision": "post-recovery.%d" % transition_generation, "physics_tick": 0, "digest": _pose_digest(current_pose)}
+	resumed["lease"] = source_plan.get("lease", {}).duplicate(true)
+	resumed["segments"] = remaining
+	return resumed
+
+func _pose_within_profile(pose: Dictionary) -> bool:
+	var joint_profile: Dictionary = continuation_profile.get("joint_profile", {})
+	if pose.size() != joint_profile.size():
+		return false
+	for joint_name in joint_profile:
+		if not pose.has(joint_name):
+			return false
+		var value := float(pose[joint_name])
+		var bounds: Dictionary = joint_profile[joint_name]
+		if value < float(bounds.min_deg) or value > float(bounds.max_deg):
+			return false
+	return true
+
+func _pose_near_neutral(pose: Dictionary) -> bool:
+	for joint_name in SAFE_NEUTRAL_POSE:
+		if absf(float(pose.get(joint_name, INF)) - float(SAFE_NEUTRAL_POSE[joint_name])) > 0.05:
+			return false
+	return true
+
+func _pose_digest(pose: Dictionary) -> String:
+	var canonical := "head_pitch=%.4f;head_yaw=%.4f;head_roll=%.4f" % [float(pose.get("head_pitch", 0.0)), float(pose.get("head_yaw", 0.0)), float(pose.get("head_roll", 0.0))]
+	var hasher := HashingContext.new()
+	hasher.start(HashingContext.HASH_SHA256)
+	hasher.update(canonical.to_utf8_buffer())
+	return hasher.finish().hex_encode()
 
 func request_expression(expression_name: String) -> void:
 	if not plan_loaded or not owner_valid or external_writer_active:
@@ -197,6 +369,9 @@ func reset_fixture() -> void:
 		robot_adapter.reset()
 	_active_priority = -1
 	_pending_plan = {}
+	continuation_token = {}
+	continuation_artifact = {}
+	continuation_result = {}
 	current_intent = "idle"
 	_sync_demo_controls()
 	_record_decision("RESET", "fixture reset; no stale generation may write")
@@ -209,6 +384,8 @@ func set_external_writer_active(active: bool) -> void:
 
 func owner_lost() -> void:
 	owner_valid = false
+	continuation_token = {}
+	continuation_artifact = {}
 	_sync_demo_controls()
 	transition_generation += 1
 	if robot_adapter != null:
@@ -225,6 +402,18 @@ func apply_transition_sample(generation: int, pose: Vector3) -> bool:
 	return robot_adapter.set_pose(generation, {"head_pitch": pose.x, "head_yaw": pose.y, "head_roll": pose.z})
 
 func _load_motion_plan() -> void:
+	var profile_path := "res://fixtures/continuation-profile.json"
+	if FileAccess.file_exists(profile_path):
+		var parsed_profile = JSON.parse_string(FileAccess.get_file_as_string(profile_path))
+		if parsed_profile is Dictionary:
+			continuation_profile = parsed_profile
+	var contract_path := "res://fixtures/continuation-contract.json"
+	if FileAccess.file_exists(contract_path):
+		var parsed_contract = JSON.parse_string(FileAccess.get_file_as_string(contract_path))
+		if parsed_contract is Dictionary:
+			continuation_contract = parsed_contract
+	else:
+		_record_decision("CONTINUATION_REJECT", "缺少 CODA ContinuationContract fixture")
 	var paths := ["res://fixtures/generated/robot-attack-recover.json", "res://fixtures/generated/robot-high-guard.json"]
 	for path in paths:
 		if not FileAccess.file_exists(path):
@@ -243,6 +432,23 @@ func _load_motion_plan() -> void:
 		plan_loaded = true
 	else:
 		_record_decision("REJECT", "没有可执行的 CODA TransitionPlan")
+
+func _continuation_profile_valid() -> bool:
+	if continuation_profile.get("profile_type") != "KinematicContinuationProfile" or int(continuation_profile.get("schema_version", 0)) != 1:
+		return false
+	if continuation_profile.get("profile_id") != "godot.gdbot.head-kinematic@1" or continuation_profile.get("evidence_level") != "heuristic":
+		return false
+	if continuation_profile.get("contact_mode") != "contactless_pose_only" or continuation_profile.get("max_plan_ticks", 0) <= 0:
+		return false
+	if not continuation_profile.get("contact_channels", null) is Array or not continuation_profile.contact_channels.is_empty():
+		return false
+	var joints: Dictionary = continuation_profile.get("joint_profile", {})
+	if joints.keys().size() != DEFAULT_CONTINUATION_PROFILE.size():
+		return false
+	for joint_name in DEFAULT_CONTINUATION_PROFILE:
+		if not joints.has(joint_name) or joints[joint_name] != DEFAULT_CONTINUATION_PROFILE[joint_name]:
+			return false
+	return true
 
 func _current_pose() -> Vector3:
 	if robot_adapter == null:
@@ -279,8 +485,18 @@ func _on_adapter_terminal(generation: int, terminal: String) -> void:
 		_pending_plan = {}
 		_start_plan(pending)
 	else:
+		var was_recovery := current_intent == "安全收敛"
 		current_intent = "idle"
 		_active_priority = -1
+		if was_recovery and not continuation_token.is_empty():
+			var token_segment_index := int(continuation_token.get("segment_index", 0))
+			var token_segments: Array = continuation_artifact.get("transition_plan", {}).get("segments", [])
+			var resumeable_phase := token_segment_index > 0 and token_segment_index <= token_segments.size() and not _pose_near_neutral(token_segments[token_segment_index - 1].get("end", {}))
+			if resumeable_phase:
+				_record_observation("continuation_ready", "安全回中完成；可评估剩余动作")
+			else:
+				continuation_token = {}
+				continuation_artifact = {}
 		_update_panel("green", "COMPLETED")
 
 func _build_world() -> void:
@@ -376,7 +592,7 @@ func _build_overlay() -> void:
 	var help := Label.new()
 	help.position = Vector2(20.0, 278.0)
 	help.size = Vector2(390.0, 32.0)
-	help.text = "先点一个动作观察头部转向；执行中可切换防御或中断。"
+	help.text = "先点动作观察头部转向；中断后安全回中完成，可尝试续接剩余动作。此续接只作仿真候选。"
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.modulate = Color("c3d2e5")
 	panel.add_child(help)
@@ -391,11 +607,18 @@ func _build_overlay() -> void:
 	action_row.add_child(attack_button)
 	action_row.add_child(guard_button)
 	panel.add_child(action_row)
-	interrupt_button = _demo_button("中断并回到安全姿态")
-	interrupt_button.position = Vector2(20.0, 362.0)
-	interrupt_button.size = Vector2(390.0, 40.0)
+	var recovery_row := HBoxContainer.new()
+	recovery_row.position = Vector2(20.0, 362.0)
+	recovery_row.size = Vector2(390.0, 40.0)
+	recovery_row.add_theme_constant_override("separation", 8)
+	interrupt_button = _demo_button("中断并安全回中")
 	interrupt_button.pressed.connect(func(): request_intent("interrupt"))
-	panel.add_child(interrupt_button)
+	resume_button = _demo_button("续接剩余动作（仿真）")
+	resume_button.disabled = true
+	resume_button.pressed.connect(request_continuation)
+	recovery_row.add_child(interrupt_button)
+	recovery_row.add_child(resume_button)
+	panel.add_child(recovery_row)
 	var expression_row := HBoxContainer.new()
 	expression_row.position = Vector2(20.0, 410.0)
 	expression_row.size = Vector2(390.0, 40.0)
@@ -461,6 +684,8 @@ func _sync_demo_controls() -> void:
 		owner_lost_button.disabled = not owner_valid
 	if reset_button != null:
 		reset_button.disabled = robot_adapter != null and robot_adapter.is_executing()
+	if resume_button != null:
+		resume_button.disabled = continuation_token.is_empty() or robot_adapter == null or robot_adapter.is_executing() or not owner_valid or external_writer_active
 
 func _reset_demo() -> void:
 	reset_fixture()
@@ -476,6 +701,7 @@ func _update_panel(color_name: String, phase: String) -> void:
 		"EXECUTING GENERATED PLAN": "正在执行 CODA 生成的动作",
 		"SAFE CONVERGENCE": "正在回到安全姿态",
 		"COMPLETED": "动作执行完成",
+		"REJECTED / CONTINUATION": "动作未续接：当前仿真条件不满足恢复门槛",
 		"OWNER LOST": "演示对象失效，拒绝新动作",
 		"RECOVERY REJECTED": "安全回中请求被拒绝",
 		"REJECTED": "动作未执行：没有可用的计划",
@@ -498,6 +724,8 @@ func _update_panel(color_name: String, phase: String) -> void:
 	}
 	status_label.text = "%s\n当前动作：%s" % [phase_text, intent_labels.get(current_intent, current_intent)]
 	trace_label.text = "generation=%d · owner=%s\nDecisionRecord\n" % [transition_generation, lease_owner] + "\n".join(decision_entries.slice(maxi(0, decision_entries.size() - 3), decision_entries.size())) + "\nMotionAdapter · barrier=%s start=%s terminal=%s" % [adapter_receipt.get("barrier", "pending"), adapter_receipt.get("start", "pending"), adapter_receipt.get("terminal", "pending")] + "\nExpressionAdapter · face=%s terminal=%s gen=%s" % [expression_receipt.get("expression", "default"), expression_receipt.get("terminal", "pending"), expression_receipt.get("generation", 0)] + "\nRuntimeObservation\n" + "\n".join(observation_entries.slice(maxi(0, observation_entries.size() - 2), observation_entries.size()))
+	if not continuation_result.is_empty():
+		trace_label.text += "\n恢复候选：%s · evidence=%s · dynamics_certificate=%s" % [continuation_result.get("resume_mode", "reject"), continuation_result.get("evidence_level", "heuristic"), continuation_result.get("claims_dynamics_certificate", false)]
 	if phase_label != null and robot_adapter != null:
 		phase_label.text = _format_motion_phase(robot_adapter.phase_snapshot())
 

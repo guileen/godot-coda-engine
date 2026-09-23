@@ -1,8 +1,10 @@
 extends SceneTree
 
+const CONTINUATION_EVALUATOR := preload("res://scripts/d3_continuation_viability.gd")
 var failures: Array[String] = []
 
 func _initialize() -> void:
+	_test_continuation_evaluator()
 	var scene := load("res://scenes/d3_skeleton_transition.tscn") as PackedScene
 	_check(scene != null, "D3 scene must load")
 	if scene == null:
@@ -14,6 +16,7 @@ func _initialize() -> void:
 	_check(instance.get("attack_button") is Button, "D3 must provide an on-screen attack intent button")
 	_check(instance.get("guard_button") is Button, "D3 must provide an on-screen high-priority guard button")
 	_check(instance.get("interrupt_button") is Button, "D3 must provide an on-screen safe interrupt button")
+	_check(instance.get("resume_button") is Button, "D3 must provide an on-screen continuation button")
 	_check(instance.get("external_writer_button") is Button and instance.get("reset_button") is Button, "D3 must provide visible failure-injection and reset controls")
 	var skeleton := instance.get("skeleton") as Skeleton3D
 	_check(skeleton != null, "D3 must instantiate a Skeleton3D")
@@ -21,6 +24,8 @@ func _initialize() -> void:
 	_check(instance.get("face") != null, "D3 must expose the real GDBot face animation target")
 	_check(instance.get("expression_adapter") != null, "D3 must instantiate a separate expression Adapter")
 	_check(instance.get("plan_loaded") == true, "D3 must load CODA generated TransitionPlans")
+	var continuation_profile: Variant = instance.get("continuation_profile")
+	_check(continuation_profile is Dictionary and not continuation_profile.is_empty(), "D3 must load its explicit contactless kinematic continuation profile")
 	var plans: Dictionary = instance.get("motion_plans")
 	_check(plans.has("robot.attack_recover@1") and plans.has("robot.high_guard@1"), "both CODA motion intents must have generated TransitionPlans")
 	var adapter = instance.get("robot_adapter")
@@ -66,16 +71,36 @@ func _initialize() -> void:
 	var pose_before: Dictionary = adapter.current.duplicate(true)
 	_check(not adapter.set_pose(old_generation, {"head_pitch": 0.0, "head_yaw": 0.0, "head_roll": 0.0}), "late write from a revoked generation must be rejected")
 	_check(adapter.current == pose_before, "rejected stale write must leave the skeleton target unchanged")
+	var before_resume_attempt_generation := int(instance.get("transition_generation"))
+	instance.attack_button.pressed.emit()
+	_check(int(instance.get("transition_generation")) == before_resume_attempt_generation + 1 and adapter.is_executing(), "test setup attack must actually start before interrupting it")
+	await create_timer(0.14).timeout
+	var interrupted_generation := int(instance.get("transition_generation"))
 	instance.interrupt_button.pressed.emit()
 	_check(String(instance.get("current_intent")) == "安全收敛", "interrupt must start safe convergence through the Adapter")
+	_check(int(instance.get("transition_generation")) == interrupted_generation + 1, "interrupt must revoke the old generation before recovery")
+	var captured_token: Dictionary = instance.get("continuation_token")
+	_check(String(captured_token.get("phase_id", "")) == "robot.attack.recover.approach", "user interruption must capture the live semantic phase")
+	_check(String(captured_token.get("state_digest", "")).length() == 64, "ContinuationToken must bind the interrupted pose digest")
 	await create_timer(0.4).timeout
 	_check(absf(float(adapter.current.get("head_pitch", 1.0))) < 0.01 and absf(float(adapter.current.get("head_yaw", 1.0))) < 0.01, "safe convergence must end at the declared neutral pose")
+	_check(not instance.resume_button.disabled, "completed safe recovery must offer eligible remaining task continuation")
+	var generation_before_reject := int(instance.get("transition_generation"))
 	instance.external_writer_button.pressed.emit()
-	var rejected_generation := int(instance.get("transition_generation"))
-	instance.request_intent("robot.attack_recover@1")
-	_check(int(instance.get("transition_generation")) == rejected_generation, "external writer rejection must not create a new generation")
+	instance.request_continuation()
+	_check(int(instance.get("transition_generation")) == generation_before_reject, "external writer must block continuation without creating a new generation")
 	_check(String(instance.get("adapter_receipt").get("barrier", "")) == "rejected", "external writer must be rejected at the ownership barrier")
 	_check(String(instance.get("adapter_receipt").get("terminal", "")) == "rejected", "external writer rejection must close a terminal receipt")
+	instance.external_writer_button.pressed.emit()
+	instance.resume_button.pressed.emit()
+	_check(String(instance.get("continuation_result").get("status", "")) == "admitted", "continuation viability evaluator must admit the bounded replan candidate")
+	_check(String(instance.get("continuation_result").get("resume_mode", "")) == "replan_remaining", "recovery from a changed pose must replan the remaining task")
+	_check(instance.get("continuation_result").get("claims_dynamics_certificate", true) == false, "heuristic D3 continuation must not claim a dynamics certificate")
+	_check(int(instance.get("transition_generation")) == generation_before_reject + 1, "admitted continuation must use a fresh generation")
+	_check(String(instance.get("lease_owner")) != String(captured_token.get("lease_id", "")), "continuation must acquire a new lease")
+	await create_timer(1.0).timeout
+	_check(String(instance.get("adapter_receipt").get("terminal", "")) == "completed", "replanned remaining task must produce a terminal receipt")
+	_check(absf(float(adapter.current.get("head_pitch", 1.0))) < 0.01 and absf(float(adapter.current.get("head_yaw", 1.0))) < 0.01, "replanned continuation must end in the declared neutral pose")
 	instance.reset_button.pressed.emit()
 	_check(instance.owner_valid and not instance.external_writer_active, "reset button must restore the demo fixture")
 	instance.request_intent("robot.attack_recover@1")
@@ -96,3 +121,21 @@ func _initialize() -> void:
 func _check(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
+
+func _test_continuation_evaluator() -> void:
+	var contract := JSON.parse_string(FileAccess.get_file_as_string("res://fixtures/continuation-contract.json")) as Dictionary
+	var token := {"skill_ref": "robot.attack_recover@1", "phase_id": "attack.approach", "progress": 0.4, "state_digest": "pose.before", "generation": 4, "controller_revision": "controller@1", "constraint_revision": "constraints@1", "lease_id": "lease.old"}
+	var interruption := {"state_digest": "pose.before"}
+	var current := {"skill_ref": "robot.attack_recover@1", "phase_id": "safety.recovery", "progress": 1.0, "generation": 6, "controller_revision": "controller@1", "constraint_revision": "constraints@1", "lease_id": "lease.new"}
+	var gates := {"model_valid": true, "contact_valid": true, "inputs_bounded": true, "controller_valid": true, "capture_region": true, "bridge_residual_ok": true, "deadline_ok": true}
+	var candidates := [{"mode": "replan_remaining", "admitted": true, "remaining_task_set_ref": contract.contract_id, "bridge_ref": "godot.gdbot.head.reentry-bridge@1"}]
+	var admitted: Dictionary = CONTINUATION_EVALUATOR.evaluate(contract, token, interruption, current, gates, candidates, "heuristic")
+	_check(String(admitted.get("status", "")) == "admitted" and not admitted.get("claims_dynamics_certificate", true), "valid profile re-entry must admit only as a non-dynamics heuristic")
+	var stale_current := current.duplicate(true)
+	stale_current["generation"] = token.generation
+	var stale: Dictionary = CONTINUATION_EVALUATOR.evaluate(contract, token, interruption, stale_current, gates, candidates, "heuristic")
+	_check(String(stale.get("status", "")) == "reject" and stale.get("diagnostics", []).has("CONTINUATION_GENERATION_NOT_ADVANCED"), "old generation must fail closed")
+	var failed_gates := gates.duplicate(true)
+	failed_gates["bridge_residual_ok"] = false
+	var no_bridge: Dictionary = CONTINUATION_EVALUATOR.evaluate(contract, token, interruption, current, failed_gates, candidates, "heuristic")
+	_check(String(no_bridge.get("status", "")) == "reject", "failed bridge gate must not admit a continuation")

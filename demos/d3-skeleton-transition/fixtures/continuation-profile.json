@@ -1,0 +1,14 @@
+{
+  "profile_type": "KinematicContinuationProfile",
+  "schema_version": 1,
+  "profile_id": "godot.gdbot.head-kinematic@1",
+  "evidence_level": "heuristic",
+  "contact_mode": "contactless_pose_only",
+  "contact_channels": [],
+  "max_plan_ticks": 120,
+  "joint_profile": {
+    "head_pitch": {"min_deg": -15.0, "max_deg": 25.0, "max_speed_deg_s": 90.0},
+    "head_yaw": {"min_deg": -60.0, "max_deg": 60.0, "max_speed_deg_s": 120.0},
+    "head_roll": {"min_deg": -20.0, "max_deg": 20.0, "max_speed_deg_s": 90.0}
+  }
+}
