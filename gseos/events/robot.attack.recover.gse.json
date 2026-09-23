@@ -1,0 +1,24 @@
+{
+  "asset_type": "EventAsset",
+  "schema_version": 1,
+  "event_id": "robot.attack.recover",
+  "display_name": "攻击后收势",
+  "args": [],
+  "recovery": "E0",
+  "root": [
+    {
+      "node_id": "attack-recovery-intent",
+      "command_id": "motion_intent",
+      "params": {
+        "intent": "robot.attack_recover@1",
+        "args": {
+          "target": "pose.attack_recovered",
+          "resources": "robot.head@1+robot.torso@1",
+          "priority": 70,
+          "safety_profile": "godot.gdbot.head-safe@1",
+          "on_no_solution": "safe_stop"
+        }
+      }
+    }
+  ]
+}

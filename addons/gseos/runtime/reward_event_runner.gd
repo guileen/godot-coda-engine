@@ -21,7 +21,7 @@ func run(args: Dictionary, owner: Node, handle: GSEOS_RunHandle) -> Variant:
 	# Generated source-map equivalents for the reward fixture.
 	var old_score = capabilities.read({"target": target_hud, "field": "score"})
 	var new_score := int(old_score) + reward
-	var wait = capabilities.animate_number({"target": target_hud, "from": old_score, "to": new_score, "duration": 0.01})
+	var wait = capabilities.animate_number({"target": target_hud, "from": old_score, "to": new_score, "duration": 0.65})
 	if not wait is GSEOS_WaitRegistration:
 		handle.finish(GSEOS_RunHandle.Status.FAILED, {"status": "FAILED", "code": "WAIT_ADAPTER_FAILED"})
 		return null
@@ -35,10 +35,13 @@ func run(args: Dictionary, owner: Node, handle: GSEOS_RunHandle) -> Variant:
 		if result.get("status") != "COMPLETED":
 			handle.finish(GSEOS_RunHandle.Status.CANCELLED, {"status": "CANCELLED", "reason": result.get("reason", "wait_failed")})
 			return
-		var old_row = target_hud.get_node_or_null("OldRewardRow")
+		var row_owner = target_hud.get_node_or_null("RewardHistory")
+		if not is_instance_valid(row_owner):
+			row_owner = target_hud
+		var old_row = row_owner.get_node_or_null("OldRewardRow")
 		if is_instance_valid(old_row):
 			capabilities.remove_node({"target": old_row})
-		var new_row = capabilities.create_reward_row({"owner": target_hud, "value": new_score})
+		var new_row = capabilities.create_reward_row({"owner": row_owner, "value": new_score})
 		capabilities.set_text({"target": new_row, "content": "奖励：%d" % new_score})
 		var published := registry.publish("combat.hit_resolved@1", {"damage": reward, "score": new_score})
 		handle.finish(GSEOS_RunHandle.Status.COMPLETED, {"status": "COMPLETED", "value": {"score": new_score, "published": published.ok}})

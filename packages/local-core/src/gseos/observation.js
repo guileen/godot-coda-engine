@@ -1,13 +1,13 @@
 import { gseosDiagnostic, gseosReceipt } from "./diagnostics.js";
 
-const TASKS = ["find_alias", "restate_flow", "edit_duration", "preview_diff", "commit_and_run", "locate_runtime"];
+const TASKS = ["understand_flow", "judge_naturalness", "edit_and_preview", "run_correctly", "operation_confidence"];
 const FORBIDDEN_PERSONAL_FIELDS = new Set(["name", "fullname", "email", "emailaddress", "phone", "phonenumber", "telephone", "rawtranscript", "transcript", "projectpath", "accountid", "userid", "username", "contact", "address", "ipaddress", "githubhandle"]);
 const ALLOWED_FIELDS = {
   report: new Set(["observation_type", "schema_version", "study_id", "observations"]),
   observation: new Set(["participant_id", "target_user", "implementation_involvement", "eligibility_verified_by_observer", "role_profile", "consent", "tasks", "hint_count", "outcome", "quote_summaries", "blockers"]),
   consent: new Set(["recorded", "recording_allowed"]),
   tasks: new Set(TASKS),
-  task: new Set(["result", "hint_free"]),
+  task: new Set(["result", "hint_free", "summary"]),
   blocker: new Set(["stage", "summary"]),
 };
 const PRIVATE_TEXT_PATTERNS = [
@@ -58,7 +58,7 @@ export function validateUserObservationReport(report) {
   if (!report || typeof report !== "object" || Array.isArray(report)) return gseosReceipt([gseosDiagnostic("INVALID_USER_OBSERVATION", "用户观察报告必须是对象。", { path: "/" })]);
   checkFields(report, ALLOWED_FIELDS.report, "", diagnostics);
   if (report.observation_type !== "P3UserObservation") diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_TYPE", "observation_type 必须为 P3UserObservation。", { path: "/observation_type" }));
-  if (report.schema_version !== 2) diagnostics.push(gseosDiagnostic("UNSUPPORTED_USER_OBSERVATION_VERSION", "当前仅接受包含目标用户与独立性自我确认的 UserObservation@2。", { path: "/schema_version" }));
+  if (report.schema_version !== 3) diagnostics.push(gseosDiagnostic("UNSUPPORTED_USER_OBSERVATION_VERSION", "当前仅接受聚焦流程理解、自然度、编辑体验与运行正确性的 UserObservation@3。", { path: "/schema_version" }));
   if (!/^p3-[a-z0-9-]+$/.test(String(report.study_id ?? ""))) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_STUDY", "study_id 必须是脱敏的 p3 标识。", { path: "/study_id" }));
   if (!Array.isArray(report.observations)) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATIONS", "observations 必须是数组。", { path: "/observations" }));
   const observations = Array.isArray(report.observations) ? report.observations : [];
@@ -87,7 +87,13 @@ export function validateUserObservationReport(report) {
     for (const task of TASKS) {
       const result = observation.tasks?.[task];
       if (!result || typeof result !== "object" || Array.isArray(result) || !["pass", "fail", "blocked"].includes(result.result) || typeof result.hint_free !== "boolean") diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_TASK", `任务 ${task} 缺少合法结果或 hint_free。`, { path: `${path}/tasks/${task}` }));
-      else checkFields(result, ALLOWED_FIELDS.task, `${path}/tasks/${task}`, diagnostics);
+      else {
+        checkFields(result, ALLOWED_FIELDS.task, `${path}/tasks/${task}`, diagnostics);
+        if (result.summary !== undefined) {
+          if (typeof result.summary !== "string" || result.summary.length === 0) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_TASK_SUMMARY", "任务摘要必须是非空脱敏文本。", { path: `${path}/tasks/${task}/summary` }));
+          else checkPrivateText(result.summary, `${path}/tasks/${task}/summary`, diagnostics);
+        }
+      }
     }
     if (observation.quote_summaries !== undefined && !Array.isArray(observation.quote_summaries)) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_SUMMARIES", "quote_summaries 必须是脱敏摘要数组。", { path: `${path}/quote_summaries` }));
     for (const [summaryIndex, summary] of (Array.isArray(observation.quote_summaries) ? observation.quote_summaries : []).entries()) {
@@ -100,7 +106,7 @@ export function validateUserObservationReport(report) {
       if (!blocker || typeof blocker !== "object" || Array.isArray(blocker)) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_BLOCKER", "阻塞摘要必须是结构化对象。", { path: blockerPath }));
       else {
         checkFields(blocker, ALLOWED_FIELDS.blocker, blockerPath, diagnostics);
-        if (!["alias_tree", "flow_reading", "control", "preview", "transaction", "runtime", "location"].includes(blocker.stage)) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_BLOCKER_STAGE", "blocker stage 不受支持。", { path: `${blockerPath}/stage` }));
+        if (!["flow_understanding", "naturalness", "editing", "preview", "runtime", "confidence"].includes(blocker.stage)) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_BLOCKER_STAGE", "blocker stage 不受支持。", { path: `${blockerPath}/stage` }));
         if (typeof blocker.summary !== "string" || blocker.summary.length === 0) diagnostics.push(gseosDiagnostic("INVALID_USER_OBSERVATION_BLOCKER_SUMMARY", "blocker summary 必须是非空脱敏摘要。", { path: `${blockerPath}/summary` }));
         else checkPrivateText(blocker.summary, `${blockerPath}/summary`, diagnostics);
       }

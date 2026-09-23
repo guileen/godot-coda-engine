@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/guileen/godot-coda-engine/blob/main/contracts/gseos/user-observation.schema.json",
-  "title": "GSEOS P3 UserObservation@2",
+  "title": "CODA P3 UserObservation@3",
   "type": "object",
   "required": ["observation_type", "schema_version", "study_id", "observations"],
   "properties": {
     "observation_type": { "const": "P3UserObservation" },
-    "schema_version": { "const": 2 },
+    "schema_version": { "const": 3 },
     "study_id": { "type": "string", "pattern": "^p3-[a-z0-9-]+$" },
     "observations": { "type": "array", "items": { "$ref": "#/$defs/observation" } }
   },
@@ -23,14 +23,13 @@
         "consent": { "type": "object", "required": ["recorded", "recording_allowed"], "properties": { "recorded": { "const": true }, "recording_allowed": { "type": "boolean" } }, "additionalProperties": false },
         "tasks": {
           "type": "object",
-          "required": ["find_alias", "restate_flow", "edit_duration", "preview_diff", "commit_and_run", "locate_runtime"],
+          "required": ["understand_flow", "judge_naturalness", "edit_and_preview", "run_correctly", "operation_confidence"],
           "properties": {
-            "find_alias": { "$ref": "#/$defs/taskResult" },
-            "restate_flow": { "$ref": "#/$defs/taskResult" },
-            "edit_duration": { "$ref": "#/$defs/taskResult" },
-            "preview_diff": { "$ref": "#/$defs/taskResult" },
-            "commit_and_run": { "$ref": "#/$defs/taskResult" },
-            "locate_runtime": { "$ref": "#/$defs/taskResult" }
+            "understand_flow": { "$ref": "#/$defs/taskResult", "description": "Can explain what the reward flow does and whether the explanation matches its actual behavior." },
+            "judge_naturalness": { "$ref": "#/$defs/taskResult", "description": "Can judge whether labels, cards, and branching read naturally and clearly." },
+            "edit_and_preview": { "$ref": "#/$defs/taskResult", "description": "Can edit the animation duration, understand the preview, and confirm the intended change." },
+            "run_correctly": { "$ref": "#/$defs/taskResult", "description": "The observed run produces the expected score, animation, replacement row, and result notice." },
+            "operation_confidence": { "$ref": "#/$defs/taskResult", "description": "Reports whether the flow feels understandable and manageable without source-code or startup instructions." }
           },
           "additionalProperties": false
         },
@@ -44,13 +43,13 @@
     "taskResult": {
       "type": "object",
       "required": ["result", "hint_free"],
-      "properties": { "result": { "enum": ["pass", "fail", "blocked"] }, "hint_free": { "type": "boolean" } },
+      "properties": { "result": { "enum": ["pass", "fail", "blocked"] }, "hint_free": { "type": "boolean" }, "summary": { "type": "string", "minLength": 1, "maxLength": 240, "description": "De-identified observation summary; no raw transcript or identity." } },
       "additionalProperties": false
     },
     "blocker": {
       "type": "object",
       "required": ["stage", "summary"],
-      "properties": { "stage": { "enum": ["alias_tree", "flow_reading", "control", "preview", "transaction", "runtime", "location"] }, "summary": { "type": "string", "minLength": 1, "maxLength": 240, "description": "De-identified blocker summary; do not include raw participant content or identity." } },
+      "properties": { "stage": { "enum": ["flow_understanding", "naturalness", "editing", "preview", "runtime", "confidence"] }, "summary": { "type": "string", "minLength": 1, "maxLength": 240, "description": "De-identified blocker summary; do not include raw participant content or identity." } },
       "additionalProperties": false
     }
   },

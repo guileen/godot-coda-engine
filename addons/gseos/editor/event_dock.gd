@@ -21,6 +21,9 @@ var _text_import_diff := RichTextLabel.new()
 var _text_transaction := GSEOS_TextTransaction.new()
 var _text_import_candidate: Dictionary = {}
 var _draft_param_controls: Dictionary = {}
+var _draft_action_arg_controls: Dictionary = {}
+var _draft_action_args_container: VBoxContainer
+var _draft_capability_select: OptionButton
 var _asset_paths: Array[String] = []
 var _selected_path := ""
 var _selected_asset: Dictionary = {}
@@ -40,14 +43,22 @@ var _generation_override: Callable = Callable()
 var _last_write_ok := true
 
 const COMMAND_DEFINITIONS := {
-	"if": {"label": "条件 if", "fields": ["condition"]},
-	"let": {"label": "绑定 let", "fields": ["name", "value"]},
-	"read": {"label": "读取 read", "fields": ["target", "field", "bind"]},
-	"do": {"label": "同步 do", "fields": ["capability", "args"]},
-	"await": {"label": "等待 await", "fields": ["capability", "args"]},
-	"publish": {"label": "发布 publish", "fields": ["topic", "payload"]},
-	"return": {"label": "返回 return", "fields": ["value"]},
-	"escape": {"label": "受限 escape", "fields": ["inputs", "outputs", "code"]},
+	"if": {"label": "条件分支", "fields": ["condition"]},
+	"let": {"label": "计算变量", "fields": ["name", "value"]},
+	"read": {"label": "读取信息", "fields": ["target", "field", "bind"]},
+	"do": {"label": "执行动作", "fields": ["capability", "args"]},
+	"await": {"label": "等待动作", "fields": ["capability", "args"]},
+	"publish": {"label": "发送通知", "fields": ["topic", "payload"]},
+	"return": {"label": "结束流程", "fields": ["value"]},
+	"escape": {"label": "调用受限代码", "fields": ["inputs", "outputs", "code"]},
+}
+
+const MORE_ACTIONS := {
+	"reload_external": 1, "recover_transaction": 2, "text_import": 3,
+	"migrate": 4, "new_embodied": 5, "delete": 6, "duplicate": 7,
+	"move_up": 8, "move_down": 9, "undo": 10, "redo": 11,
+	"commit_projection": 12, "cancel_projection": 13, "source_map": 14,
+	"inspect_generated": 15, "diagnostics": 16,
 }
 
 func configure(editor_interface: EditorInterface) -> void:
@@ -57,41 +68,44 @@ func configure(editor_interface: EditorInterface) -> void:
 func _ready() -> void:
 	add_theme_constant_override("separation", 6)
 	var title := Label.new()
-	title.text = "GSEOS 事件"
+	title.text = "CODA 事件"
 	title.add_theme_font_size_override("font_size", 16)
 	add_child(title)
 	var toolbar := HBoxContainer.new()
+	toolbar.add_child(_button("新建事件", _new_event))
 	toolbar.add_child(_button("刷新", _reload))
-	toolbar.add_child(_button("新建", _new_event))
-	toolbar.add_child(_button("外部重载", _reload_selected_from_disk))
-	toolbar.add_child(_button("恢复 authoring 事务", _recover_selected_transaction))
-	toolbar.add_child(_button("文本导入", _open_text_import))
-	toolbar.add_child(_button("迁移到 CODA 源", _migrate_selected_to_text_owned))
-	toolbar.add_child(_button("新建具身事件（CODA）", _new_embodied_event))
-	toolbar.add_child(_button("确认草稿", _confirm_draft))
-	toolbar.add_child(_button("取消草稿", _cancel_draft))
-	toolbar.add_child(_button("确认投影写回", _commit_projection_preview))
-	toolbar.add_child(_button("取消投影预览", _cancel_projection_preview))
-	toolbar.add_child(_button("删除节点", _delete_selected_node))
-	toolbar.add_child(_button("复制节点", _copy_selected_node))
-	toolbar.add_child(_button("上移", func(): _move_selected_node(-1)))
-	toolbar.add_child(_button("下移", func(): _move_selected_node(1)))
-	toolbar.add_child(_button("撤销", _undo_change))
-	toolbar.add_child(_button("重做", _redo_change))
+	var more_button := MenuButton.new()
+	more_button.text = "更多操作"
+	more_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_build_more_menu(more_button.get_popup())
+	toolbar.add_child(more_button)
 	add_child(toolbar)
 	var name_row := HBoxContainer.new()
-	_name_edit.placeholder_text = "事件显示名"
+	var name_label := Label.new()
+	name_label.text = "流程名称"
+	name_row.add_child(name_label)
+	_name_edit.placeholder_text = "给这个流程起个名字"
 	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(_name_edit)
-	name_row.add_child(_button("确认重命名", _rename_selected))
+	name_row.add_child(_button("改名", _rename_selected))
 	add_child(name_row)
-	var insert_row := HBoxContainer.new()
-	_slot_select.tooltip_text = "选择要插入的合法 children slot"
-	_command_select.tooltip_text = "只列出 E0 后端允许的 command"
-	insert_row.add_child(_slot_select)
-	insert_row.add_child(_command_select)
-	insert_row.add_child(_button("添加草稿节点", _insert_draft_node))
-	add_child(insert_row)
+	var insert_section := VBoxContainer.new()
+	var insert_title := Label.new()
+	insert_title.text = "添加步骤"
+	insert_title.add_theme_font_size_override("font_size", 14)
+	insert_section.add_child(insert_title)
+	var insert_help := Label.new()
+	insert_help.text = "先选插入位置和要做的事，再点“添加步骤”。添加后填写右侧出现的内容，最后确认这一步。"
+	insert_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	insert_help.add_theme_color_override("font_color", get_theme_color("font_color", "Label").lerp(Color.TRANSPARENT, 0.25))
+	insert_section.add_child(insert_help)
+	_slot_select.tooltip_text = "新步骤会放在你选的位置"
+	_command_select.tooltip_text = "选择新步骤要完成的动作"
+	insert_section.add_child(_labeled_control("放在", _slot_select))
+	insert_section.add_child(_labeled_control("做什么", _command_select))
+	var add_step := _button("添加步骤", _insert_draft_node)
+	insert_section.add_child(add_step)
+	add_child(insert_section)
 	_event_list.custom_minimum_size.y = 100
 	_event_list.item_selected.connect(_on_event_selected)
 	add_child(_event_list)
@@ -115,6 +129,58 @@ func _ready() -> void:
 	_reload()
 	set_process(true)
 
+func _labeled_control(label_text: String, control: Control) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size.x = 58
+	row.add_child(label)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(control)
+	return row
+
+func _build_more_menu(menu: PopupMenu) -> void:
+	menu.add_item("重载所选流程", MORE_ACTIONS.reload_external)
+	menu.add_item("导入流程文本…", MORE_ACTIONS.text_import)
+	menu.add_item("恢复中断的保存", MORE_ACTIONS.recover_transaction)
+	menu.add_separator()
+	menu.add_item("新建具身事件…", MORE_ACTIONS.new_embodied)
+	menu.add_item("迁移到 CODA 源…", MORE_ACTIONS.migrate)
+	menu.add_separator()
+	menu.add_item("删除所选步骤", MORE_ACTIONS.delete)
+	menu.add_item("复制所选步骤", MORE_ACTIONS.duplicate)
+	menu.add_item("上移所选步骤", MORE_ACTIONS.move_up)
+	menu.add_item("下移所选步骤", MORE_ACTIONS.move_down)
+	menu.add_separator()
+	menu.add_item("撤销", MORE_ACTIONS.undo)
+	menu.add_item("重做", MORE_ACTIONS.redo)
+	menu.add_separator()
+	menu.add_item("确认已预览的修改", MORE_ACTIONS.commit_projection)
+	menu.add_item("取消预览", MORE_ACTIONS.cancel_projection)
+	menu.add_separator()
+	menu.add_item("显示代码位置", MORE_ACTIONS.source_map)
+	menu.add_item("检查生成文件", MORE_ACTIONS.inspect_generated)
+	menu.add_item("显示诊断详情", MORE_ACTIONS.diagnostics)
+	menu.id_pressed.connect(_on_more_action)
+
+func _on_more_action(action_id: int) -> void:
+	if action_id == MORE_ACTIONS.reload_external: _reload_selected_from_disk()
+	elif action_id == MORE_ACTIONS.recover_transaction: _recover_selected_transaction()
+	elif action_id == MORE_ACTIONS.text_import: _open_text_import()
+	elif action_id == MORE_ACTIONS.migrate: _migrate_selected_to_text_owned()
+	elif action_id == MORE_ACTIONS.new_embodied: _new_embodied_event()
+	elif action_id == MORE_ACTIONS.delete: _delete_selected_node()
+	elif action_id == MORE_ACTIONS.duplicate: _copy_selected_node()
+	elif action_id == MORE_ACTIONS.move_up: _move_selected_node(-1)
+	elif action_id == MORE_ACTIONS.move_down: _move_selected_node(1)
+	elif action_id == MORE_ACTIONS.undo: _undo_change()
+	elif action_id == MORE_ACTIONS.redo: _redo_change()
+	elif action_id == MORE_ACTIONS.commit_projection: _commit_projection_preview()
+	elif action_id == MORE_ACTIONS.cancel_projection: _cancel_projection_preview()
+	elif action_id == MORE_ACTIONS.source_map: _show_source_map_location()
+	elif action_id == MORE_ACTIONS.inspect_generated: _inspect_managed_artifact()
+	elif action_id == MORE_ACTIONS.diagnostics: _show_diagnostic_context()
+
 func _button(label: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = label
@@ -132,8 +198,11 @@ func _reload() -> void:
 	var filename := dir.get_next()
 	while not filename.is_empty():
 		if not dir.current_is_dir() and filename.ends_with(".gse.json"):
-			_asset_paths.append("res://gseos/events/" + filename)
-			_event_list.add_item(filename.trim_suffix(".gse.json"))
+			var asset_path := "res://gseos/events/" + filename
+			_asset_paths.append(asset_path)
+			var loaded := _store.load_asset(asset_path)
+			var title := String(loaded.asset.get("display_name", filename.trim_suffix(".gse.json"))) if loaded.receipt.ok else filename.trim_suffix(".gse.json")
+			_event_list.add_item(title)
 		filename = dir.get_next()
 	dir.list_dir_end()
 	_status.text = "%d 个 EventAsset；树是唯一事实源。" % _asset_paths.size()
@@ -183,25 +252,82 @@ func _add_node(parent: TreeItem, node: Dictionary) -> void:
 	var item := _tree.create_item(parent)
 	var projection_node := _projection_node(String(node.get("node_id", "")))
 	var labels: Dictionary = projection_node.get("labels", {})
-	var display_label := String(labels.get("zh-CN", labels.get("en", node.get("command_id", "?"))))
-	item.set_text(0, "%s · %s" % [display_label, node.get("node_id", "?")])
-	item.set_tooltip_text(0, "%s\n%s" % [projection_node.get("semantic_id", node.get("command_id", "?")), JSON.stringify(node.get("params", {}))])
+	var command_id := String(node.get("command_id", ""))
+	var fallback_label := String(COMMAND_DEFINITIONS.get(command_id, {}).get("label", "步骤"))
+	var display_label := String(labels.get("zh-CN", labels.get("en", fallback_label)))
+	var summary := _flow_summary(node)
+	item.set_text(0, display_label if summary.is_empty() else "%s：%s" % [display_label, summary])
+	var description := String(projection_node.get("descriptions", {}).get("zh-CN", fallback_label))
+	item.set_tooltip_text(0, description if summary.is_empty() else "%s\n%s" % [description, summary])
 	item.set_metadata(0, String(node.get("node_id", "")))
-	for slot in node.get("children", {}).keys():
-		for child in node.children[slot]:
-			_add_node(item, child)
+	var children: Dictionary = node.get("children", {})
+	for slot in children.keys():
+		var branch := _tree.create_item(item)
+		branch.set_text(0, "满足条件时" if slot == "then" else "否则")
+		branch.set_selectable(0, false)
+		branch.set_metadata(0, "")
+		for child in children[slot]:
+			_add_node(branch, child)
+
+func _flow_summary(node: Dictionary) -> String:
+	var command_id := String(node.get("command_id", ""))
+	var params: Dictionary = node.get("params", {})
+	match command_id:
+		"if": return _value_summary(params.get("condition", {}))
+		"read": return "%s.%s → %s" % [_reference_label(params.get("target", {}).get("ref", "对象")), params.get("field", "字段"), params.get("bind", "结果")]
+		"let": return "%s → %s" % [_value_summary(params.get("value", {})), params.get("name", "新值")]
+		"await", "do":
+			var capability := String(params.get("capability", ""))
+			var args: Dictionary = params.get("args", {})
+			if capability.begins_with("ui.animate_number"):
+				return "%s → %s · %s 秒" % [_value_summary(args.get("from", {})), _value_summary(args.get("to", {})), args.get("duration", 0)]
+			if capability.begins_with("ui.remove_node"): return "移除旧奖励条目"
+			if capability.begins_with("ui.create_reward_row"): return "显示新积分"
+			if capability.begins_with("ui.set_text"): return "显示 +新积分"
+		"publish": return "奖励结算通知"
+	return ""
+
+func _value_summary(value) -> String:
+	if value is Dictionary:
+		if value.has("ref"):
+			return _reference_label(value.get("ref", ""))
+		if value.has("left") and value.has("op") and value.has("right"):
+			return "%s %s %s" % [_value_summary(value.left), value.op, _value_summary(value.right)]
+		if value.has("items") and value.get("op") == "connect":
+			var parts: Array[String] = []
+			for part in value.items: parts.append(_value_summary(part))
+			return "".join(parts)
+	if value is Array:
+		var array_parts: Array[String] = []
+		for part in value: array_parts.append(_value_summary(part))
+		return "、".join(array_parts)
+	return str(value)
+
+func _reference_label(reference) -> String:
+	var ref := String(reference)
+	var friendly := {"reward": "奖励", "target_hud": "积分界面", "old_row": "旧奖励条目", "old_score": "当前积分", "new_score": "新积分", "new_row": "新奖励条目"}
+	if friendly.has(ref): return friendly[ref]
+	for argument in _selected_asset.get("args", []):
+		if String(argument.get("id", "")) == ref:
+			return String(argument.get("name", ref))
+	return ref
 
 func _on_tree_selected() -> void:
 	var item := _tree.get_selected()
-	if item == null:
+	if item == null or String(item.get_metadata(0)).is_empty():
 		return
 	_selected_node_id = String(item.get_metadata(0))
-	_status.text = "选中 node_id=%s；检查器只应显示该节点的待定字段。" % _selected_node_id
+	var selected := _find_node((_draft_asset if not _draft_asset.is_empty() else _selected_asset).get("root", []), _selected_node_id)
+	var label := String(COMMAND_DEFINITIONS.get(String(selected.get("command_id", "")), {}).get("label", "步骤"))
+	_status.text = "已选中：%s" % label
 	_render_inspector()
 	_refresh_slot_options()
 
 func _refresh_command_options() -> void:
 	_command_select.clear()
+	_command_select.add_item("请选择要添加的步骤…")
+	_command_select.set_item_metadata(0, "")
+	_command_select.select(0)
 	for command_id in COMMAND_DEFINITIONS.keys():
 		var definition: Dictionary = COMMAND_DEFINITIONS[command_id]
 		_command_select.add_item(definition.label)
@@ -209,13 +335,13 @@ func _refresh_command_options() -> void:
 
 func _refresh_slot_options() -> void:
 	_slot_select.clear()
-	_slot_select.add_item("root")
+	_slot_select.add_item("流程末尾")
 	_slot_select.set_item_metadata(0, {"parent_id": "", "slot": "root"})
 	var view_asset := _draft_asset if not _draft_asset.is_empty() else _selected_asset
 	var selected := _find_node(view_asset.get("root", []), _selected_node_id)
 	if not selected.is_empty() and selected.get("command_id") == "if":
 		for slot in ["then", "else"]:
-			_slot_select.add_item("%s.children.%s" % [_selected_node_id, slot])
+			_slot_select.add_item("条件成立时" if slot == "then" else "条件不成立时")
 			_slot_select.set_item_metadata(_slot_select.item_count - 1, {"parent_id": _selected_node_id, "slot": slot})
 
 func _find_node(nodes: Array, node_id: String) -> Dictionary:
@@ -242,19 +368,21 @@ func _render_inspector() -> void:
 	var definition: Dictionary = COMMAND_DEFINITIONS.get(command_id, {})
 	var projection_node := _projection_node(_selected_node_id)
 	var projection_labels: Dictionary = projection_node.get("labels", {})
-	_inspector_hint.text = "%s\nnode_id=%s\nsemantic_id=%s\nparams=%s" % [projection_labels.get("zh-CN", command_id), _selected_node_id, projection_node.get("semantic_id", command_id), JSON.stringify(node.get("params", {}))]
-	_inspector.add_child(_button("显示 source-map 定位", _show_source_map_location))
-	_inspector.add_child(_button("检查受管生成物", _inspect_managed_artifact))
-	_inspector.add_child(_button("显示诊断上下文", _show_diagnostic_context))
+	var friendly_name := String(projection_labels.get("zh-CN", definition.get("label", "流程步骤")))
+	var descriptions: Dictionary = projection_node.get("descriptions", {})
+	_inspector_hint.text = friendly_name
+	if not descriptions.is_empty():
+		_inspector_hint.text += "\n" + String(descriptions.get("zh-CN", ""))
 	if command_id == "if" and not node.get("draft", false):
 		var condition_row := HBoxContainer.new()
 		var condition_label := Label.new()
-		condition_label.text = "condition"
+		condition_label.text = "判断条件（高级）"
 		condition_label.custom_minimum_size.x = 80
 		condition_row.add_child(condition_label)
 		_condition_edit = LineEdit.new()
 		_condition_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_condition_edit.text = JSON.stringify(node.get("params", {}).get("condition", {}))
+		_condition_edit.tooltip_text = "结构化条件表达式；不熟悉该格式时请先编辑已有的中文流程槽位。"
 		condition_row.add_child(_condition_edit)
 		condition_row.add_child(_button("应用条件", _apply_condition_edit))
 		_inspector.add_child(condition_row)
@@ -264,24 +392,156 @@ func _render_inspector() -> void:
 	var pending: Array = definition.get("fields", [])
 	if pending.is_empty():
 		var unsupported := Label.new()
-		unsupported.text = "未知 command；目录拒绝确认。"
+		unsupported.text = "这个步骤类型目前不能通过图形方式补全。"
 		_inspector.add_child(unsupported)
 		return
 	var pending_label := Label.new()
-	pending_label.text = "待定字段（确认前不会写入资产）"
+	pending_label.text = "完成下面内容后，确认这一步。取消不会改动流程。"
+	pending_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspector.add_child(pending_label)
+	if command_id in ["do", "await"]:
+		_render_draft_action_editor(command_id)
+		_add_draft_confirm_actions()
+		return
+	var field_labels := {
+		"condition": "成立条件", "name": "结果名称", "value": "计算内容",
+		"target": "操作对象", "field": "读取哪个字段", "bind": "保存为",
+		"capability": "动作类型", "args": "动作参数（结构化）",
+		"topic": "通知类型", "payload": "通知内容", "inputs": "传入内容",
+		"outputs": "输出内容", "code": "代码内容",
+	}
 	for field in pending:
 		var row := HBoxContainer.new()
 		var label := Label.new()
-		label.text = String(field)
+		label.text = String(field_labels.get(String(field), String(field)))
 		label.custom_minimum_size.x = 80
 		row.add_child(label)
 		var edit := LineEdit.new()
-		edit.placeholder_text = "JSON 值；字符串可直接填写"
+		edit.placeholder_text = "填写 %s" % label.text
 		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(edit)
 		_inspector.add_child(row)
 		_draft_param_controls[field] = edit
+	_add_draft_confirm_actions()
+
+func _add_draft_confirm_actions() -> void:
+	var draft_actions := HBoxContainer.new()
+	draft_actions.add_child(_button("确认这一步", _confirm_draft))
+	draft_actions.add_child(_button("取消", _cancel_draft))
+	_inspector.add_child(draft_actions)
+
+func _render_draft_action_editor(command_id: String) -> void:
+	var manifest_path := ProjectSettings.globalize_path("res://contracts/gseos/capabilities.json")
+	var manifest_text := FileAccess.get_file_as_string(manifest_path)
+	var manifest = JSON.parse_string(manifest_text)
+	if not manifest is Dictionary:
+		var warning := Label.new()
+		warning.text = "无法读取动作目录；这一步不能安全保存。"
+		_inspector.add_child(warning)
+		return
+	_draft_capability_select = OptionButton.new()
+	_draft_capability_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_draft_capability_select.add_item("选择已登记的动作…")
+	_draft_capability_select.set_item_metadata(0, "")
+	for capability in manifest.get("capabilities", []):
+		if String(capability.get("kind", "")) != "capability":
+			continue
+		if command_id == "await" and not bool(capability.get("awaitable", false)):
+			continue
+		var capability_id := "%s@%d" % [capability.get("id", ""), capability.get("version", 1)]
+		_draft_capability_select.add_item(_capability_label(capability_id))
+		_draft_capability_select.set_item_metadata(_draft_capability_select.item_count - 1, capability_id)
+	var row := _labeled_control("动作", _draft_capability_select)
+	_inspector.add_child(row)
+	_draft_action_args_container = VBoxContainer.new()
+	_draft_action_args_container.add_theme_constant_override("separation", 4)
+	_inspector.add_child(_draft_action_args_container)
+	_draft_capability_select.item_selected.connect(func(_index: int): _render_draft_action_args(manifest))
+	_draft_action_arg_controls.clear()
+
+func _render_draft_action_args(manifest: Dictionary) -> void:
+	for child in _draft_action_args_container.get_children():
+		child.queue_free()
+	_draft_action_arg_controls.clear()
+	if _draft_capability_select == null or _draft_capability_select.selected < 0:
+		return
+	var capability_id := String(_draft_capability_select.get_item_metadata(_draft_capability_select.selected))
+	if capability_id.is_empty():
+		return
+	var capability: Dictionary = {}
+	for candidate in manifest.get("capabilities", []):
+		if "%s@%d" % [candidate.get("id", ""), candidate.get("version", 1)] == capability_id:
+			capability = candidate
+			break
+	if capability.is_empty():
+		return
+	var guide := Label.new()
+	guide.text = String(_capability_description(capability_id))
+	guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_draft_action_args_container.add_child(guide)
+	var alias_slots := _capability_slots(capability_id)
+	for argument in capability.get("params", []):
+		var field_id := String(argument.get("id", ""))
+		var type := String(argument.get("type", "Any"))
+		var alias_slot: Dictionary = alias_slots.get(field_id, {})
+		var slot_labels: Dictionary = alias_slot.get("label", {})
+		var label_text := String(slot_labels.get("zh-CN", field_id))
+		var edit := LineEdit.new()
+		edit.placeholder_text = _draft_placeholder(type)
+		edit.tooltip_text = "数据类型：%s。普通名称会绑定到已声明的流程值；数字可以直接填写。" % type
+		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_draft_action_args_container.add_child(_labeled_control(label_text, edit))
+		_draft_action_arg_controls[field_id] = {"control": edit, "type": type, "label": label_text}
+	if capability.get("result", "Void") != "Void":
+		var bind := LineEdit.new()
+		bind.placeholder_text = "可选：把结果保存为一个名称"
+		bind.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_draft_action_args_container.add_child(_labeled_control("保存结果", bind))
+		_draft_action_arg_controls["__bind"] = {"control": bind, "type": "Binding", "label": "保存结果"}
+
+func _draft_placeholder(type: String) -> String:
+	match type:
+		"NodeRef": return "节点或流程值名称，例如 target_hud"
+		"Int": return "整数或已定义的流程值，例如 10 / new_score"
+		"Float", "Duration": return "数字，例如 0.35"
+		"Text": return "要显示的文字"
+		_: return "填写这个参数"
+
+func _capability_slots(capability_id: String) -> Dictionary:
+	var path := ProjectSettings.globalize_path("res://gseos/fixtures/ui.reward.apply.alias-registry.json")
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var result: Dictionary = {}
+	if not parsed is Dictionary:
+		return result
+	for layer in parsed.get("layers", {}).values():
+		for item in layer:
+			if String(item.get("target_id", "")) == "capability:" + capability_id:
+				return item.get("slots", {})
+	return result
+
+func _capability_label(capability_id: String) -> String:
+	var path := ProjectSettings.globalize_path("res://gseos/fixtures/ui.reward.apply.alias-registry.json")
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if parsed is Dictionary:
+		for layer in parsed.get("layers", {}).values():
+			for item in layer:
+				if String(item.get("target_id", "")) == "capability:" + capability_id:
+					var group_parts := PackedStringArray()
+					for group_name in item.get("group_path", []): group_parts.append(String(group_name))
+					var group := " → ".join(group_parts)
+					var label := String(item.get("labels", {}).get("zh-CN", capability_id))
+					return "%s · %s" % [group, label] if not group.is_empty() else label
+	return capability_id
+
+func _capability_description(capability_id: String) -> String:
+	var path := ProjectSettings.globalize_path("res://gseos/fixtures/ui.reward.apply.alias-registry.json")
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if parsed is Dictionary:
+		for layer in parsed.get("layers", {}).values():
+			for item in layer:
+				if String(item.get("target_id", "")) == "capability:" + capability_id:
+					return String(item.get("descriptions", {}).get("zh-CN", ""))
+	return "填写下面列出的动作参数。"
 
 func _projection_node(node_id: String) -> Dictionary:
 	for item in _projection_map.get("nodes", []):
@@ -353,6 +613,10 @@ func _render_projection_slots(projection_node: Dictionary) -> void:
 		diff.custom_minimum_size.y = 80
 		diff.text = _projection_preview_diff
 		_inspector.add_child(diff)
+		var preview_actions := HBoxContainer.new()
+		preview_actions.add_child(_button("确认这个修改", _commit_projection_preview))
+		preview_actions.add_child(_button("保留原样", _cancel_projection_preview))
+		_inspector.add_child(preview_actions)
 
 func _projection_value_text(value) -> String:
 	if value is Dictionary and value.has("ref"):
@@ -531,7 +795,7 @@ func _show_source_map_location() -> void:
 	var path := _source_map_path()
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
-		_status.text = "未找到 source map；请先运行 GSEOS generate。"
+		_status.text = "未找到 source map；请先生成 CODA 流程。"
 		return
 	var map = JSON.parse_string(file.get_as_text())
 	if not map is Dictionary:
@@ -621,7 +885,7 @@ func _new_event() -> void:
 		index += 1
 		path = "res://gseos/events/new-event-%d.gse.json" % index
 	var asset := {"asset_type": "EventAsset", "schema_version": 1, "event_id": "ui.new.event.%d" % index, "display_name": "新事件", "args": [], "reentry": "reject", "recovery": "E0", "root": []}
-	if not _write_asset_transaction(path, {}, asset, "创建 GSEOS 事件"):
+	if not _write_asset_transaction(path, {}, asset, "创建 CODA 事件"):
 		return
 	_reload()
 
@@ -655,7 +919,7 @@ func _rename_selected() -> void:
 		_status.text = "显示名不能为空；未写入资产。"
 		return
 	next.display_name = name
-	if not _write_asset_transaction(_selected_path, _selected_asset, next, "重命名 GSEOS 事件"):
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "重命名 CODA 事件"):
 		return
 	_selected_asset = next
 	_update_disk_modified_time()
@@ -670,7 +934,7 @@ func _insert_draft_node() -> void:
 	var command_id := _selected_command_id()
 	var slot := _selected_slot()
 	if command_id.is_empty() or slot.is_empty():
-		_status.text = "必须选择合法 command 和 slot；未写入资产。"
+		_status.text = "先选择插入位置和步骤类型；流程尚未改变。"
 		return
 	var next := _selected_asset.duplicate(true)
 	var node_id := "%s.draft.%d" % [next.event_id, Time.get_ticks_msec()]
@@ -682,7 +946,7 @@ func _insert_draft_node() -> void:
 	_draft_node_id = node_id
 	_selected_node_id = node_id
 	_rebuild_tree()
-	_status.text = "已创建 draft node；取消不写资产，确认后才形成单一事务。"
+	_status.text = "新步骤已加入草稿；请按右侧说明补全，再确认这一步。流程尚未保存。"
 
 func _confirm_draft() -> void:
 	if _draft_asset.is_empty() or _draft_node_id.is_empty():
@@ -692,19 +956,39 @@ func _confirm_draft() -> void:
 		_cancel_draft()
 		return
 	var params: Dictionary = {}
-	for field in _draft_param_controls.keys():
-		var text := String(_draft_param_controls[field].text).strip_edges()
-		if text.is_empty():
-			_status.text = "字段 %s 仍待填写；未写入资产。" % field
+	if String(draft.get("command_id", "")) in ["do", "await"]:
+		if _draft_capability_select == null or _draft_capability_select.selected <= 0:
+			_status.text = "先选一个已登记的动作；流程尚未保存。"
 			return
-		var parsed = _parse_inspector_value(text)
-		params[field] = parsed
-	if draft.command_id in ["do", "await"] and not params.get("args", {}) is Dictionary:
-		_status.text = "args 必须是 JSON 对象；未写入资产。"
-		return
+		var capability_id := String(_draft_capability_select.get_item_metadata(_draft_capability_select.selected))
+		var action_args: Dictionary = {}
+		for field_id in _draft_action_arg_controls:
+			var field: Dictionary = _draft_action_arg_controls[field_id]
+			var text := String(field.control.text).strip_edges()
+			if String(field.type) == "Binding":
+				if not text.is_empty(): params["bind"] = text
+				continue
+			if text.is_empty():
+				_status.text = "请填写“%s”；流程尚未保存。" % field.label
+				return
+			var parsed := _parse_typed_draft_value(text, String(field.type))
+			if not parsed.ok:
+				_status.text = "%s：%s；流程尚未保存。" % [field.label, parsed.message]
+				return
+			action_args[String(field_id)] = parsed.value
+		params["capability"] = capability_id
+		params["args"] = action_args
+	else:
+		for field in _draft_param_controls.keys():
+			var text := String(_draft_param_controls[field].text).strip_edges()
+			if text.is_empty():
+				_status.text = "请补全“%s”；流程尚未保存。" % field
+				return
+			var parsed = _parse_inspector_value(text)
+			params[field] = parsed
 	draft["params"] = params
 	draft.erase("draft")
-	if not _write_asset_transaction(_selected_path, _selected_asset, _draft_asset, "确认 GSEOS 草稿节点"):
+	if not _write_asset_transaction(_selected_path, _selected_asset, _draft_asset, "确认 CODA 草稿步骤"):
 		return
 	_selected_asset = _draft_asset
 	_update_disk_modified_time()
@@ -721,6 +1005,37 @@ func _parse_inspector_value(text: String):
 	var parsed = JSON.parse_string(text)
 	return text if parsed == null and text != "null" else parsed
 
+func _parse_typed_draft_value(text: String, type: String) -> Dictionary:
+	if type == "NodeRef":
+		return {"ok": true, "value": {"ref": text}}
+	if type == "Int":
+		if text.is_valid_int(): return {"ok": true, "value": int(text)}
+		if _is_flow_symbol(text): return {"ok": true, "value": {"ref": text}}
+		return {"ok": false, "message": "请填整数或前面步骤产生的名称"}
+	if type in ["Float", "Duration"]:
+		if text.is_valid_float(): return {"ok": true, "value": float(text)}
+		if _is_flow_symbol(text): return {"ok": true, "value": {"ref": text}}
+		return {"ok": false, "message": "请填数字或前面步骤产生的名称"}
+	if type == "Text":
+		return {"ok": true, "value": text}
+	return {"ok": true, "value": _parse_inspector_value(text)}
+
+func _is_flow_symbol(name: String) -> bool:
+	for argument in _selected_asset.get("args", []):
+		if String(argument.get("id", "")) == name: return true
+	return _collect_flow_symbols(_selected_asset.get("root", []), name)
+
+func _collect_flow_symbols(nodes: Array, name: String) -> bool:
+	for node in nodes:
+		var params: Dictionary = node.get("params", {})
+		if String(params.get("name", "")) == name or String(params.get("bind", "")) == name:
+			return true
+		if String(params.get("args", {}).get("bind", "")) == name:
+			return true
+		for children in node.get("children", {}).values():
+			if _collect_flow_symbols(children, name): return true
+	return false
+
 func _cancel_draft() -> void:
 	if _draft_asset.is_empty():
 		return
@@ -729,7 +1044,7 @@ func _cancel_draft() -> void:
 	_selected_node_id = ""
 	_rebuild_tree()
 	_refresh_slot_options()
-	_status.text = "已取消 draft；EventAsset 未改变。"
+	_status.text = "已取消新增步骤；原流程未改变。"
 
 func _delete_selected_node() -> void:
 	if _selected_path.is_empty() or _selected_node_id.is_empty():
@@ -744,7 +1059,7 @@ func _delete_selected_node() -> void:
 	if not _remove_node(next.root, _selected_node_id):
 		_status.text = "未找到节点；未写入资产。"
 		return
-	if not _write_asset_transaction(_selected_path, _selected_asset, next, "删除 GSEOS 节点"):
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "删除 CODA 步骤"):
 		return
 	_selected_asset = next
 	_update_disk_modified_time()
@@ -759,7 +1074,7 @@ func _copy_selected_node() -> void:
 	if not _copy_node(next.root, _selected_node_id):
 		_status.text = "未找到节点；未写入资产。"
 		return
-	if not _write_asset_transaction(_selected_path, _selected_asset, next, "复制 GSEOS 节点"):
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "复制 CODA 步骤"):
 		return
 	_selected_asset = next
 	_update_disk_modified_time()
@@ -794,7 +1109,7 @@ func _move_selected_node(delta: int) -> void:
 	if not _move_node(next.root, _selected_node_id, delta):
 		_status.text = "节点无法在当前 slot 移动；未写入资产。"
 		return
-	if not _write_asset_transaction(_selected_path, _selected_asset, next, "移动 GSEOS 节点"):
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "移动 CODA 步骤"):
 		return
 	_selected_asset = next
 	_update_disk_modified_time()
@@ -882,7 +1197,7 @@ func _apply_condition_edit() -> void:
 	var params: Dictionary = node.get("params", {}).duplicate(true)
 	params["condition"] = parsed
 	node["params"] = params
-	if not _write_asset_transaction(_selected_path, _selected_asset, next, "编辑 GSEOS 复合条件"):
+	if not _write_asset_transaction(_selected_path, _selected_asset, next, "编辑 CODA 复合条件"):
 		return
 	_selected_asset = next
 	_rebuild_tree()

@@ -1,0 +1,42 @@
+{
+  "profile_type": "D3MotionProfile",
+  "schema_version": 1,
+  "profile_id": "godot.gdbot.head-safe@1",
+  "backend": {
+    "profile_type": "IntentBackendProfile",
+    "schema_version": 1,
+    "profile_id": "robot.reference.adapter@1",
+    "backend": "robot",
+    "capabilities": ["robot.motion.request@1"],
+    "capability_fallbacks": {}
+  },
+  "resource_registry": {
+    "registry_type": "ResourceRegistry",
+    "schema_version": 1,
+    "resources": [
+      {"id": "robot.head", "version": 1, "kind": "leaf", "leaves": []},
+      {"id": "robot.torso", "version": 1, "kind": "leaf", "leaves": []}
+    ],
+    "coupling_groups": [],
+    "lease_policy": {"mode": "exclusive", "ordering": "lexicographic", "shared_write": false, "implicit_queue": false}
+  },
+  "targets": {
+    "pose.attack_recovered": {"head_pitch": -8.0, "head_yaw": -35.0, "head_roll": 5.0},
+    "pose.high_guard": {"head_pitch": 12.0, "head_yaw": 32.0, "head_roll": -4.0}
+  },
+  "initial_state": {"head_pitch": 0.0, "head_yaw": 0.0, "head_roll": 0.0},
+  "tick_hz": 60,
+  "segment_duration_ticks": 24,
+  "plan_constraints": {
+    "max_horizon_ticks": 60,
+    "max_delta_by_field": {"head_pitch": 40.0, "head_yaw": 60.0, "head_roll": 30.0},
+    "state_channel_by_field": {"head_pitch": "head_pitch", "head_yaw": "head_yaw", "head_roll": "head_roll"}
+  },
+  "snapshot_binding": {
+    "now_tick": 42,
+    "max_age_ticks": 0,
+    "known_channels": ["head_pitch", "head_yaw", "head_roll"],
+    "required_channels": ["head_pitch", "head_yaw", "head_roll"]
+  },
+  "completion": {"terminal_states": ["completed", "rejected", "preempted"], "dwell_ticks": 0}
+}

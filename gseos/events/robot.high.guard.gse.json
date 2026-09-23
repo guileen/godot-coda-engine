@@ -1,0 +1,24 @@
+{
+  "asset_type": "EventAsset",
+  "schema_version": 1,
+  "event_id": "robot.high.guard",
+  "display_name": "高位防御",
+  "args": [],
+  "recovery": "E0",
+  "root": [
+    {
+      "node_id": "high-guard-intent",
+      "command_id": "motion_intent",
+      "params": {
+        "intent": "robot.high_guard@1",
+        "args": {
+          "target": "pose.high_guard",
+          "resources": "robot.head@1+robot.torso@1",
+          "priority": 80,
+          "safety_profile": "godot.gdbot.head-safe@1",
+          "on_no_solution": "safe_stop"
+        }
+      }
+    }
+  ]
+}

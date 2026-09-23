@@ -1,0 +1,175 @@
+{
+  "artifact_type": "CODAD3GeneratedMotion",
+  "schema_version": 1,
+  "source_asset": "robot.attack.recover",
+  "source_fingerprint": "sha256:20b5cb37d21518d537f8ca1ec69b468b7beb9776ee12bc34e4e49826c8f7028c",
+  "source_ref": {
+    "event_id": "robot.attack.recover",
+    "node_id": "attack-recovery-intent",
+    "path": "/root/0",
+    "source_refs": {
+      "target": {
+        "event_id": "robot.attack.recover",
+        "node_id": "attack-recovery-intent",
+        "field_id": "target",
+        "path": "/root/0/params/args/target"
+      },
+      "resources": {
+        "event_id": "robot.attack.recover",
+        "node_id": "attack-recovery-intent",
+        "field_id": "resources",
+        "path": "/root/0/params/args/resources"
+      },
+      "priority": {
+        "event_id": "robot.attack.recover",
+        "node_id": "attack-recovery-intent",
+        "field_id": "priority",
+        "path": "/root/0/params/args/priority"
+      },
+      "safety_profile": {
+        "event_id": "robot.attack.recover",
+        "node_id": "attack-recovery-intent",
+        "field_id": "safety_profile",
+        "path": "/root/0/params/args/safety_profile"
+      },
+      "on_no_solution": {
+        "event_id": "robot.attack.recover",
+        "node_id": "attack-recovery-intent",
+        "field_id": "on_no_solution",
+        "path": "/root/0/params/args/on_no_solution"
+      }
+    }
+  },
+  "motion_envelope": {
+    "envelope_type": "RobotMotionEnvelope",
+    "backend": "robot.motion@1",
+    "schema_version": 1,
+    "intent": "robot.attack_recover@1",
+    "target": "pose.attack_recovered",
+    "resources": "robot.head@1+robot.torso@1",
+    "priority": 70,
+    "safety_profile": "godot.gdbot.head-safe@1",
+    "on_no_solution": "safe_stop",
+    "source_ref": {
+      "event_id": "robot.attack.recover",
+      "node_id": "attack-recovery-intent",
+      "path": "/root/0",
+      "source_refs": {
+        "target": {
+          "event_id": "robot.attack.recover",
+          "node_id": "attack-recovery-intent",
+          "field_id": "target",
+          "path": "/root/0/params/args/target"
+        },
+        "resources": {
+          "event_id": "robot.attack.recover",
+          "node_id": "attack-recovery-intent",
+          "field_id": "resources",
+          "path": "/root/0/params/args/resources"
+        },
+        "priority": {
+          "event_id": "robot.attack.recover",
+          "node_id": "attack-recovery-intent",
+          "field_id": "priority",
+          "path": "/root/0/params/args/priority"
+        },
+        "safety_profile": {
+          "event_id": "robot.attack.recover",
+          "node_id": "attack-recovery-intent",
+          "field_id": "safety_profile",
+          "path": "/root/0/params/args/safety_profile"
+        },
+        "on_no_solution": {
+          "event_id": "robot.attack.recover",
+          "node_id": "attack-recovery-intent",
+          "field_id": "on_no_solution",
+          "path": "/root/0/params/args/on_no_solution"
+        }
+      }
+    },
+    "execution_authority": "adapter_only",
+    "llm_direct_write": false,
+    "joint_profile": "pose.attack_recovered",
+    "safety_boundary": {
+      "profile": "godot.gdbot.head-safe@1",
+      "independent_mechanism_required": true
+    },
+    "adapter_command": "robot.motion.request@1",
+    "motor_write": "adapter_owned_only",
+    "target_profile": "robot.reference.adapter@1",
+    "capability_resolution": [
+      {
+        "requested": "robot.motion.request@1",
+        "resolved": "robot.motion.request@1",
+        "fallback_used": false
+      }
+    ]
+  },
+  "transition_plan": {
+    "plan_type": "TransitionPlan",
+    "schema_version": 1,
+    "plan_id": "robot.attack.recover.transition-plan@1",
+    "intent": "robot.attack_recover@1",
+    "lease": {
+      "lease_id": "robot.attack.recover.lease",
+      "generation": 1,
+      "resources": [
+        "robot.head@1",
+        "robot.torso@1"
+      ],
+      "mode": "all_or_reject"
+    },
+    "snapshot_ref": {
+      "revision": "robot.attack.recover.neutral-start",
+      "physics_tick": 42,
+      "digest": "sha256:b47ce38ef8de06fddedf5f89c9d08559fa8c42abcba75925d29056d023f4a670"
+    },
+    "resources": [
+      "robot.head@1",
+      "robot.torso@1"
+    ],
+    "segments": [
+      {
+        "segment_id": "robot.attack.recover.approach",
+        "start_tick": 0,
+        "duration_ticks": 24,
+        "start": {
+          "head_pitch": 0,
+          "head_yaw": 0,
+          "head_roll": 0
+        },
+        "end": {
+          "head_pitch": -8,
+          "head_yaw": -35,
+          "head_roll": 5
+        },
+        "end_tick": 24
+      },
+      {
+        "segment_id": "robot.attack.recover.return",
+        "start_tick": 24,
+        "duration_ticks": 24,
+        "start": {
+          "head_pitch": -8,
+          "head_yaw": -35,
+          "head_roll": 5
+        },
+        "end": {
+          "head_pitch": 0,
+          "head_yaw": 0,
+          "head_roll": 0
+        },
+        "end_tick": 48
+      }
+    ],
+    "completion": {
+      "terminal_states": [
+        "completed",
+        "rejected",
+        "preempted"
+      ],
+      "dwell_ticks": 0
+    },
+    "execution_authority": "adapter_only"
+  }
+}

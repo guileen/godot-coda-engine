@@ -21,7 +21,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cp -R "$ROOT_DIR/." "$GUI_PROJECT/"
-swiftc "$ROOT_DIR/scripts/gseos-native-gui-input.swift" -o "$INPUT_BIN"
+mkdir -p "${GUI_PROJECT}/swift-module-cache"
+swiftc -module-cache-path "${GUI_PROJECT}/swift-module-cache" "$ROOT_DIR/scripts/gseos-native-gui-input.swift" -o "$INPUT_BIN"
 godot --editor --path "$GUI_PROJECT" --log-file "$EDITOR_LOG" >"${GUI_PROJECT}/editor.stdout" 2>&1 &
 EDITOR_PID=$!
 sleep 15

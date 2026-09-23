@@ -1667,7 +1667,7 @@ test("AI 语义候选只作为待审提议，不能建立权威锚点", () => {
 });
 
 test("用户观察记录只接受脱敏结构，并保留 G-P3-U 通过门槛", () => {
-  const report = { observation_type: "P3UserObservation", schema_version: 2, study_id: "p3-reward", observations: [] };
+  const report = { observation_type: "P3UserObservation", schema_version: 3, study_id: "p3-reward", observations: [] };
   const incomplete = validateUserObservationReport(report);
   assert.equal(incomplete.ok, false);
   assert.ok(incomplete.diagnostics.some((item) => item.code === "USER_OBSERVATION_COUNT"));
@@ -1675,7 +1675,7 @@ test("用户观察记录只接受脱敏结构，并保留 G-P3-U 通过门槛", 
   const syntheticPassingObservation = (participant_id) => ({
     participant_id, target_user: true, implementation_involvement: "none", eligibility_verified_by_observer: true, role_profile: "Godot hobby creator; beginner",
     consent: { recorded: true, recording_allowed: false },
-    tasks: Object.fromEntries(["find_alias", "restate_flow", "edit_duration", "preview_diff", "commit_and_run", "locate_runtime"].map((task) => [task, { result: "pass", hint_free: true }])),
+    tasks: Object.fromEntries(["understand_flow", "judge_naturalness", "edit_and_preview", "run_correctly", "operation_confidence"].map((task) => [task, { result: "pass", hint_free: true }])),
     hint_count: 0, outcome: "pass", quote_summaries: ["Synthetic validator fixture; not collected user evidence."], blockers: [],
   });
   const syntheticValidReport = { ...report, study_id: "p3-validator-test", observations: ["u-001", "u-002", "u-003"].map(syntheticPassingObservation) };
@@ -1693,7 +1693,7 @@ test("用户观察记录只接受脱敏结构，并保留 G-P3-U 通过门槛", 
   twoOperationalPrompts.observations[1].hint_count = 1;
   assert.ok(validateUserObservationReport(twoOperationalPrompts).diagnostics.some((item) => item.code === "USER_OBSERVATION_PASS_THRESHOLD"));
   assert.equal(summarizeUserObservationReport(twoOperationalPrompts).gate, "G-P3-U_PENDING");
-  const legacyVersion = { ...syntheticValidReport, schema_version: 1 };
+  const legacyVersion = { ...syntheticValidReport, schema_version: 2 };
   assert.ok(validateUserObservationReport(legacyVersion).diagnostics.some((item) => item.code === "UNSUPPORTED_USER_OBSERVATION_VERSION"));
   assert.equal(summarizeUserObservationReport(legacyVersion).gate, "G-P3-U_PENDING");
   const withPii = structuredClone(syntheticValidReport);

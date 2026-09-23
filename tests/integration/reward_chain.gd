@@ -23,6 +23,10 @@ func _start() -> void:
 	hud.name = "HUD"
 	hud.set_meta("_gseos_fields", {"score": 100})
 	root.add_child(hud)
+	var score_value := Label.new()
+	score_value.name = "ScoreValue"
+	score_value.text = "积分：100"
+	hud.add_child(score_value)
 	var old_row := Label.new()
 	old_row.name = "OldRewardRow"
 	hud.add_child(old_row)
@@ -31,6 +35,7 @@ func _start() -> void:
 	if handle.status != GSEOS_RunHandle.Status.WAITING:
 		failures.append("reward event did not suspend at await")
 	handle.completed.connect(_on_reward_completed)
+	call_deferred("_verify_intermediate_animation")
 
 func _on_hit_resolved(payload: Dictionary) -> Dictionary:
 	received_payload = payload.duplicate(true)
@@ -40,6 +45,16 @@ func _on_reward_completed(result: Dictionary) -> void:
 	completed_result = result
 	call_deferred("_verify_reward")
 
+func _verify_intermediate_animation() -> void:
+	await create_timer(0.25).timeout
+	var fields: Dictionary = hud.get_meta("_gseos_fields", {})
+	var intermediate_score := int(fields.get("score", 100))
+	if intermediate_score <= 100 or intermediate_score >= 125:
+		failures.append("visible score tween did not pass through an intermediate value: %d" % intermediate_score)
+	var score_value := hud.get_node_or_null("ScoreValue") as Label
+	if score_value == null or score_value.text != "积分：%d" % intermediate_score:
+		failures.append("ScoreValue label did not display the animated score")
+
 func _verify_reward() -> void:
 	await process_frame
 	await process_frame
@@ -48,6 +63,9 @@ func _verify_reward() -> void:
 	var row := hud.get_node_or_null("RewardRow")
 	if hud.get_node_or_null("OldRewardRow") != null or not is_instance_valid(row) or row.text != "奖励：125":
 		failures.append("reward UI chain did not remove/create/set text")
+	var score_value := hud.get_node_or_null("ScoreValue") as Label
+	if score_value == null or score_value.text != "积分：125":
+		failures.append("visible score animation did not end at 125")
 	if received_payload.get("score") != 125:
 		failures.append("versioned publish payload was not received")
 	if not failures.is_empty():

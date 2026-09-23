@@ -5,30 +5,29 @@ extends Node3D
 
 const GDBOT_SCENE := preload("res://addons/gdquest_gdbot/gdbot_skin.tscn")
 const EXPRESSION_ADAPTER_SCRIPT := preload("res://scripts/d3_expression_adapter.gd")
-const HEAD_PITCH_LIMIT := Vector2(-15.0, 25.0)
-const HEAD_YAW_LIMIT := Vector2(-60.0, 60.0)
-const HEAD_ROLL_LIMIT := Vector2(-20.0, 20.0)
+const ROBOT_ADAPTER_SCRIPT := preload("res://scripts/gdbot_robot_adapter.gd")
+const SAFE_NEUTRAL_POSE := {"head_pitch": 0.0, "head_yaw": 0.0, "head_roll": 0.0}
 
 var gdbot: Node3D
 var skeleton: Skeleton3D
 var face: Node
 var expression_adapter: Node
+var robot_adapter: Variant
 var camera: Camera3D
 var status_label: Label
 var trace_label: Label
 var gate_label: Label
 var timeline: ProgressBar
 var current_intent := "idle"
-var transition_from := Vector3.ZERO
-var transition_to := Vector3.ZERO
-var transition_elapsed := 0.0
-var transition_duration := 1.0
 var transition_generation := 0
 var lease_owner := "none"
 var decision_entries: Array[String] = []
 var observation_entries: Array[String] = []
+var motion_plans: Dictionary = {}
 var motion_plan: Dictionary = {}
 var plan_loaded := false
+var _active_priority := -1
+var _pending_plan: Dictionary = {}
 var external_writer_active := false
 var owner_valid := true
 var adapter_receipt: Dictionary = {
@@ -43,31 +42,25 @@ var expression_receipt: Dictionary = {}
 func _ready() -> void:
 	_build_world()
 	_build_character()
+	_build_robot_adapter()
 	_build_expression_adapter()
 	_build_overlay()
 	_load_motion_plan()
 	_record_decision("READY", "D3 fixture loaded; Skeleton3D ownership available")
-	_start_transition("idle", Vector3.ZERO, 0.6)
 
 func _process(delta: float) -> void:
-	if not owner_valid:
+	if robot_adapter == null:
 		return
-	if transition_elapsed < transition_duration:
-		transition_elapsed = minf(transition_duration, transition_elapsed + delta)
-		var t := _smoothstep(transition_elapsed / transition_duration)
-		_apply_pose(transition_from.lerp(transition_to, t))
-		timeline.value = t * 100.0
-		if transition_elapsed >= transition_duration:
-			_record_observation("terminal", current_intent)
-			adapter_receipt["terminal"] = current_intent
-			_update_panel("green", "COMPLETED")
+	robot_adapter.tick(delta)
+	if timeline != null:
+		timeline.value = robot_adapter.progress() * 100.0
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
-			KEY_A: request_intent("attack", Vector3(-8.0, -35.0, 5.0), 0.9)
-			KEY_D: request_intent("defense", Vector3(12.0, 32.0, -4.0), 1.1)
-			KEY_I: request_intent("interrupt", Vector3.ZERO, 0.45)
+			KEY_A: request_intent("robot.attack_recover@1")
+			KEY_D: request_intent("robot.high_guard@1")
+			KEY_I: request_intent("interrupt")
 			KEY_X: set_external_writer_active(true)
 			KEY_O: owner_lost()
 			KEY_R: reset_fixture()
@@ -75,13 +68,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_N: request_expression("default")
 			KEY_Z: request_expression("dizzy")
 
-func request_intent(intent: String, target: Vector3, duration: float) -> void:
+func request_intent(intent: String) -> void:
 	if intent == "interrupt":
-		_record_decision("INTERRUPT", "higher-priority intent; revoke generation %d" % transition_generation)
-		adapter_receipt["barrier"] = "revoked"
-		transition_generation += 1
-		lease_owner = "coda.transition.%d" % transition_generation
-		_start_transition("interrupted_to_safe", Vector3(_current_pose()), 0.45)
+		_interrupt_to_safe("user_interrupt")
 		return
 	if not plan_loaded:
 		_record_decision("REJECT", "CODA MotionIntent plan unavailable; no Adapter write")
@@ -97,15 +86,77 @@ func request_intent(intent: String, target: Vector3, duration: float) -> void:
 		_record_decision("REJECT", "external writer active; ownership barrier denied; no generation change")
 		adapter_receipt["barrier"] = "rejected"
 		adapter_receipt["terminal"] = "rejected"
-		transition_elapsed = transition_duration
 		_update_panel("red", "REJECTED / EXTERNAL WRITER")
 		return
-	_record_decision("SOURCE_PLAN", "event=%s opcode=%s source=%s" % [motion_plan.get("event_id", "unknown"), motion_plan.get("instructions", [{}])[0].get("opcode", "unknown"), motion_plan.get("instructions", [{}])[0].get("source_ref", {}).get("path", "unknown")])
-	_record_decision("ADMISSION", "%s: snapshot=valid lease=full safety=pass deadline=reserve" % intent)
-	adapter_receipt["barrier"] = "accepted"
+	var artifact: Dictionary = motion_plans.get(intent, {})
+	if artifact.is_empty():
+		_record_decision("REJECT", "没有找到该意图对应的已生成 TransitionPlan")
+		adapter_receipt["terminal"] = "rejected"
+		_update_panel("red", "REJECTED / PLAN MISSING")
+		return
+	if robot_adapter.is_executing():
+		var requested_priority := int(artifact.get("motion_envelope", {}).get("priority", 0))
+		if requested_priority <= _active_priority:
+			_record_decision("REJECT", "现有意图优先级不低于新请求")
+			return
+		_pending_plan = artifact
+		_interrupt_to_safe("priority_preemption", true)
+		return
+	_start_plan(artifact)
+
+func _start_plan(artifact: Dictionary) -> void:
+	var plan: Dictionary = artifact.get("transition_plan", {})
+	if not robot_adapter.can_start_plan(plan):
+		_record_decision("REJECT", "计划起点与 Adapter 当前姿态不一致；拒绝写入")
+		adapter_receipt["barrier"] = "rejected"
+		adapter_receipt["terminal"] = "rejected"
+		_update_panel("red", "REJECTED / START STATE")
+		return
 	transition_generation += 1
 	lease_owner = "coda.transition.%d" % transition_generation
-	_start_transition(intent, target, duration)
+	var admitted_plan := plan.duplicate(true)
+	# The generated plan is an immutable motion decision; the runtime binds it to this fresh lease epoch.
+	admitted_plan["lease"]["generation"] = transition_generation
+	var submitted: Dictionary = robot_adapter.submit_transition_plan(admitted_plan, transition_generation)
+	if not submitted.get("ok", false):
+		_record_decision("ADAPTER_REJECT", String(submitted.get("error", "unknown")))
+		adapter_receipt["barrier"] = "rejected"
+		adapter_receipt["terminal"] = "rejected"
+		_update_panel("red", "REJECTED / ADAPTER")
+		return
+	motion_plan = artifact
+	current_intent = String(artifact.get("source_asset", "motion_intent"))
+	_active_priority = int(artifact.get("motion_envelope", {}).get("priority", 0))
+	adapter_receipt["barrier"] = "accepted"
+	adapter_receipt["start"] = "started"
+	adapter_receipt["terminal"] = "pending"
+	adapter_receipt["plan_id"] = plan.get("plan_id", "")
+	_record_decision("GENERATED_PLAN", "%s → %s" % [artifact.get("source_asset", ""), plan.get("plan_id", "")])
+	_record_observation("adapter_start", "generation=%d segments=%d" % [transition_generation, plan.get("segments", []).size()])
+	_update_panel("blue", "EXECUTING GENERATED PLAN")
+
+func _interrupt_to_safe(reason: String, preserve_pending := false) -> void:
+	if robot_adapter == null or not owner_valid:
+		return
+	_record_decision("INTERRUPT", "%s; revoke generation %d" % [reason, transition_generation])
+	var revoked_generation := transition_generation
+	transition_generation += 1
+	lease_owner = "coda.safety.%d" % transition_generation
+	if not preserve_pending:
+		_pending_plan = {}
+	adapter_receipt["barrier"] = "revoked"
+	adapter_receipt["terminal"] = "preempted"
+	var recovery: Dictionary = robot_adapter.interrupt_to(SAFE_NEUTRAL_POSE, transition_generation, 320)
+	if not recovery.get("ok", false):
+		adapter_receipt["barrier"] = "rejected"
+		adapter_receipt["terminal"] = "rejected"
+		_record_decision("RECOVERY_REJECT", String(recovery.get("error", "unknown")))
+		_update_panel("red", "RECOVERY REJECTED")
+		return
+	current_intent = "安全收敛"
+	adapter_receipt["start"] = "recovery_started"
+	_record_observation("generation_revoked", "generation=%d" % revoked_generation)
+	_update_panel("blue", "SAFE CONVERGENCE")
 
 func request_expression(expression_name: String) -> void:
 	if not plan_loaded or not owner_valid or external_writer_active:
@@ -131,7 +182,11 @@ func reset_fixture() -> void:
 	if expression_adapter != null:
 		expression_adapter.reset()
 		expression_receipt = expression_adapter.last_receipt
-	_start_transition("idle", Vector3.ZERO, 0.6)
+	if robot_adapter != null:
+		robot_adapter.reset()
+	_active_priority = -1
+	_pending_plan = {}
+	current_intent = "idle"
 	_record_decision("RESET", "fixture reset; no stale generation may write")
 
 func set_external_writer_active(active: bool) -> void:
@@ -141,67 +196,66 @@ func set_external_writer_active(active: bool) -> void:
 
 func owner_lost() -> void:
 	owner_valid = false
-	transition_elapsed = transition_duration
+	transition_generation += 1
+	robot_adapter.interrupt_to(SAFE_NEUTRAL_POSE, transition_generation, 320)
 	adapter_receipt["barrier"] = "owner_lost"
 	adapter_receipt["terminal"] = "owner_lost"
-	_record_observation("owner_lost", "parent owner destroyed; transition converges once")
+	_record_observation("owner_lost", "parent owner lost; Adapter safety convergence owns the only remaining writer")
 	_update_panel("red", "OWNER LOST")
 
 func apply_transition_sample(generation: int, pose: Vector3) -> bool:
 	if not owner_valid or generation != transition_generation:
 		_record_decision("STALE_REJECT", "generation=%d cannot write current generation=%d" % [generation, transition_generation])
 		return false
-	_apply_pose(pose)
-	return true
+	return robot_adapter.set_pose(generation, {"head_pitch": pose.x, "head_yaw": pose.y, "head_roll": pose.z})
 
 func _load_motion_plan() -> void:
-	var plan_text := FileAccess.get_file_as_string("res://fixtures/robot-acknowledge.plan.json")
-	var parsed = JSON.parse_string(plan_text)
-	if parsed is Dictionary and parsed.get("plan_type", "") == "ExecutionPlan":
-		var instructions: Array = parsed.get("instructions", [])
-		if not instructions.is_empty() and instructions[0].get("opcode", "") == "MotionIntent":
-			motion_plan = parsed
-			plan_loaded = true
-			_record_observation("source_plan", "MotionIntent loaded; asset=%s" % parsed.get("asset_fingerprint", "unknown"))
+	var paths := ["res://fixtures/generated/robot-attack-recover.json", "res://fixtures/generated/robot-high-guard.json"]
+	for path in paths:
+		if not FileAccess.file_exists(path):
+			_record_decision("REJECT", "缺少 CODA 生成计划；先生成 D3 plans: %s" % path)
+			continue
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if parsed is Dictionary and parsed.get("artifact_type") == "CODAD3GeneratedMotion":
+			var artifact: Dictionary = parsed
+			var transition: Dictionary = artifact.get("transition_plan", {})
+			var intent_id := String(artifact.get("motion_envelope", {}).get("intent", ""))
+			if transition.get("plan_type") == "TransitionPlan" and transition.get("execution_authority") == "adapter_only":
+				motion_plans[intent_id] = artifact
+				if motion_plan.is_empty(): motion_plan = artifact
+				_record_observation("generated_plan", "%s segments=%d" % [intent_id, transition.get("segments", []).size()])
+	if not motion_plans.is_empty():
+		plan_loaded = true
 	else:
-		_record_decision("REJECT", "invalid ExecutionPlan fixture; fail closed")
-
-func _start_transition(intent: String, target: Vector3, duration: float) -> void:
-	current_intent = intent
-	transition_from = _current_pose()
-	transition_to = Vector3(
-		clampf(target.x, HEAD_PITCH_LIMIT.x, HEAD_PITCH_LIMIT.y),
-		clampf(target.y, HEAD_YAW_LIMIT.x, HEAD_YAW_LIMIT.y),
-		clampf(target.z, HEAD_ROLL_LIMIT.x, HEAD_ROLL_LIMIT.y)
-	)
-	transition_duration = maxf(0.1, duration)
-	transition_elapsed = 0.0
-	adapter_receipt["start"] = "started"
-	adapter_receipt["terminal"] = "pending"
-	_record_observation("start", "%s generation=%d" % [intent, transition_generation])
-	_update_panel("blue", "EXECUTING")
+		_record_decision("REJECT", "没有可执行的 CODA TransitionPlan")
 
 func _current_pose() -> Vector3:
-	if skeleton == null:
+	if robot_adapter == null:
 		return Vector3.ZERO
-	var head := skeleton.find_bone("head")
-	if head < 0:
-		return Vector3.ZERO
-	var euler := skeleton.get_bone_pose_rotation(head).get_euler()
-	return Vector3(rad_to_deg(euler.x), rad_to_deg(euler.y), rad_to_deg(euler.z))
+	return Vector3(float(robot_adapter.current.get("head_pitch", 0.0)), float(robot_adapter.current.get("head_yaw", 0.0)), float(robot_adapter.current.get("head_roll", 0.0)))
 
-func _apply_pose(pose: Vector3) -> void:
-	if skeleton == null:
+
+func _build_robot_adapter() -> void:
+	robot_adapter = ROBOT_ADAPTER_SCRIPT.new(skeleton)
+	robot_adapter.command_rejected.connect(func(reason: String): _record_decision("ADAPTER_REJECT", reason))
+	robot_adapter.terminal_receipt.connect(_on_adapter_terminal)
+
+func _on_adapter_terminal(generation: int, terminal: String) -> void:
+	if generation != transition_generation:
+		_record_decision("STALE_RECEIPT_REJECT", "generation=%d" % generation)
 		return
-	var head := skeleton.find_bone("head")
-	if head < 0:
+	adapter_receipt["terminal"] = "owner_lost" if not owner_valid else terminal
+	_record_observation("terminal", "generation=%d state=%s" % [generation, adapter_receipt["terminal"]])
+	if not owner_valid:
 		return
-	var safe := Vector3(
-		clampf(pose.x, HEAD_PITCH_LIMIT.x, HEAD_PITCH_LIMIT.y),
-		clampf(pose.y, HEAD_YAW_LIMIT.x, HEAD_YAW_LIMIT.y),
-		clampf(pose.z, HEAD_ROLL_LIMIT.x, HEAD_ROLL_LIMIT.y)
-	)
-	skeleton.set_bone_pose_rotation(head, Quaternion.from_euler(Vector3(deg_to_rad(safe.x), deg_to_rad(safe.y), deg_to_rad(safe.z))))
+	if not _pending_plan.is_empty():
+		var pending := _pending_plan
+		_pending_plan = {}
+		_start_plan(pending)
+	else:
+		current_intent = "idle"
+		_active_priority = -1
+		_update_panel("green", "COMPLETED")
 
 func _build_world() -> void:
 	var environment := WorldEnvironment.new()
@@ -325,7 +379,3 @@ func _record_observation(kind: String, text: String) -> void:
 	observation_entries.append("[%s] %s" % [kind, text])
 	if status_label != null:
 		_update_panel("blue", "OBSERVED")
-
-func _smoothstep(value: float) -> float:
-	var t := clampf(value, 0.0, 1.0)
-	return t * t * (3.0 - 2.0 * t)

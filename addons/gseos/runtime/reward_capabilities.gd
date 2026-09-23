@@ -20,21 +20,31 @@ func read(args: Dictionary) -> Variant:
 	return fields.get(field)
 
 func animate_number(args: Dictionary) -> Variant:
-	var target = args.get("target")
+	var target := args.get("target") as Node
 	if not is_instance_valid(target):
 		return null
 	var wait := GSEOS_WaitRegistration.new()
-	var timer := Timer.new()
-	timer.one_shot = true
-	timer.wait_time = float(args.get("duration", 0.0))
-	target.add_child(timer)
+	var from_value := float(args.get("from", 0.0))
+	var to_value := float(args.get("to", from_value))
+	var duration := maxf(0.01, float(args.get("duration", 0.35)))
+	var tween: Tween = target.create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_method(func(value: float):
+		if not is_instance_valid(target):
+			return
+		var fields: Dictionary = target.get_meta("_gseos_fields", {})
+		fields["score"] = int(round(value))
+		target.set_meta("_gseos_fields", fields)
+		var score_label := target.get_node_or_null("ScoreValue") as Label
+		if score_label != null:
+			score_label.text = "积分：%d" % int(round(value))
+	, from_value, to_value, duration)
 	wait._cleanup = func():
-		if is_instance_valid(timer):
-			timer.queue_free()
-	timer.timeout.connect(func():
+		if is_instance_valid(tween):
+			tween.kill()
+	tween.finished.connect(func():
 		wait.finish({"status": "COMPLETED"})
 	)
-	timer.start()
 	return wait
 
 func remove_node(args: Dictionary) -> Variant:

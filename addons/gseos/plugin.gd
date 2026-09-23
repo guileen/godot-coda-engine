@@ -6,7 +6,7 @@ var _dock: Control
 
 func _enter_tree() -> void:
 	_dock = EVENT_DOCK.new()
-	_dock.name = "GSEOS 事件"
+	_dock.name = "CODA 事件"
 	_dock.configure(get_editor_interface())
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, _dock)
 

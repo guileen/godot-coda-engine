@@ -19,6 +19,7 @@
     "validate:p3-users": "node scripts/validate-p3-user-observation.mjs",
     "check:c0": "node scripts/check-c0-behavior.mjs",
     "demo:smoke": "node scripts/run-demo-suite.mjs",
+    "demo:d3:plans": "node scripts/build-d3-transition-plans.mjs",
     "audit:tasks": "node scripts/audit-tasks-md.mjs",
     "benchmark:c1p:reference": "node scripts/run-c1p-reference-benchmark.mjs --write",
     "demo:acceptance": "npm run demo:smoke && godot --headless --path demos/d2-interruptible-behavior --script res://tests/d2_interruptible_behavior_smoke.gd && godot --headless --path demos/d3-skeleton-transition --script res://tests/d3_skeleton_transition_smoke.gd",
