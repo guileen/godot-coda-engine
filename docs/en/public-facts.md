@@ -11,7 +11,7 @@ Public pages describe only behavior that can be traced to a checked-in fixture, 
 | The E0 runtime makes waits, cancellation, timeout, owner invalidation, and late callbacks explicit. | `addons/gseos/runtime/`, especially `wait_registration.gd`, `run_handle.gd`, and `event_registry.gd`; the competition integration covers the terminal-state rules. | `npm run test:godot` |
 | English, Chinese, and mixed-language import surfaces normalize to the same structured model. | `packages/local-core/src/gseos/frontend.js` and the bilingual frontend tests. | `npm test` |
 | The editor surface supports asset transactions and source-map lookup. | `addons/gseos/editor/event_dock.gd`, `tests/integration/event_dock_smoke.gd`, and `tests/reports/t2-editor-smoke.json`. | `npm run test:godot:gui` |
-| The exported runtime excludes the editor, frontend, legacy dictionary, and EventAsset interpretation layers. | `export_presets.cfg`, `scripts/gseos-pack-audit.js`, and `tests/reports/t2-export-audit.json`. | `npm run export:pack` |
+| The exported runtime excludes the editor, frontend, legacy dictionary, and EventAsset interpretation layers. | `export_presets.cfg`, `scripts/coda-pack-audit.js`, and `tests/reports/t2-export-audit.json`. | `npm run export:pack` |
 | The bilingual static site has responsive, keyboard, reduced-motion, and no-tracking checks. | `website/`, `i18n/`, and `tests/reports/t2-pages-visual-qa.json`. | Run the visual-QA command recorded in that report against a local Pages preview. |
 
 ## Evidence boundaries

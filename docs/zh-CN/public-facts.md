@@ -11,7 +11,7 @@
 | E0 运行时明确处理等待、取消、超时、所有者失效和迟到回调。 | `addons/gseos/runtime/`，尤其是 `wait_registration.gd`、`run_handle.gd` 和 `event_registry.gd`；竞争集成测试覆盖终态规则。 | `npm run test:godot` |
 | 英文、中文和混合语言导入面会归一到同一个结构化模型。 | `packages/local-core/src/gseos/frontend.js` 和双语前端测试。 | `npm test` |
 | 编辑器界面支持资产事务和源映射定位。 | `addons/gseos/editor/event_dock.gd`、`tests/integration/event_dock_smoke.gd` 和 `tests/reports/t2-editor-smoke.json`。 | `npm run test:godot:gui` |
-| 导出运行时不包含编辑器、前端、旧词典或 EventAsset 解释层。 | `export_presets.cfg`、`scripts/gseos-pack-audit.js` 和 `tests/reports/t2-export-audit.json`。 | `npm run export:pack` |
+| 导出运行时不包含编辑器、前端、旧词典或 EventAsset 解释层。 | `export_presets.cfg`、`scripts/coda-pack-audit.js` 和 `tests/reports/t2-export-audit.json`。 | `npm run export:pack` |
 | 双语静态网站通过响应式、键盘、减少动态效果和无跟踪检查。 | `website/`、`i18n/` 和 `tests/reports/t2-pages-visual-qa.json`。 | 在本地 Pages 预览上运行报告中记录的视觉验收命令。 |
 
 ## 证据边界
