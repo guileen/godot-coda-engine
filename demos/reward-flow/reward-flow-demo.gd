@@ -11,9 +11,11 @@ var score_label: Label
 var reward_history: VBoxContainer
 var status_label: Label
 var reward_button: Button
+var zero_reward_button: Button
 var reset_button: Button
 var _running := false
 var received_payload: Dictionary = {}
+var reward_runner: GSEOS_RewardEventRunner
 var _accent := Color("74d6a0")
 var _panel := Color("172338")
 
@@ -21,8 +23,8 @@ func _ready() -> void:
 	_build_interface()
 	capability_registry = CAPABILITY_REGISTRY.new()
 	event_registry = EVENT_REGISTRY.new()
-	var runner := REWARD_RUNNER.new(capability_registry, event_registry)
-	event_registry.register("ui.reward.apply", Callable(runner, "run"), "reject")
+	reward_runner = REWARD_RUNNER.new(capability_registry, event_registry)
+	event_registry.register("ui.reward.apply", Callable(reward_runner, "run"), "reject")
 	event_registry.subscribe("combat.hit_resolved@1", Callable(self, "_on_hit_resolved"))
 	_reset_example()
 
@@ -53,7 +55,7 @@ func _build_interface() -> void:
 	title.add_theme_font_size_override("font_size", 34)
 	column.add_child(title)
 	var explanation := Label.new()
-	explanation.text = "点击领取后，积分会从 100 动画增加到 125；旧奖励条目会被替换，结算结果会显示在下方。"
+	explanation.text = "点击领取后先检查奖励是否大于 0；通过后把 25 加到现有积分，等数字动画完成，再更新奖励条目并显示结算结果。"
 	explanation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	explanation.add_theme_color_override("font_color", Color("b2bfd2"))
 	column.add_child(explanation)
@@ -79,8 +81,14 @@ func _build_interface() -> void:
 	reward_button = Button.new()
 	reward_button.text = "领取奖励  +25"
 	reward_button.custom_minimum_size = Vector2(210.0, 48.0)
-	reward_button.pressed.connect(_claim_reward)
+	reward_button.pressed.connect(func(): _claim_reward(25))
 	actions.add_child(reward_button)
+	zero_reward_button = Button.new()
+	zero_reward_button.text = "验证条件：奖励为 0"
+	zero_reward_button.custom_minimum_size = Vector2(170.0, 48.0)
+	zero_reward_button.tooltip_text = "条件不成立时，流程应跳过发奖，积分和奖励条目保持不变。"
+	zero_reward_button.pressed.connect(func(): _claim_reward(0))
+	actions.add_child(zero_reward_button)
 	reset_button = Button.new()
 	reset_button.text = "重置样例"
 	reset_button.custom_minimum_size = Vector2(120.0, 48.0)
@@ -91,30 +99,53 @@ func _build_interface() -> void:
 	status_label.custom_minimum_size.y = 72.0
 	status_label.add_theme_color_override("font_color", Color("b2bfd2"))
 	column.add_child(status_label)
-	var flow := Label.new()
-	flow.text = "流程：读取当前积分 → 加上奖励 → 播放数值变化 → 替换奖励条目 → 发布结算结果"
-	flow.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	flow.add_theme_color_override("font_color", Color("8d9bb0"))
-	column.add_child(flow)
+	var flow_title := Label.new()
+	flow_title.text = "发生顺序"
+	flow_title.add_theme_font_size_override("font_size", 18)
+	column.add_child(flow_title)
+	var flow_steps := VBoxContainer.new()
+	flow_steps.add_theme_constant_override("separation", 5)
+	column.add_child(flow_steps)
+	for step_text in [
+		"1 触发：玩家点击“领取奖励 +25”，或用旁边按钮验证 0 奖励",
+		"2 判断：奖励大于 0 才继续；条件不成立时积分和奖励条目不变",
+		"3 算分并等待：读取当前积分 100，加上 25；等数字动画到 125",
+		"4 更新：移除上一条奖励，显示新的奖励条目",
+		"5 反馈：显示结算完成，并发布本次奖励通知",
+	]:
+		var step := Label.new()
+		step.text = step_text
+		step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		step.add_theme_color_override("font_color", Color("b2bfd2"))
+		flow_steps.add_child(step)
 
-func _claim_reward() -> void:
+func _claim_reward(reward: int) -> void:
 	if event_registry == null or not is_instance_valid(hud):
 		return
 	reward_button.disabled = true
+	zero_reward_button.disabled = true
 	reset_button.disabled = true
 	_running = true
-	status_label.text = "正在结算：数值动画完成后，奖励条目会更新。"
-	var handle := event_registry.start("ui.reward.apply", {"reward": 25, "target_hud": hud}, hud)
+	status_label.text = "正在检查奖励条件…"
+	var handle := event_registry.start("ui.reward.apply", {"reward": reward, "target_hud": hud}, hud)
 	handle.completed.connect(_on_reward_completed)
+	if handle.status != GSEOS_RunHandle.Status.RUNNING and handle.status != GSEOS_RunHandle.Status.WAITING:
+		_on_reward_completed(handle.result)
 
 func _on_reward_completed(result: Dictionary) -> void:
 	reward_button.disabled = false
+	zero_reward_button.disabled = false
 	reset_button.disabled = false
 	_running = false
-	var value: Dictionary = result.get("value", {})
+	var value_result = result.get("value", {})
+	var value: Dictionary = value_result if value_result is Dictionary else {}
 	if result.get("status") == "COMPLETED":
-		status_label.text = "结算完成：当前积分 %s；通知已发布。" % value.get("score", "?")
-		status_label.add_theme_color_override("font_color", _accent)
+		if value.is_empty():
+			status_label.text = "条件不成立：奖励必须大于 0。本次没有发奖，积分和奖励条目保持不变。"
+			status_label.add_theme_color_override("font_color", Color("b2bfd2"))
+		else:
+			status_label.text = "结算完成：当前积分 %s；通知已发布。" % value.get("score", "?")
+			status_label.add_theme_color_override("font_color", _accent)
 	else:
 		status_label.text = "结算未完成：%s" % result.get("reason", result.get("status", "未知原因"))
 		status_label.add_theme_color_override("font_color", Color("ff8e8e"))
@@ -142,6 +173,7 @@ func _reset_example() -> void:
 	status_label.text = "准备就绪。点击“领取奖励”观察整个流程。"
 	status_label.add_theme_color_override("font_color", Color("b2bfd2"))
 	reward_button.disabled = false
+	zero_reward_button.disabled = false
 	received_payload = {}
 
 func _make_panel_style() -> StyleBoxFlat:

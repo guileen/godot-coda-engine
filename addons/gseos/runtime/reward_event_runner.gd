@@ -35,10 +35,10 @@ func run(args: Dictionary, owner: Node, handle: GSEOS_RunHandle) -> Variant:
 		if result.get("status") != "COMPLETED":
 			handle.finish(GSEOS_RunHandle.Status.CANCELLED, {"status": "CANCELLED", "reason": result.get("reason", "wait_failed")})
 			return
-		var row_owner = target_hud.get_node_or_null("RewardHistory")
+		var row_owner = target_hud.find_child("RewardHistory", true, false)
 		if not is_instance_valid(row_owner):
 			row_owner = target_hud
-		var old_row = row_owner.get_node_or_null("OldRewardRow")
+		var old_row = row_owner.find_child("OldRewardRow", false, false)
 		if is_instance_valid(old_row):
 			capabilities.remove_node({"target": old_row})
 		var new_row = capabilities.create_reward_row({"owner": row_owner, "value": new_score})

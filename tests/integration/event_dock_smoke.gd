@@ -64,6 +64,28 @@ func _start() -> void:
 	dock._inspect_managed_artifact()
 	if not dock._status.text.contains("受管生成物完整"):
 		failures.append("Event Dock did not recognize the managed generated artifact")
+	dock._selected_node_id = "calculate-score"
+	dock._render_inspector()
+	if dock._let_expression_edit == null or dock._let_expression_edit.text != "当前积分 + 奖励":
+		failures.append("Event Dock did not show the reward calculation in plain language")
+	else:
+		dock._let_expression_edit.text = "当前积分 + 5"
+		dock._preview_let_edit()
+		if dock._projection_pending_asset.is_empty() or not dock._projection_preview_diff.contains("当前积分 + 5"):
+			failures.append("Event Dock did not preview the readable reward calculation")
+		dock._cancel_projection_preview()
+	for command_index in dock._command_select.item_count:
+		if String(dock._command_select.get_item_metadata(command_index)) == "read":
+			dock._command_select.select(command_index)
+			break
+	dock._insert_draft_node()
+	if not dock._draft_param_controls.has("target") or not dock._draft_param_controls["target"] is OptionButton:
+		failures.append("read draft did not offer a selectable event object")
+	else:
+		var target_options := dock._draft_param_controls["target"] as OptionButton
+		if target_options.item_count < 2 or target_options.get_item_text(1) != "目标界面":
+			failures.append("read draft displayed a raw object id instead of its human label")
+	dock._cancel_draft()
 	dock._new_event()
 	await process_frame
 	if not FileAccess.file_exists(new_event_path):
@@ -114,6 +136,8 @@ func _start() -> void:
 			failures.append("Event Dock did not create an in-memory draft node")
 		if dock._editor_tabs.current_tab != 1:
 			failures.append("New draft step did not open its settings page")
+		if dock._let_name_edit == null or dock._let_expression_edit == null or not dock._let_expression_edit.placeholder_text.contains("1 + 2"):
+			failures.append("New calculation draft did not explain what to enter")
 		if not dock._selected_asset.root.is_empty():
 			failures.append("draft insertion changed the committed asset")
 		var invalid_slot := dock._append_to_slot(dock._selected_asset.duplicate(true), {"parent_id": "missing", "slot": "then"}, {"node_id": "bad", "command_id": "let"})
@@ -128,15 +152,18 @@ func _start() -> void:
 				dock._command_select.select(command_index)
 				break
 		dock._insert_draft_node()
-		(dock._draft_param_controls["name"] as LineEdit).text = "\"draft_value\""
-		(dock._draft_param_controls["value"] as LineEdit).text = "1"
+		dock._let_name_edit.text = "测试结果"
+		dock._let_expression_edit.text = "1 + 2"
 		dock._confirm_draft()
 		if dock._selected_asset.root.size() != 1 or dock._selected_asset.root[0].get("draft", false):
 			failures.append("Event Dock did not confirm the draft as a committed node")
+		elif dock._selected_asset.root[0].params.name != "测试结果" or dock._selected_asset.root[0].params.value != {"left": 1.0, "op": "+", "right": 2.0}:
+			failures.append("Event Dock did not turn the human-readable calculation into a structured expression: %s" % JSON.stringify(dock._selected_asset.root[0].params))
 		dock._selected_node_id = dock._selected_asset.root[0].node_id
 		dock._copy_selected_node()
 		if dock._selected_asset.root.size() != 2:
-			failures.append("Event Dock did not copy the selected node: " + dock._status.text)
+			var disk_after_copy := STORE.new().load_asset(new_event_path)
+			failures.append("Event Dock did not copy the selected node: %s; memory=%s; disk=%s" % [dock._status.text, JSON.stringify(dock._selected_asset), JSON.stringify(disk_after_copy.asset)])
 		dock._move_selected_node(1)
 		if dock._selected_asset.root.size() != 2:
 			failures.append("Event Dock did not move the selected node within its slot: " + dock._status.text)

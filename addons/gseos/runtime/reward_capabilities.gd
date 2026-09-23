@@ -35,7 +35,7 @@ func animate_number(args: Dictionary) -> Variant:
 		var fields: Dictionary = target.get_meta("_gseos_fields", {})
 		fields["score"] = int(round(value))
 		target.set_meta("_gseos_fields", fields)
-		var score_label := target.get_node_or_null("ScoreValue") as Label
+		var score_label := target.find_child("ScoreValue", true, false) as Label
 		if score_label != null:
 			score_label.text = "积分：%d" % int(round(value))
 	, from_value, to_value, duration)

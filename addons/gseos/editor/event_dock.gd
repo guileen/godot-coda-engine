@@ -33,6 +33,11 @@ var _draft_param_controls: Dictionary = {}
 var _draft_action_arg_controls: Dictionary = {}
 var _draft_action_args_container: VBoxContainer
 var _draft_capability_select: OptionButton
+var _let_name_edit: LineEdit
+var _let_expression_edit: LineEdit
+var _let_expression_row: Control
+var _let_advanced_toggle: CheckButton
+var _let_advanced_edit: TextEdit
 var _asset_paths: Array[String] = []
 var _selected_path := ""
 var _selected_asset: Dictionary = {}
@@ -103,7 +108,7 @@ func _ready() -> void:
 	insert_title.add_theme_font_size_override("font_size", 14)
 	insert_section.add_child(insert_title)
 	var insert_help := Label.new()
-	insert_help.text = "先选插入位置和要做的事，再点“添加步骤”。添加后填写右侧出现的内容，最后确认这一步。"
+	insert_help.text = "① 选放置位置和步骤类型；② 点“添加步骤”；③ 按右侧提示填写并确认。添加前不会改动流程。"
 	insert_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	insert_help.add_theme_color_override("font_color", get_theme_color("font_color", "Label").lerp(Color.TRANSPARENT, 0.25))
 	insert_section.add_child(insert_help)
@@ -405,6 +410,11 @@ func _render_inspector() -> void:
 		if child != _inspector_title and child != _inspector_hint:
 			child.queue_free()
 	_draft_param_controls.clear()
+	_let_name_edit = null
+	_let_expression_edit = null
+	_let_expression_row = null
+	_let_advanced_toggle = null
+	_let_advanced_edit = null
 	var view_asset := _draft_asset if not _draft_asset.is_empty() else _selected_asset
 	var node := _find_node(view_asset.get("root", []), _selected_node_id)
 	if node.is_empty():
@@ -423,6 +433,19 @@ func _render_inspector() -> void:
 		_render_condition_editor(node)
 		_render_projection_preview_confirmation()
 		return
+	if command_id == "let":
+		_render_let_expression_editor(node)
+		if node.get("draft", false):
+			_add_draft_confirm_actions()
+		elif not _projection_preview_diff.is_empty():
+			_render_projection_preview_confirmation()
+		else:
+			_inspector.add_child(_button("预览计算修改", _preview_let_edit))
+		return
+	if command_id == "read" and node.get("draft", false):
+		_render_read_draft_editor()
+		_add_draft_confirm_actions()
+		return
 	if not node.get("draft", false):
 		_render_projection_slots(projection_node)
 		return
@@ -433,7 +456,7 @@ func _render_inspector() -> void:
 		_inspector.add_child(unsupported)
 		return
 	var pending_label := Label.new()
-	pending_label.text = "完成下面内容后，确认这一步。取消不会改动流程。"
+	pending_label.text = "完成下面内容后确认这一步；取消会丢弃草稿，不会改动原流程。"
 	pending_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspector.add_child(pending_label)
 	if command_id == "if":
@@ -451,6 +474,17 @@ func _render_inspector() -> void:
 		"topic": "通知类型", "payload": "通知内容", "inputs": "传入内容",
 		"outputs": "输出内容", "code": "代码内容",
 	}
+	var field_examples := {
+		"name": "例如：new_score",
+		"target": "例如：target_hud",
+		"field": "例如：score",
+		"bind": "例如：current_score",
+		"topic": "例如：combat.hit_resolved@1",
+		"payload": "填写通知内容；复杂内容请使用完整表达式。",
+		"inputs": "填写已声明的输入内容。",
+		"outputs": "填写已声明的输出内容。",
+		"code": "仅供受限代码使用；一般流程无需填写。",
+	}
 	for field in pending:
 		var row := HBoxContainer.new()
 		var label := Label.new()
@@ -459,11 +493,208 @@ func _render_inspector() -> void:
 		row.add_child(label)
 		var edit := LineEdit.new()
 		edit.placeholder_text = "填写 %s" % label.text
+		if field_examples.has(String(field)):
+			edit.placeholder_text = String(field_examples[String(field)])
 		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(edit)
 		_inspector.add_child(row)
 		_draft_param_controls[field] = edit
 	_add_draft_confirm_actions()
+
+func _render_let_expression_editor(node: Dictionary) -> void:
+	var params: Dictionary = node.get("params", {})
+	var value = params.get("value", {})
+	var draft: bool = bool(node.get("draft", false))
+	var example := _let_expression_example()
+	var guide := Label.new()
+	guide.text = "给结果起个名称，再写怎么算。例：%s。" % example
+	guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspector.add_child(guide)
+	_let_name_edit = LineEdit.new()
+	_let_name_edit.placeholder_text = "例如：新积分"
+	_let_name_edit.tooltip_text = "后续步骤可以用这个名称读取计算结果。"
+	_let_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_let_name_edit.text = String(params.get("name", ""))
+	_inspector.add_child(_labeled_control("结果名称", _let_name_edit))
+	_let_expression_edit = LineEdit.new()
+	_let_expression_edit.placeholder_text = "例如：%s" % example
+	_let_expression_edit.tooltip_text = "可用数字、双引号文字和前面步骤产生的值；支持 +、-、*、/。复杂表达式可切换高级模式。"
+	_let_expression_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_let_expression_edit.text = "" if draft and not params.has("value") else _expression_to_author_text(value)
+	_let_expression_row = _labeled_control("怎么算", _let_expression_edit)
+	_inspector.add_child(_let_expression_row)
+	_let_advanced_toggle = CheckButton.new()
+	_let_advanced_toggle.text = "高级表达式（JSON）"
+	_let_advanced_toggle.button_pressed = not draft and params.has("value") and not _is_simple_author_expression(value)
+	_inspector.add_child(_let_advanced_toggle)
+	_let_advanced_edit = TextEdit.new()
+	_let_advanced_edit.custom_minimum_size.y = 82
+	_let_advanced_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_let_advanced_edit.placeholder_text = "复杂表达式 JSON；普通计算不需要使用此项。"
+	_let_advanced_edit.tooltip_text = "供需要编辑嵌套表达式的开发者使用。"
+	_let_advanced_edit.text = JSON.stringify(value)
+	_let_advanced_edit.visible = _let_advanced_toggle.button_pressed
+	_inspector.add_child(_let_advanced_edit)
+	_let_expression_row.visible = not _let_advanced_toggle.button_pressed
+	_let_advanced_toggle.toggled.connect(func(enabled: bool):
+		_let_expression_row.visible = not enabled
+		_let_advanced_edit.visible = enabled
+	)
+	if draft:
+		guide.text = "① 给结果起名称；② 写计算式；③ 确认后才加入流程。例：%s。" % example
+
+func _let_expression_example() -> String:
+	var references := _author_expression_references()
+	if references.has("old_score") and references.has("reward"):
+		return "当前积分 + 奖励"
+	return "1 + 2"
+
+func _render_read_draft_editor() -> void:
+	var guide := Label.new()
+	guide.text = "选择一个对象和要读取的字段，再给结果起名。例：积分界面 → score → 当前积分。"
+	guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspector.add_child(guide)
+	var target := OptionButton.new()
+	target.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	target.add_item("选择一个对象…")
+	target.set_item_metadata(0, {})
+	for argument in _selected_asset.get("args", []):
+		if String(argument.get("type", "")) != "NodeRef": continue
+		var reference := String(argument.get("id", ""))
+		target.add_item(String(argument.get("name", _reference_label(reference))))
+		target.set_item_metadata(target.item_count - 1, {"ref": reference})
+	if target.item_count == 1:
+		var empty := Label.new()
+		empty.text = "当前流程没有可选对象；需要先声明一个对象参数。"
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_inspector.add_child(empty)
+	_inspector.add_child(_labeled_control("读取哪个对象", target))
+	_draft_param_controls["target"] = target
+	for field in ["field", "bind"]:
+		var edit := LineEdit.new()
+		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if field == "field":
+			edit.placeholder_text = "例如：score"
+			_inspector.add_child(_labeled_control("读取哪个字段", edit))
+		else:
+			edit.placeholder_text = "例如：当前积分"
+			_inspector.add_child(_labeled_control("结果名称", edit))
+		_draft_param_controls[field] = edit
+
+func _is_simple_author_expression(value) -> bool:
+	if value is Dictionary and value.has("ref"):
+		return true
+	if value is Dictionary and value.has_all(["left", "op", "right"]):
+		return value.left is Dictionary and value.left.has("ref") and _is_simple_author_operand(value.right) and String(value.op) in ["+", "-", "*", "/"]
+	return _is_simple_author_operand(value)
+
+func _is_simple_author_operand(value) -> bool:
+	return value is Dictionary and value.has("ref") or value is String or value is int or value is float or value is bool
+
+func _expression_to_author_text(value) -> String:
+	if value is Dictionary and value.has("ref"):
+		return _reference_label(String(value.get("ref", "")))
+	if value is Dictionary and value.has_all(["left", "op", "right"]):
+		return "%s %s %s" % [_expression_to_author_text(value.left), String(value.op), _expression_to_author_text(value.right)]
+	if value is String:
+		return JSON.stringify(value)
+	if value == null:
+		return ""
+	return str(value)
+
+func _author_expression_references() -> Dictionary:
+	var result := {}
+	for argument in _selected_asset.get("args", []):
+		var reference := String(argument.get("id", ""))
+		if reference.is_empty(): continue
+		result[reference] = reference
+		result[String(argument.get("name", reference))] = reference
+		result[_reference_label(reference)] = reference
+	_collect_author_expression_references(_selected_asset.get("root", []), result)
+	return result
+
+func _collect_author_expression_references(nodes: Array, references: Dictionary) -> void:
+	for node in nodes:
+		var params: Dictionary = node.get("params", {})
+		var possible_bindings := [params.get("name", ""), params.get("bind", ""), params.get("args", {}).get("bind", "")]
+		for candidate in possible_bindings:
+			var reference := String(candidate)
+			if reference.is_empty(): continue
+			references[reference] = reference
+			references[_reference_label(reference)] = reference
+		for children in node.get("children", {}).values():
+			_collect_author_expression_references(children, references)
+
+func _parse_author_operand(text: String) -> Dictionary:
+	var operand := text.strip_edges()
+	if operand.is_empty(): return {"ok": false, "message": "请填写计算内容。"}
+	var references := _author_expression_references()
+	if references.has(operand): return {"ok": true, "value": {"ref": references[operand]}}
+	if operand in ["true", "false", "null"]:
+		return {"ok": true, "value": JSON.parse_string(operand)}
+	if operand.is_valid_int() or operand.is_valid_float(): return {"ok": true, "value": float(operand)}
+	if operand.begins_with("\""):
+		var parsed = JSON.parse_string(operand)
+		if parsed is String: return {"ok": true, "value": parsed}
+		return {"ok": false, "message": "文字内容请用双引号括起，例如 \"奖励已领取\"。"}
+	return {"ok": false, "message": "找不到“%s”。请使用已有流程值，或将文字用双引号括起。" % operand}
+
+func _parse_author_expression(text: String) -> Dictionary:
+	var expression := text.strip_edges()
+	var operation_regex := RegEx.new()
+	operation_regex.compile("^(.+?)\\s*(加|减|乘以|除以|\\+|\\-|\\*|/)\\s*(.+)$")
+	var match_result := operation_regex.search(expression)
+	if match_result == null:
+		return _parse_author_operand(expression)
+	var left := _parse_author_operand(match_result.get_string(1))
+	if not left.ok: return left
+	var right := _parse_author_operand(match_result.get_string(3))
+	if not right.ok: return right
+	var operator := match_result.get_string(2)
+	var operator_map := {"加": "+", "减": "-", "乘以": "*", "除以": "/"}
+	return {"ok": true, "value": {"left": left.value, "op": String(operator_map.get(operator, operator)), "right": right.value}}
+
+func _read_let_editor() -> Dictionary:
+	if _let_name_edit == null or _let_advanced_toggle == null:
+		return {"ok": false, "message": "计算步骤编辑器尚未准备好。"}
+	var name := _let_name_edit.text.strip_edges()
+	if name.is_empty() or name.contains(" "):
+		return {"ok": false, "message": "请填写不含空格的结果名称。"}
+	var parsed: Dictionary
+	if _let_advanced_toggle.button_pressed:
+		var value = JSON.parse_string(_let_advanced_edit.text)
+		if value == null and _let_advanced_edit.text.strip_edges() != "null":
+			return {"ok": false, "message": "高级表达式 JSON 格式无效。"}
+		parsed = {"ok": true, "value": value}
+	else:
+		parsed = _parse_author_expression(_let_expression_edit.text)
+	if not parsed.ok: return parsed
+	return {"ok": true, "name": name, "value": parsed.value}
+
+func _preview_let_edit() -> void:
+	var edited := _read_let_editor()
+	if not edited.ok:
+		_status.text = "%s；尚未修改流程。" % edited.message
+		return
+	var next := _selected_asset.duplicate(true)
+	var node := _find_node(next.get("root", []), _selected_node_id)
+	if node.is_empty() or String(node.get("command_id", "")) != "let":
+		_status.text = "当前选择不是计算步骤；尚未修改流程。"
+		return
+	var before: Dictionary = node.get("params", {}).duplicate(true)
+	var params: Dictionary = node.get("params", {}).duplicate(true)
+	params["name"] = edited.name
+	params["value"] = edited.value
+	node["params"] = params
+	var generated_preview := _preview_generated_diff(next)
+	if not generated_preview.ok:
+		_status.text = "计算预览失败：%s；尚未修改流程。" % generated_preview.message
+		return
+	_projection_pending_asset = next
+	_projection_pending_slot_id = "%s.expression" % _selected_node_id
+	_projection_preview_diff = "计算步骤修改预览：\n- %s = %s\n+ %s = %s\n\n%s\n确认前不会写入流程。" % [before.get("name", ""), _expression_to_author_text(before.get("value", {})), edited.name, _expression_to_author_text(edited.value), generated_preview.message]
+	_render_inspector()
+	_status.text = "计算结果和生成代码已预览；确认后才会保存。"
 
 func _render_condition_editor(node: Dictionary) -> void:
 	var current = node.get("params", {}).get("condition", {})
@@ -553,7 +784,7 @@ func _condition_references() -> Array[Dictionary]:
 		var ref := String(argument.get("id", ""))
 		if ref.is_empty() or seen.has(ref): continue
 		seen[ref] = true
-		result.append({"kind": "ref", "id": ref, "label": "%s（%s）" % [argument.get("name", ref), ref], "type": String(argument.get("type", "Any"))})
+		result.append({"kind": "ref", "id": ref, "label": String(argument.get("name", ref)), "type": String(argument.get("type", "Any"))})
 	_collect_condition_references(_selected_asset.get("root", []), result, seen)
 	return result
 
@@ -565,7 +796,7 @@ func _collect_condition_references(nodes: Array, result: Array[Dictionary], seen
 			var ref := String(value)
 			if ref.is_empty() or seen.has(ref): continue
 			seen[ref] = true
-			result.append({"kind": "ref", "id": ref, "label": "流程值：%s" % ref, "type": "Any"})
+			result.append({"kind": "ref", "id": ref, "label": "流程值：%s" % _reference_label(ref), "type": "Any"})
 		for children in node.get("children", {}).values():
 			_collect_condition_references(children, result, seen)
 
@@ -881,7 +1112,7 @@ func _render_projection_slots(projection_node: Dictionary) -> void:
 			select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			var allowed_refs: Array = slot.get("allowed_refs", [])
 			for allowed_ref in allowed_refs:
-				select.add_item(String(allowed_ref))
+				select.add_item(_reference_label(String(allowed_ref)))
 				select.set_item_metadata(select.item_count - 1, String(allowed_ref))
 			var current_ref := String(slot.get("value", {}).get("ref", ""))
 			for option_index in select.item_count:
@@ -1238,7 +1469,7 @@ func _insert_draft_node() -> void:
 	_selected_node_id = node_id
 	_rebuild_tree()
 	_editor_tabs.current_tab = 1
-	_status.text = "新步骤已加入草稿；请在“步骤设置”页按说明补全，再确认这一步。流程尚未保存。"
+	_status.text = "步骤已临时放入流程树。请在“步骤设置”页按 ①②③ 填写并确认；未确认前不会写入原流程。"
 
 func _confirm_draft() -> void:
 	if _draft_asset.is_empty() or _draft_node_id.is_empty():
@@ -1270,6 +1501,13 @@ func _confirm_draft() -> void:
 			action_args[String(field_id)] = parsed.value
 		params["capability"] = capability_id
 		params["args"] = action_args
+	elif String(draft.get("command_id", "")) == "let":
+		var edited := _read_let_editor()
+		if not edited.ok:
+			_status.text = "%s；流程尚未保存。" % edited.message
+			return
+		params["name"] = edited.name
+		params["value"] = edited.value
 	elif String(draft.get("command_id", "")) == "if":
 		var parsed_condition := _read_condition_editor()
 		if not parsed_condition.ok:
@@ -1278,7 +1516,15 @@ func _confirm_draft() -> void:
 		params["condition"] = parsed_condition.value
 	else:
 		for field in _draft_param_controls.keys():
-			var text := String(_draft_param_controls[field].text).strip_edges()
+			var control: Control = _draft_param_controls[field]
+			if control is OptionButton:
+				var select := control as OptionButton
+				if select.selected <= 0:
+					_status.text = "请选择要读取的对象；流程尚未保存。"
+					return
+				params[field] = select.get_item_metadata(select.selected)
+				continue
+			var text := String((control as LineEdit).text).strip_edges()
 			if text.is_empty():
 				_status.text = "请补全“%s”；流程尚未保存。" % field
 				return
