@@ -10,9 +10,9 @@ func _initialize() -> void:
 	call_deferred("_start")
 
 func _start() -> void:
-	var capability_registry := GSEOS_CapabilityRegistry.new()
-	var event_registry := GSEOS_EventRegistry.new()
-	var capabilities := GSEOS_RewardCapabilities.new(capability_registry)
+	var capability_registry := CODA_CapabilityRegistry.new()
+	var event_registry := CODA_EventRegistry.new()
+	var capabilities := CODA_RewardCapabilities.new(capability_registry)
 	event_registry.subscribe("combat.hit_resolved@1", Callable(self, "_on_hit"))
 	var runtime := FACADE.new(capability_registry, event_registry)
 	var hud := Node.new()

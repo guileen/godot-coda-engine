@@ -1,4 +1,4 @@
-class_name GSEOS_WaitRegistration
+class_name CODA_WaitRegistration
 extends RefCounted
 
 signal settled(result: Dictionary)

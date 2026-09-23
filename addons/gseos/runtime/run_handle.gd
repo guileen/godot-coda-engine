@@ -1,4 +1,4 @@
-class_name GSEOS_RunHandle
+class_name CODA_RunHandle
 extends RefCounted
 
 signal completed(result: Dictionary)

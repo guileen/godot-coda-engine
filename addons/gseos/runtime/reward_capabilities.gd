@@ -1,9 +1,9 @@
-class_name GSEOS_RewardCapabilities
+class_name CODA_RewardCapabilities
 extends RefCounted
 
-var registry: GSEOS_CapabilityRegistry
+var registry: CODA_CapabilityRegistry
 
-func _init(target_registry: GSEOS_CapabilityRegistry) -> void:
+func _init(target_registry: CODA_CapabilityRegistry) -> void:
 	registry = target_registry
 	registry.register("read", 1, Callable(self, "read"), {"main_thread": true, "awaitable": false})
 	registry.register("ui.animate_number", 1, Callable(self, "animate_number"), {"main_thread": true, "awaitable": true, "cancellation": "safe_point"})
@@ -23,7 +23,7 @@ func animate_number(args: Dictionary) -> Variant:
 	var target := args.get("target") as Node
 	if not is_instance_valid(target):
 		return null
-	var wait := GSEOS_WaitRegistration.new()
+	var wait := CODA_WaitRegistration.new()
 	var from_value := float(args.get("from", 0.0))
 	var to_value := float(args.get("to", from_value))
 	var duration := maxf(0.01, float(args.get("duration", 0.35)))

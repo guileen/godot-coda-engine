@@ -2,28 +2,28 @@ extends SceneTree
 
 const REWARD_RUNNER := preload("res://addons/gseos/runtime/reward_event_runner.gd")
 
-var registry: GSEOS_EventRegistry
+var registry: CODA_EventRegistry
 var failures: Array[String] = []
 
 func _initialize() -> void:
 	call_deferred("_start")
 
 func _start() -> void:
-	registry = GSEOS_EventRegistry.new()
+	registry = CODA_EventRegistry.new()
 	registry.register("benchmark.sync", Callable(self, "_sync_runner"), "parallel")
 	registry.register("benchmark.cancel", Callable(self, "_cancel_runner"), "parallel")
 	var memory_before := Performance.get_monitor(Performance.MEMORY_STATIC)
 	var activation_start := Time.get_ticks_usec()
-	var handles: Array[GSEOS_RunHandle] = []
+	var handles: Array[CODA_RunHandle] = []
 	for index in 1000:
 		handles.append(registry.start("benchmark.sync", {"value": index}))
 	var activation_us := Time.get_ticks_usec() - activation_start
 	for handle in handles:
-		if handle.status != GSEOS_RunHandle.Status.COMPLETED:
+		if handle.status != CODA_RunHandle.Status.COMPLETED:
 			failures.append("sync benchmark handle did not complete")
 	handles.clear()
 
-	var capability_registry := GSEOS_CapabilityRegistry.new()
+	var capability_registry := CODA_CapabilityRegistry.new()
 	var reward_runner := REWARD_RUNNER.new(capability_registry, registry)
 	registry.register("benchmark.reward", Callable(reward_runner, "run"), "reject")
 	var hud := Node.new()
@@ -112,11 +112,11 @@ func _start() -> void:
 	await process_frame
 	quit(0 if failures.is_empty() else 1)
 
-func _sync_runner(args: Dictionary, _owner: Node, _handle: GSEOS_RunHandle) -> Variant:
+func _sync_runner(args: Dictionary, _owner: Node, _handle: CODA_RunHandle) -> Variant:
 	return args.get("value")
 
-func _cancel_runner(_args: Dictionary, _owner: Node, handle: GSEOS_RunHandle) -> Variant:
-	var wait := GSEOS_WaitRegistration.new()
+func _cancel_runner(_args: Dictionary, _owner: Node, handle: CODA_RunHandle) -> Variant:
+	var wait := CODA_WaitRegistration.new()
 	var timer := Timer.new()
 	timer.name = "CancelTimer"
 	timer.one_shot = true
@@ -127,12 +127,12 @@ func _cancel_runner(_args: Dictionary, _owner: Node, handle: GSEOS_RunHandle) ->
 			timer.queue_free()
 	timer.timeout.connect(func(): wait.finish({"status": "COMPLETED"}))
 	wait.settled.connect(func(result: Dictionary):
-		if handle.status == GSEOS_RunHandle.Status.WAITING:
-			handle.finish(GSEOS_RunHandle.Status.COMPLETED, result)
+		if handle.status == CODA_RunHandle.Status.WAITING:
+			handle.finish(CODA_RunHandle.Status.COMPLETED, result)
 	)
-	handle.status = GSEOS_RunHandle.Status.WAITING
+	handle.status = CODA_RunHandle.Status.WAITING
 	handle.completed.connect(func(_result: Dictionary):
-		if handle.status == GSEOS_RunHandle.Status.CANCELLED and wait.active:
+		if handle.status == CODA_RunHandle.Status.CANCELLED and wait.active:
 			wait.cancel("handle_cancelled")
 	)
 	timer.start()

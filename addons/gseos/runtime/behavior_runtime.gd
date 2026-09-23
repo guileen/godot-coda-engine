@@ -1,4 +1,4 @@
-class_name GSEOS_BehaviorRuntime
+class_name CODA_BehaviorRuntime
 extends RefCounted
 
 # EventAsset.behavior_runtime is the only editable definition.  This class is a

@@ -4,8 +4,8 @@ const CAPABILITY_REGISTRY := preload("res://addons/gseos/runtime/capability_regi
 const EVENT_REGISTRY := preload("res://addons/gseos/runtime/event_registry.gd")
 const REWARD_RUNNER := preload("res://addons/gseos/runtime/reward_event_runner.gd")
 
-var capability_registry: GSEOS_CapabilityRegistry
-var event_registry: GSEOS_EventRegistry
+var capability_registry: CODA_CapabilityRegistry
+var event_registry: CODA_EventRegistry
 var hud: PanelContainer
 var score_label: Label
 var reward_history: VBoxContainer
@@ -16,7 +16,7 @@ var reset_button: Button
 var _flow_step_labels: Array[Label] = []
 var _running := false
 var received_payload: Dictionary = {}
-var reward_runner: GSEOS_RewardEventRunner
+var reward_runner: CODA_RewardEventRunner
 var _accent := Color("74d6a0")
 var _panel := Color("172338")
 
@@ -154,9 +154,9 @@ func _claim_reward(reward: int) -> void:
 	_set_flow_progress(1, 1)
 	var handle := event_registry.start("ui.reward.apply", {"reward": reward, "target_hud": hud}, hud)
 	handle.completed.connect(_on_reward_completed)
-	if handle.status != GSEOS_RunHandle.Status.RUNNING and handle.status != GSEOS_RunHandle.Status.WAITING:
+	if handle.status != CODA_RunHandle.Status.RUNNING and handle.status != CODA_RunHandle.Status.WAITING:
 		_on_reward_completed(handle.result)
-	elif handle.status == GSEOS_RunHandle.Status.WAITING:
+	elif handle.status == CODA_RunHandle.Status.WAITING:
 		_set_flow_progress(2, 2)
 
 func _on_reward_completed(result: Dictionary) -> void:

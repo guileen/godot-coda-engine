@@ -3,15 +3,15 @@ extends SceneTree
 var failures: Array[String] = []
 
 func _initialize() -> void:
-	var registry := GSEOS_EventRegistry.new()
+	var registry := CODA_EventRegistry.new()
 	registry.register("demo.event", Callable(self, "_demo_runner"), "reject")
 	var handle := registry.start("demo.event", {"value": 7})
 	if handle.run_id != 1:
 		failures.append("start() did not return a stable RunHandle")
-	if handle.status != GSEOS_RunHandle.Status.COMPLETED:
+	if handle.status != CODA_RunHandle.Status.COMPLETED:
 		failures.append("synchronous runner did not complete")
 	var missing := registry.start("missing.event")
-	if missing.status != GSEOS_RunHandle.Status.FAILED:
+	if missing.status != CODA_RunHandle.Status.FAILED:
 		failures.append("missing event did not produce a failed handle")
 	registry.register("waiting.event", Callable(self, "_waiting_runner"), "reject")
 	var sync_diagnostic := registry.call_sync("waiting.event")
@@ -22,7 +22,7 @@ func _initialize() -> void:
 	var published := registry.publish("combat.hit_resolved@1", {"damage": 3})
 	if not published.ok or not received:
 		failures.append("publish/subscribe did not deliver the versioned payload")
-	var wait := GSEOS_WaitRegistration.new()
+	var wait := CODA_WaitRegistration.new()
 	if not wait.finish({"status": "COMPLETED"}) or wait.cancel():
 		failures.append("WaitRegistration allowed more than one terminal transition")
 	if not failures.is_empty():
@@ -34,11 +34,11 @@ func _initialize() -> void:
 		registry.clear()
 		quit(0)
 
-func _demo_runner(args: Dictionary, _owner: Node, _handle: GSEOS_RunHandle) -> Variant:
+func _demo_runner(args: Dictionary, _owner: Node, _handle: CODA_RunHandle) -> Variant:
 	return args.get("value")
 
-func _waiting_runner(_args: Dictionary, _owner: Node, handle: GSEOS_RunHandle) -> Variant:
-	handle.status = GSEOS_RunHandle.Status.WAITING
+func _waiting_runner(_args: Dictionary, _owner: Node, handle: CODA_RunHandle) -> Variant:
+	handle.status = CODA_RunHandle.Status.WAITING
 	return null
 
 var received := false

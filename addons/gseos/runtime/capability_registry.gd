@@ -1,4 +1,4 @@
-class_name GSEOS_CapabilityRegistry
+class_name CODA_CapabilityRegistry
 extends RefCounted
 
 var _adapters: Dictionary = {}

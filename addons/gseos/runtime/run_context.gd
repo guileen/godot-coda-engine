@@ -1,4 +1,4 @@
-class_name GSEOS_RunContext
+class_name CODA_RunContext
 extends RefCounted
 
 var values: Dictionary

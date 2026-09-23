@@ -2,8 +2,8 @@ extends SceneTree
 
 const REWARD_RUNNER := preload("res://addons/gseos/runtime/reward_event_runner.gd")
 
-var registry: GSEOS_EventRegistry
-var capability_registry: GSEOS_CapabilityRegistry
+var registry: CODA_EventRegistry
+var capability_registry: CODA_CapabilityRegistry
 var hud: Node
 var completed_result: Dictionary
 var received_payload: Dictionary
@@ -13,8 +13,8 @@ func _initialize() -> void:
 	call_deferred("_start")
 
 func _start() -> void:
-	registry = GSEOS_EventRegistry.new()
-	capability_registry = GSEOS_CapabilityRegistry.new()
+	registry = CODA_EventRegistry.new()
+	capability_registry = CODA_CapabilityRegistry.new()
 	var runner := REWARD_RUNNER.new(capability_registry, registry)
 	registry.register("ui.reward.apply", Callable(runner, "run"), "reject")
 	registry.subscribe("combat.hit_resolved@1", Callable(self, "_on_hit_resolved"))
@@ -32,7 +32,7 @@ func _start() -> void:
 	hud.add_child(old_row)
 
 	var handle := registry.start("ui.reward.apply", {"reward": 25, "target_hud": hud}, hud)
-	if handle.status != GSEOS_RunHandle.Status.WAITING:
+	if handle.status != CODA_RunHandle.Status.WAITING:
 		failures.append("reward event did not suspend at await")
 	handle.completed.connect(_on_reward_completed)
 	call_deferred("_verify_intermediate_animation")

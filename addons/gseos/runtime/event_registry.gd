@@ -1,4 +1,4 @@
-class_name GSEOS_EventRegistry
+class_name CODA_EventRegistry
 extends RefCounted
 
 var _events: Dictionary = {}
@@ -8,15 +8,15 @@ var _next_run_id := 1
 func register(event_id: String, runner: Callable, reentry := "reject") -> void:
 	_events[event_id] = {"runner": runner, "reentry": reentry, "active": []}
 
-func start(event_id: String, args: Dictionary = {}, owner: Node = null) -> GSEOS_RunHandle:
-	var handle := GSEOS_RunHandle.new(_next_run_id)
+func start(event_id: String, args: Dictionary = {}, owner: Node = null) -> CODA_RunHandle:
+	var handle := CODA_RunHandle.new(_next_run_id)
 	_next_run_id += 1
 	if not _events.has(event_id):
-		handle.finish(GSEOS_RunHandle.Status.FAILED, {"status": "FAILED", "code": "EVENT_NOT_FOUND", "event_id": event_id})
+		handle.finish(CODA_RunHandle.Status.FAILED, {"status": "FAILED", "code": "EVENT_NOT_FOUND", "event_id": event_id})
 		return handle
 	var event: Dictionary = _events[event_id]
 	if event.reentry == "reject" and not event.active.is_empty():
-		handle.finish(GSEOS_RunHandle.Status.FAILED, {"status": "FAILED", "code": "REENTRY_REJECTED", "event_id": event_id})
+		handle.finish(CODA_RunHandle.Status.FAILED, {"status": "FAILED", "code": "REENTRY_REJECTED", "event_id": event_id})
 		return handle
 	event.active.append(handle)
 	handle.completed.connect(func(_result):
@@ -26,15 +26,15 @@ func start(event_id: String, args: Dictionary = {}, owner: Node = null) -> GSEOS
 	# Godot 4.7 does not expose GDScriptFunctionState. Async generated runners
 	# own their handle and call finish at the WaitRegistration boundary; a
 	# synchronous runner completes here.
-	if handle.status == GSEOS_RunHandle.Status.RUNNING:
-		handle.finish(GSEOS_RunHandle.Status.COMPLETED, {"status": "COMPLETED", "value": result})
+	if handle.status == CODA_RunHandle.Status.RUNNING:
+		handle.finish(CODA_RunHandle.Status.COMPLETED, {"status": "COMPLETED", "value": result})
 	return handle
 
 func call_sync(event_id: String, args: Dictionary = {}, owner: Node = null) -> Dictionary:
 	var handle := start(event_id, args, owner)
-	if handle.status == GSEOS_RunHandle.Status.WAITING:
+	if handle.status == CODA_RunHandle.Status.WAITING:
 		return {"ok": false, "code": "CALL_SYNC_REQUIRES_ASYNC", "event_id": event_id, "run_id": handle.run_id}
-	if handle.status != GSEOS_RunHandle.Status.COMPLETED:
+	if handle.status != CODA_RunHandle.Status.COMPLETED:
 		return {"ok": false, "code": handle.result.get("code", "EVENT_FAILED"), "event_id": event_id, "run_id": handle.run_id}
 	return {"ok": true, "value": handle.result.get("value"), "event_id": event_id, "run_id": handle.run_id}
 
