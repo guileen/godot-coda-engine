@@ -5,7 +5,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const zipPath = resolve(process.argv[2] ?? "/tmp/gseos-runtime.zip");
+const zipPath = resolve(process.argv[2] ?? "/tmp/coda-runtime.zip");
 
 if (!existsSync(zipPath)) {
   console.log(JSON.stringify({ ok: false, code: "PACK_MISSING", zip: zipPath }, null, 2));

@@ -9,8 +9,8 @@ Run the checks that match your change:
 ```sh
 npm test
 npm run check
-npm run gseos -- validate gseos/events/ui.reward.apply.gse.json
-npm run gseos -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- validate gseos/events/ui.reward.apply.gse.json
+npm run coda -- generate gseos/events/ui.reward.apply.gse.json
 godot --headless --path . --editor --quit
 ```
 

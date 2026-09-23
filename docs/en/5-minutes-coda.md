@@ -37,7 +37,7 @@ npm run coda -- text-check examples/reward-claim.coda
 npm run coda -- text-generate examples/reward-claim.coda
 ```
 
-The first command points out an unclear flow. The second writes generated GDScript and a source map under `.gseos/generated/`. The generated files are output, not files to edit by hand.
+The first command points out an unclear flow. The second writes generated GDScript and a source map under `.gseos/generated/`. The generated files are output, not files to edit by hand. The `gseos` npm command remains as a compatibility alias; new instructions use `coda`.
 
 When asking an AI to help, use a constraint such as:
 

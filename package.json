@@ -24,15 +24,15 @@
     "benchmark:c1p:reference": "node scripts/run-c1p-reference-benchmark.mjs --write",
     "demo:acceptance": "npm run demo:smoke && godot --headless --path demos/d2-interruptible-behavior --script res://tests/d2_interruptible_behavior_smoke.gd && godot --headless --path demos/d3-skeleton-transition --script res://tests/d3_skeleton_transition_smoke.gd",
     "verify:clean-clone": "node scripts/verify-clean-clone.mjs",
-    "test:godot": "npm run gseos -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --script res://tests/integration/headless_runtime.gd && godot --headless --path . --script res://tests/integration/reward_chain.gd && godot --headless --path . --script res://tests/integration/generated_runner.gd && godot --headless --path . --script res://tests/integration/competition.gd && godot --headless --path . --script res://tests/integration/editor_transactions.gd && godot --headless --path . --script res://tests/integration/event_dock_smoke.gd && godot --headless --path . --script res://tests/integration/aibi_behavior_runtime.gd && node scripts/test-authoring-crash-recovery.mjs",
+    "test:godot": "npm run coda -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --script res://tests/integration/headless_runtime.gd && godot --headless --path . --script res://tests/integration/reward_chain.gd && godot --headless --path . --script res://tests/integration/generated_runner.gd && godot --headless --path . --script res://tests/integration/competition.gd && godot --headless --path . --script res://tests/integration/editor_transactions.gd && godot --headless --path . --script res://tests/integration/event_dock_smoke.gd && godot --headless --path . --script res://tests/integration/aibi_behavior_runtime.gd && node scripts/test-authoring-crash-recovery.mjs",
     "test:godot:gui": "scripts/gseos-native-gui-acceptance.sh",
     "benchmark:godot": "godot --headless --path . --script res://tests/integration/benchmark.gd",
     "benchmark:malloc:godot": "scripts/gseos-malloc-benchmark.sh",
-    "validate:generated": "npm run gseos -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --check-only --script res://.gseos/generated/ui_reward_apply.gd",
+    "validate:generated": "npm run coda -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --check-only --script res://.gseos/generated/ui_reward_apply.gd",
     "audit:export": "node scripts/gseos-export-audit.js",
     "audit:pack": "node scripts/gseos-pack-audit.js",
-    "export:pack": "npm run gseos -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --export-pack \"GSEOS Runtime Pack\" /tmp/gseos-runtime.zip && npm run audit:pack",
-    "export:native:macos": "npm run gseos -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --export-debug \"GSEOS Runtime macOS\" /tmp/GSEOSRuntime.app && \"/tmp/GSEOSRuntime.app/Contents/MacOS/CODA Runtime\" --headless --quit",
+    "export:pack": "npm run coda -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --export-pack \"CODA Runtime Pack\" /tmp/coda-runtime.zip && npm run audit:pack",
+    "export:native:macos": "npm run coda -- generate gseos/events/ui.reward.apply.gse.json >/dev/null && godot --headless --path . --export-debug \"CODA Runtime macOS\" /tmp/CODARuntime.app && \"/tmp/CODARuntime.app/Contents/MacOS/CODA Runtime\" --headless --quit",
     "test:all": "npm test && npm run check && npm run test:godot && npm run export:pack"
   }
 }

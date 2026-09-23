@@ -36,9 +36,9 @@ if (!failures.length) {
     ["npm", ["test"]],
     ["npm", ["run", "check"]],
     ["npm", ["run", "check:public"]],
-    ["npm", ["run", "gseos", "--", "manifest"]],
-    ["npm", ["run", "gseos", "--", "validate", fixture]],
-    ["npm", ["run", "gseos", "--", "generate", fixture]],
+    ["npm", ["run", "coda", "--", "manifest"]],
+    ["npm", ["run", "coda", "--", "validate", fixture]],
+    ["npm", ["run", "coda", "--", "generate", fixture]],
     ["godot", ["--headless", "--path", ".", "--editor", "--quit"]],
   ];
   for (const [command, args] of commands) {

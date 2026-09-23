@@ -41,7 +41,7 @@ npm run coda -- text-check examples/reward-claim.coda
 npm run coda -- text-generate examples/reward-claim.coda
 ```
 
-第一条会指出不清楚的流程；第二条会在 `.gseos/generated/` 里生成 GDScript 和对应的 source map。生成结果是输出，不要直接手改。
+第一条会指出不清楚的流程；第二条会在 `.gseos/generated/` 里生成 GDScript 和对应的 source map。生成结果是输出，不要直接手改。`gseos` 命令仍作为兼容别名保留；新说明统一使用 `coda`。
 
 如果你让 AI 帮你写，可以给它这样的约束：
 

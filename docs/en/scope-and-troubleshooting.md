@@ -11,7 +11,7 @@ The release does not cover `spawn/join`, `try/catch/finally`, E1/E2, cross-scene
 The generator is designed to stop when a managed artifact no longer matches its source fingerprint. Delete only the generated artifact that is inside the tool-owned generated directory, then regenerate from the EventAsset:
 
 ```sh
-npm run gseos -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- generate gseos/events/ui.reward.apply.gse.json
 ```
 
 Do not edit generated GDScript to fix the source. If the behavior cannot be represented by the structured backend, use a declared `escape` node or ordinary GDScript outside the generated runner.

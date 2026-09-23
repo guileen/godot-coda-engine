@@ -19,7 +19,7 @@ cd godot-coda-engine
 
 ```sh
 npm test
-npm run gseos -- validate gseos/events/ui.reward.apply.gse.json
+npm run coda -- validate gseos/events/ui.reward.apply.gse.json
 ```
 
 校验器应报告 `ok: true`，并且没有诊断信息。
@@ -27,7 +27,7 @@ npm run gseos -- validate gseos/events/ui.reward.apply.gse.json
 ## 3. 生成 runner
 
 ```sh
-npm run gseos -- generate gseos/events/ui.reward.apply.gse.json
+npm run coda -- generate gseos/events/ui.reward.apply.gse.json
 ```
 
 命令会在 `.gseos/generated/` 下生成 GDScript runner 和 JSON 源映射。生成文件头部包含计划指纹；源映射把事件节点和字段对应到生成行。
