@@ -101,7 +101,6 @@ func _ready() -> void:
 	_toolbar.add_child(_button("新建事件", _new_event))
 	var more_button := MenuButton.new()
 	more_button.text = "更多操作"
-	more_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_build_more_menu(more_button.get_popup())
 	_toolbar.add_child(more_button)
 	add_child(_toolbar)
@@ -120,7 +119,7 @@ func _ready() -> void:
 	insert_title.add_theme_font_size_override("font_size", 14)
 	insert_section.add_child(insert_title)
 	var insert_help := Label.new()
-	insert_help.text = "① 选放置位置和步骤类型；② 点“添加步骤”；③ 按右侧提示填写并确认。添加前不会改动流程。"
+	insert_help.text = "① 先在流程里选一个步骤（默认接在它后面；没选时放到末尾）；② 选步骤类型和位置，再点“添加步骤”；③ 按“步骤设置”里的提示填写并确认。未确认前不会改动原流程。"
 	insert_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	insert_help.add_theme_color_override("font_color", get_theme_color("font_color", "Label").lerp(Color.TRANSPARENT, 0.25))
 	insert_section.add_child(insert_help)
@@ -128,7 +127,7 @@ func _ready() -> void:
 	_command_search.tooltip_text = "输入步骤名称筛选列表；选中后还要确认插入位置。"
 	_command_search.text_changed.connect(func(_text: String): _refresh_command_options())
 	insert_section.add_child(_labeled_control("找步骤", _command_search))
-	_slot_select.tooltip_text = "新步骤会放在你选的位置"
+	_slot_select.tooltip_text = "选中流程步骤时，可插在它前面或后面；否则放到流程末尾。"
 	_command_select.tooltip_text = "选择新步骤要完成的动作"
 	insert_section.add_child(_labeled_control("放在", _slot_select))
 	insert_section.add_child(_labeled_control("做什么", _command_select))
@@ -416,14 +415,22 @@ func _update_command_description() -> void:
 
 func _refresh_slot_options() -> void:
 	_slot_select.clear()
-	_slot_select.add_item("流程末尾")
-	_slot_select.set_item_metadata(0, {"parent_id": "", "slot": "root"})
 	var view_asset := _draft_asset if not _draft_asset.is_empty() else _selected_asset
 	var selected := _find_node(view_asset.get("root", []), _selected_node_id)
+	if not selected.is_empty() and _draft_asset.is_empty():
+		var selected_id := String(selected.get("node_id", ""))
+		var label := String(COMMAND_DEFINITIONS.get(String(selected.get("command_id", "")), {}).get("label", "所选步骤"))
+		_slot_select.add_item("接在“%s”后面（推荐）" % label)
+		_slot_select.set_item_metadata(_slot_select.item_count - 1, {"position": "after", "anchor_id": selected_id})
+		_slot_select.add_item("插在“%s”前面" % label)
+		_slot_select.set_item_metadata(_slot_select.item_count - 1, {"position": "before", "anchor_id": selected_id})
+	_slot_select.add_item("流程末尾")
+	_slot_select.set_item_metadata(_slot_select.item_count - 1, {"parent_id": "", "slot": "root"})
 	if not selected.is_empty() and selected.get("command_id") == "if":
 		for slot in ["then", "else"]:
 			_slot_select.add_item("条件成立时" if slot == "then" else "条件不成立时")
 			_slot_select.set_item_metadata(_slot_select.item_count - 1, {"parent_id": _selected_node_id, "slot": slot})
+	_slot_select.select(0)
 
 func _find_node(nodes: Array, node_id: String) -> Dictionary:
 	for node in nodes:
@@ -1414,6 +1421,9 @@ func _selected_slot() -> Dictionary:
 	return _slot_select.get_item_metadata(index)
 
 func _append_to_slot(asset: Dictionary, slot: Dictionary, node: Dictionary) -> bool:
+	var position := String(slot.get("position", ""))
+	if position in ["before", "after"]:
+		return _insert_relative(asset.get("root", []), String(slot.get("anchor_id", "")), node, position == "before")
 	if String(slot.get("slot", "")) == "root":
 		asset.root.append(node)
 		return true
@@ -1429,6 +1439,22 @@ func _append_to_slot(asset: Dictionary, slot: Dictionary, node: Dictionary) -> b
 	parent["children"] = children
 	children[child_slot].append(node)
 	return true
+
+func _insert_relative(nodes: Array, anchor_id: String, node: Dictionary, before: bool) -> bool:
+	for index in nodes.size():
+		var current: Dictionary = nodes[index]
+		if String(current.get("node_id", "")) == anchor_id:
+			nodes.insert(index if before else index + 1, node)
+			return true
+		var children: Dictionary = current.get("children", {})
+		for child_slot in children.keys():
+			var child_nodes: Array = children[child_slot]
+			if _insert_relative(child_nodes, anchor_id, node, before):
+				children[child_slot] = child_nodes
+				current["children"] = children
+				nodes[index] = current
+				return true
+	return false
 
 func _new_event() -> void:
 	var index := 1
@@ -1479,6 +1505,7 @@ func _rename_selected() -> void:
 
 func _insert_draft_node() -> void:
 	if _selected_path.is_empty() or _selected_asset.is_empty():
+		_status.text = "先在流程列表选择一个事件，再添加步骤；当前内容没有改变。"
 		return
 	if not _draft_asset.is_empty():
 		_status.text = "已有未确认 draft；请先确认或取消。"

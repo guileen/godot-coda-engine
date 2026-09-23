@@ -29,6 +29,8 @@ func _start() -> void:
 	await process_frame
 	if dock._toolbar.get_child_count() != 2:
 		failures.append("Event Dock primary toolbar is still crowded with more than two actions")
+	elif dock._toolbar.get_child(1).size_flags_horizontal == Control.SIZE_EXPAND_FILL:
+		failures.append("Event Dock secondary menu expands across the full toolbar instead of staying content-sized")
 	if dock._editor_tabs.get_tab_title(0) != "流程" or dock._editor_tabs.get_tab_title(1) != "步骤设置":
 		failures.append("Event Dock narrow layout did not separate the flow and step settings pages")
 	if dock._event_list.item_count < 1:
@@ -42,12 +44,39 @@ func _start() -> void:
 		failures.append("new embodied event did not default to a canonical text-owned CODA source")
 	reward_index = dock._asset_paths.find("res://gseos/events/ui.reward.apply.gse.json")
 	dock._on_event_selected(reward_index)
+	dock._selected_path = ""
+	dock._selected_asset = {}
+	dock._insert_draft_node()
+	if not dock._status.text.contains("先在流程列表选择一个事件") or not dock._draft_asset.is_empty():
+		failures.append("adding a step without an active event did not explain the required next action")
+	dock._on_event_selected(reward_index)
 	if dock._tree.get_root() == null or dock._tree.get_root().get_child_count() < 1:
 		failures.append("Event Dock did not rebuild the asset tree")
 	dock._tree.get_root().get_first_child().select(0)
 	dock._on_tree_selected()
 	if dock._editor_tabs.current_tab != 1:
 		failures.append("Selecting a flow step did not open its settings page")
+	if dock._slot_select.item_count < 5 or not dock._slot_select.get_item_text(0).contains("后面") or not dock._slot_select.get_item_text(1).contains("前面"):
+		failures.append("selected step did not expose clear before/after insertion positions")
+	var placement := {"root": [
+		{"node_id": "first", "children": {}},
+		{"node_id": "anchor", "children": {}},
+		{"node_id": "last", "children": {}},
+	]}
+	if not dock._append_to_slot(placement, {"position": "before", "anchor_id": "anchor"}, {"node_id": "insert-before", "children": {}}):
+		failures.append("Event Dock could not insert a draft before the selected step")
+	if not dock._append_to_slot(placement, {"position": "after", "anchor_id": "anchor"}, {"node_id": "insert-after", "children": {}}):
+		failures.append("Event Dock could not insert a draft after the selected step")
+	var placement_ids: Array[String] = []
+	for item in placement.root:
+		placement_ids.append(String(item.node_id))
+	if placement_ids != ["first", "insert-before", "anchor", "insert-after", "last"]:
+		failures.append("before/after insertion did not preserve the selected step position: %s" % str(placement_ids))
+	var nested_placement := {"root": [{"node_id": "branch", "children": {"then": [{"node_id": "nested-anchor", "children": {}}, {"node_id": "nested-last", "children": {}}]}}]}
+	if not dock._append_to_slot(nested_placement, {"position": "after", "anchor_id": "nested-anchor"}, {"node_id": "nested-insert", "children": {}}):
+		failures.append("Event Dock could not insert relative to a nested branch step")
+	elif String(nested_placement["root"][0]["children"]["then"][1]["node_id"]) != "nested-insert":
+		failures.append("nested insertion did not stay in the selected branch")
 	dock._command_search.text = "条件"
 	dock._refresh_command_options()
 	if dock._command_select.item_count != 2 or String(dock._command_select.get_item_metadata(1)) != "if":
@@ -74,11 +103,18 @@ func _start() -> void:
 		if dock._projection_pending_asset.is_empty() or not dock._projection_preview_diff.contains("当前积分 + 5"):
 			failures.append("Event Dock did not preview the readable reward calculation")
 		dock._cancel_projection_preview()
+	dock._refresh_slot_options()
+	var default_placement: Dictionary = dock._selected_slot()
+	if String(default_placement.get("position", "")) != "after" or String(default_placement.get("anchor_id", "")) != "calculate-score":
+		failures.append("selected calculation did not default step insertion to its following position")
 	for command_index in dock._command_select.item_count:
 		if String(dock._command_select.get_item_metadata(command_index)) == "read":
 			dock._command_select.select(command_index)
 			break
 	dock._insert_draft_node()
+	var draft_then: Array = dock._draft_asset["root"][0]["children"]["then"]
+	if draft_then.size() < 4 or String(draft_then[2].get("command_id", "")) != "read" or not bool(draft_then[2].get("draft", false)):
+		failures.append("new read draft was not placed immediately after the selected calculation")
 	if not dock._draft_param_controls.has("target") or not dock._draft_param_controls["target"] is OptionButton:
 		failures.append("read draft did not offer a selectable event object")
 	else:
