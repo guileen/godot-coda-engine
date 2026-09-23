@@ -13,6 +13,7 @@ var _name_edit := LineEdit.new()
 var _slot_select := OptionButton.new()
 var _command_search := LineEdit.new()
 var _command_select := OptionButton.new()
+var _command_description := Label.new()
 var _inspector := VBoxContainer.new()
 var _inspector_title := Label.new()
 var _inspector_hint := Label.new()
@@ -57,14 +58,25 @@ var _generation_override: Callable = Callable()
 var _last_write_ok := true
 
 const COMMAND_DEFINITIONS := {
-	"if": {"label": "条件分支", "fields": ["condition"]},
-	"let": {"label": "计算变量", "fields": ["name", "value"]},
-	"read": {"label": "读取信息", "fields": ["target", "field", "bind"]},
-	"do": {"label": "执行动作", "fields": ["capability", "args"]},
-	"await": {"label": "等待动作", "fields": ["capability", "args"]},
-	"publish": {"label": "发送通知", "fields": ["topic", "payload"]},
-	"return": {"label": "结束流程", "fields": ["value"]},
-	"escape": {"label": "调用受限代码", "fields": ["inputs", "outputs", "code"]},
+	"if": {"label": "条件分支", "description": "按一个条件分成“满足条件”和“否则”两条路。", "fields": ["condition"]},
+	"let": {"label": "计算变量", "description": "用一个算式得到新结果，供后续步骤继续使用。", "fields": ["name", "value"]},
+	"read": {"label": "读取信息", "description": "从角色或界面读取一个信息，并给它起个流程内名称。", "fields": ["target", "field", "bind"]},
+	"do": {"label": "执行动作", "description": "立即执行一个已登记动作，然后继续下一步。", "fields": ["capability", "args"]},
+	"await": {"label": "等待动作", "description": "执行一个动作，并等它完成后再继续下一步。", "fields": ["capability", "args"]},
+	"publish": {"label": "发送通知", "description": "把本流程的结果通知给订阅这个事件的其他流程。", "fields": ["topic", "payload"]},
+	"return": {"label": "结束流程", "description": "结束当前流程；可以把一个结果交还给调用方。", "fields": ["value"]},
+	"escape": {"label": "调用受限代码", "description": "高级用法：调用受限代码。一般玩法流程不需要此步骤。", "fields": ["inputs", "outputs", "code"]},
+}
+
+const DRAFT_GUIDANCE := {
+	"if": "在下面选择要检查的值、比较方式和目标值，然后确认。",
+	"let": "给结果起名并填写算式，例如：新积分 = 当前积分 + 奖励。",
+	"read": "选择读取对象和字段，再给读出的值起名。",
+	"do": "选择已登记动作，再按动作说明填写参数。",
+	"await": "选择可等待的动作并填写参数；动作完成后流程才会继续。",
+	"publish": "填写通知类型和要发送的内容。",
+	"return": "填写要交还给调用方的结果；没有结果时填 null。",
+	"escape": "仅用于受限代码步骤；填写声明过的输入、输出和代码。",
 }
 
 const MORE_ACTIONS := {
@@ -120,6 +132,10 @@ func _ready() -> void:
 	_command_select.tooltip_text = "选择新步骤要完成的动作"
 	insert_section.add_child(_labeled_control("放在", _slot_select))
 	insert_section.add_child(_labeled_control("做什么", _command_select))
+	_command_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_command_description.add_theme_color_override("font_color", get_theme_color("font_color", "Label").lerp(Color.TRANSPARENT, 0.2))
+	insert_section.add_child(_command_description)
+	_command_select.item_selected.connect(func(_index: int): _update_command_description())
 	var add_step := _button("添加步骤", _insert_draft_node)
 	insert_section.add_child(add_step)
 	add_child(insert_section)
@@ -383,6 +399,20 @@ func _refresh_command_options() -> void:
 		_command_select.set_item_metadata(_command_select.item_count - 1, command_id)
 		if String(command_id) == selected_command:
 			_command_select.select(_command_select.item_count - 1)
+	_update_command_description()
+
+func _update_command_description() -> void:
+	if _command_description == null:
+		return
+	if _command_select.selected < 0:
+		_command_description.text = "选好步骤类型后，这里会说明它的作用。"
+		return
+	var command_id := String(_command_select.get_item_metadata(_command_select.selected))
+	if command_id.is_empty():
+		_command_description.text = "选好步骤类型后，这里会说明它的作用。"
+		return
+	var definition: Dictionary = COMMAND_DEFINITIONS.get(command_id, {})
+	_command_description.text = String(definition.get("description", "按步骤设置页的提示填写内容。"))
 
 func _refresh_slot_options() -> void:
 	_slot_select.clear()
@@ -456,7 +486,7 @@ func _render_inspector() -> void:
 		_inspector.add_child(unsupported)
 		return
 	var pending_label := Label.new()
-	pending_label.text = "完成下面内容后确认这一步；取消会丢弃草稿，不会改动原流程。"
+	pending_label.text = "%s\n确认后才会写入流程；取消会丢弃这一步。" % String(DRAFT_GUIDANCE.get(command_id, "按下面提示填写内容。"))
 	pending_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspector.add_child(pending_label)
 	if command_id == "if":

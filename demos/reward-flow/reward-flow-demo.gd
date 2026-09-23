@@ -13,6 +13,7 @@ var status_label: Label
 var reward_button: Button
 var zero_reward_button: Button
 var reset_button: Button
+var _flow_step_labels: Array[Label] = []
 var _running := false
 var received_payload: Dictionary = {}
 var reward_runner: GSEOS_RewardEventRunner
@@ -115,9 +116,32 @@ func _build_interface() -> void:
 	]:
 		var step := Label.new()
 		step.text = step_text
+		step.set_meta("base_text", step_text)
 		step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		step.add_theme_color_override("font_color", Color("b2bfd2"))
 		flow_steps.add_child(step)
+		_flow_step_labels.append(step)
+	_set_flow_progress(0)
+
+func _set_flow_progress(completed_count: int, active_index := -1, failed_index := -1) -> void:
+	for index in _flow_step_labels.size():
+		var step := _flow_step_labels[index]
+		var base_text := String(step.get_meta("base_text", ""))
+		if index < completed_count:
+			step.text = "%s  · 已完成" % base_text
+			step.add_theme_color_override("font_color", _accent)
+		elif index == active_index:
+			step.text = "%s  · 正在进行" % base_text
+			step.add_theme_color_override("font_color", Color("92c6ff"))
+		elif index == failed_index:
+			step.text = "%s  · 条件未通过" % base_text
+			step.add_theme_color_override("font_color", Color("ffcf70"))
+		elif failed_index >= 0 and index > failed_index:
+			step.text = "%s  · 已跳过" % base_text
+			step.add_theme_color_override("font_color", Color("8996aa"))
+		else:
+			step.text = base_text
+			step.add_theme_color_override("font_color", Color("b2bfd2"))
 
 func _claim_reward(reward: int) -> void:
 	if event_registry == null or not is_instance_valid(hud):
@@ -127,10 +151,13 @@ func _claim_reward(reward: int) -> void:
 	reset_button.disabled = true
 	_running = true
 	status_label.text = "正在检查奖励条件…"
+	_set_flow_progress(1, 1)
 	var handle := event_registry.start("ui.reward.apply", {"reward": reward, "target_hud": hud}, hud)
 	handle.completed.connect(_on_reward_completed)
 	if handle.status != GSEOS_RunHandle.Status.RUNNING and handle.status != GSEOS_RunHandle.Status.WAITING:
 		_on_reward_completed(handle.result)
+	elif handle.status == GSEOS_RunHandle.Status.WAITING:
+		_set_flow_progress(2, 2)
 
 func _on_reward_completed(result: Dictionary) -> void:
 	reward_button.disabled = false
@@ -141,12 +168,15 @@ func _on_reward_completed(result: Dictionary) -> void:
 	var value: Dictionary = value_result if value_result is Dictionary else {}
 	if result.get("status") == "COMPLETED":
 		if value.is_empty():
+			_set_flow_progress(1, -1, 1)
 			status_label.text = "条件不成立：奖励必须大于 0。本次没有发奖，积分和奖励条目保持不变。"
 			status_label.add_theme_color_override("font_color", Color("b2bfd2"))
 		else:
+			_set_flow_progress(_flow_step_labels.size())
 			status_label.text = "结算完成：当前积分 %s；通知已发布。" % value.get("score", "?")
 			status_label.add_theme_color_override("font_color", _accent)
 	else:
+		_set_flow_progress(1, 1)
 		status_label.text = "结算未完成：%s" % result.get("reason", result.get("status", "未知原因"))
 		status_label.add_theme_color_override("font_color", Color("ff8e8e"))
 
@@ -172,6 +202,7 @@ func _reset_example() -> void:
 	reward_history.add_child(old_row)
 	status_label.text = "准备就绪。点击“领取奖励”观察整个流程。"
 	status_label.add_theme_color_override("font_color", Color("b2bfd2"))
+	_set_flow_progress(0)
 	reward_button.disabled = false
 	zero_reward_button.disabled = false
 	received_payload = {}

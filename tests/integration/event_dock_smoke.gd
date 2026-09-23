@@ -130,7 +130,10 @@ func _start() -> void:
 		for command_index in dock._command_select.item_count:
 			if String(dock._command_select.get_item_metadata(command_index)) == "let":
 				dock._command_select.select(command_index)
+				dock._update_command_description()
 				break
+		if not dock._command_description.text.contains("新结果"):
+			failures.append("step picker did not explain the selected step in plain language")
 		dock._insert_draft_node()
 		if dock._draft_asset.root.size() != 1 or not dock._draft_asset.root[0].get("draft", false):
 			failures.append("Event Dock did not create an in-memory draft node")
@@ -138,6 +141,12 @@ func _start() -> void:
 			failures.append("New draft step did not open its settings page")
 		if dock._let_name_edit == null or dock._let_expression_edit == null or not dock._let_expression_edit.placeholder_text.contains("1 + 2"):
 			failures.append("New calculation draft did not explain what to enter")
+		var draft_has_next_action := false
+		for inspector_child in dock._inspector.get_children():
+			if inspector_child is Label and inspector_child.text.contains("给结果起名"):
+				draft_has_next_action = true
+		if not draft_has_next_action:
+			failures.append("calculation draft did not explain its next action")
 		if not dock._selected_asset.root.is_empty():
 			failures.append("draft insertion changed the committed asset")
 		var invalid_slot := dock._append_to_slot(dock._selected_asset.duplicate(true), {"parent_id": "missing", "slot": "then"}, {"node_id": "bad", "command_id": "let"})

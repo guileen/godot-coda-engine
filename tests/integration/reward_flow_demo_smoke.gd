@@ -34,6 +34,10 @@ func _start() -> void:
 			failures.append("new reward row did not show the resulting score; actual=%s" % (demo.reward_history.get_child(0) as Label).text)
 		if not (demo.reward_history.get_child(1) as Label).text.contains("奖励 +25"):
 			failures.append("settlement notification did not report the claimed reward")
+	for step in demo._flow_step_labels:
+		if not step.text.contains("已完成"):
+			failures.append("reward demo did not mark its completed flow steps")
+			break
 
 	demo.reset_button.pressed.emit()
 	await process_frame
@@ -45,6 +49,11 @@ func _start() -> void:
 		failures.append("zero reward incorrectly replaced the previous reward")
 	if not demo.status_label.text.contains("条件不成立"):
 		failures.append("zero reward did not explain that the condition skipped the flow")
+	if demo._flow_step_labels.size() == 5:
+		if not demo._flow_step_labels[1].text.contains("条件未通过"):
+			failures.append("zero reward did not mark the condition branch as failed")
+		if not demo._flow_step_labels[2].text.contains("已跳过") or not demo._flow_step_labels[4].text.contains("已跳过"):
+			failures.append("zero reward did not show that later flow steps were skipped")
 	if failures.is_empty():
 		print("Reward flow demo smoke passed")
 		quit(0)
