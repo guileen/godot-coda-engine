@@ -4,13 +4,13 @@ const STORE := preload("res://addons/coda/core/asset_store.gd")
 const TEXT_TRANSACTION := preload("res://addons/coda/editor/text_transaction.gd")
 
 var failures: Array[String] = []
-var test_path := "res://.coda/editor-transaction-test.gse.json"
+var test_path := "res://.coda/editor-transaction-test.coda.json"
 
 func _initialize() -> void:
 	call_deferred("_start")
 
 func _start() -> void:
-	var source_file := FileAccess.open("res://coda/events/ui.reward.apply.gse.json", FileAccess.READ)
+	var source_file := FileAccess.open("res://coda/events/ui.reward.apply.coda.json", FileAccess.READ)
 	var original: Dictionary = JSON.parse_string(source_file.get_as_text())
 	original["test_unknown"] = {"nested": true}
 	var store := STORE.new()
@@ -95,7 +95,7 @@ func _start() -> void:
 		failures.append("valid text transaction did not commit")
 
 	var text_source_path := "res://.coda/text-owned-transaction.coda"
-	var text_asset_path := "res://.coda/text-owned-transaction.gse.json"
+	var text_asset_path := "res://.coda/text-owned-transaction.coda.json"
 	var text_source := "event ui.text.owned [id: ui.text.owned]:\n  let score = 1 # @node_id=stable.score\n"
 	var text_source_file := FileAccess.open(text_source_path, FileAccess.WRITE)
 	text_source_file.store_string(text_source)
@@ -222,7 +222,7 @@ func _start() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + ".ownership.json"))
 	for suffix in [".tmp", ".ownership.json.tmp", ".bak", ".ownership.json.bak", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + suffix))
-	for suffix in ["", ".ownership.json", ".coda", ".gse.json", ".gse.json.ownership.json", ".tmp", ".ownership.json.tmp", ".coda.tmp", ".coda.bak", ".gse.json.bak", ".gse.json.ownership.json.bak", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp", ".coda.candidate"]:
+	for suffix in ["", ".ownership.json", ".coda", ".coda.json", ".coda.json.ownership.json", ".tmp", ".ownership.json.tmp", ".coda.tmp", ".coda.bak", ".coda.json.bak", ".coda.json.ownership.json.bak", ".transaction.json", ".transaction.json.tmp", ".transaction.commit.json", ".transaction.commit.json.tmp", ".coda.candidate"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("res://.coda/text-owned-transaction" + suffix))
 	if failures.is_empty():
 		print("CODA editor asset transaction integration passed")

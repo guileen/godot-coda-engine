@@ -2,7 +2,7 @@
 class_name CODA_AssetStore
 extends RefCounted
 
-const ASSET_EXTENSION := ".gse.json"
+const ASSET_EXTENSION := ".coda.json"
 
 func load_asset(path: String) -> Dictionary:
 	if _transaction_artifacts_exist(path) or FileAccess.file_exists(ProjectSettings.globalize_path(path + ".bak")) or FileAccess.file_exists(ProjectSettings.globalize_path(path + ".ownership.json.bak")):
@@ -147,7 +147,7 @@ func save_text_owned_asset(asset_path: String, source_path: String, source_text:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(source_temp))
 	var parsed = JSON.parse_string("\n".join(parse_output))
 	if parse_exit != 0 or not parsed is Dictionary or not parsed.get("receipt", {}).get("ok", false) or not parsed.get("asset") is Dictionary:
-		return {"receipt": _receipt("TEXT_AUTHORING_SOURCE_INVALID", "text_owned 源未通过 GSE parse；本次事务未写入。"), "saved": false}
+		return {"receipt": _receipt("TEXT_AUTHORING_SOURCE_INVALID", "text_owned 源未通过 CODA parse；本次事务未写入。"), "saved": false}
 	var parsed_checker := CODA_EventAsset.new()
 	var parsed_asset_receipt: Dictionary = parsed_checker.from_dictionary(parsed.asset)
 	if not parsed_asset_receipt.ok or _fingerprint(parsed_checker.data) != _fingerprint(checker.data):

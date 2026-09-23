@@ -23,7 +23,7 @@ for (const path of await filesUnder(resolve(root, "contracts"))) {
 
 const manifest = JSON.parse(await readFile(resolve(root, "contracts/coda/capabilities.json"), "utf8"));
 if (manifest.manifest_type !== "CODA_CapabilityManifest" || manifest.schema_version !== 1) failures.push("CODA capability manifest 必须是 @1。");
-const asset = JSON.parse(await readFile(resolve(root, "coda/events/ui.reward.apply.gse.json"), "utf8"));
+const asset = JSON.parse(await readFile(resolve(root, "coda/events/ui.reward.apply.coda.json"), "utf8"));
 if (asset.asset_type !== "EventAsset" || asset.schema_version !== 1) failures.push("奖励演示必须是 EventAsset@1。");
 if (!asset.root?.length) failures.push("奖励演示必须包含结构化节点树。");
 const { assetFingerprint, buildSemanticProjectionMap, createSchemaRegistry, generateGdscript, lowerToExecutionPlan, validateAliasRegistry, validateSemanticProjectionMap } = await import("../src/coda/index.js");

@@ -28,7 +28,7 @@ Every managed cross-frame wait has one `WaitRegistration` and one completion gat
 
 Chinese, English, and mixed-language CODA text can be checked and generated from the command line with the same lexer, parser, binder, checker, and diagnostic protocol as the rest of the toolchain. A `.coda` file is a useful source for reviewing a gameplay flow with people or an AI.
 
-The Godot editor's stable project-asset workflow remains the versioned `EventAsset@1` tree saved as `.gse.json`. This release does not yet provide LSP support or a long-lived CODA text editor inside Godot.
+The Godot editor's stable project-asset workflow remains the versioned `EventAsset@1` tree saved as `.coda.json`. This release does not yet provide LSP support or a long-lived CODA text editor inside Godot.
 
 ## escape boundary
 

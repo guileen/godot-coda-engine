@@ -8,7 +8,7 @@
 
 ### 作者事实源的迁移边界
 
-新的 C1-L 具身语言资产以 `text_owned` 为目标：`.coda` 是唯一可编辑作者事实源，EventAsset/AST/IR/plan 都是确定派生物。现有 P0/P1/P3 的 `graph_owned` EventAsset 发布基线暂不重写；过渡期每个资产必须显式选择且只能选择一种 authoring ownership。Node reference 已实现规范锚点 GSE 的稳定 node identity 与原子 AST transaction；Godot Event Dock 已支持显式 graph-to-text 迁移、唯一 owner 切换和崩溃恢复。GUI 尚未把通用 AST transaction 接入所有文本编辑路径；既有 graph-owned 资产不会自动或批量迁移，需逐资产显式操作。
+新的 C1-L 具身语言资产以 `text_owned` 为目标：`.coda` 是唯一可编辑作者事实源，EventAsset/AST/IR/plan 都是确定派生物。现有 P0/P1/P3 的 `graph_owned` EventAsset 发布基线暂不重写；过渡期每个资产必须显式选择且只能选择一种 authoring ownership。Node reference 已实现规范锚点 CODA 的稳定 node identity 与原子 AST transaction；Godot Event Dock 已支持显式 graph-to-text 迁移、唯一 owner 切换和崩溃恢复。GUI 尚未把通用 AST transaction 接入所有文本编辑路径；既有 graph-owned 资产不会自动或批量迁移，需逐资产显式操作。
 
 ## 现有语言能做什么
 
@@ -107,7 +107,7 @@ SafetyAuthority 的撤权、保护动作和设备 failsafe receipt 必须保持 
 
 每个资产的唯一作者源由 [`AuthoringOwnership@1`](../contracts/c1l/authoring-ownership.schema.json) 标记为 `text_owned` 或 `graph_owned`。GUI 修改必须携带期望 owner revision、source fingerprint、稳定 node ID 和字段路径，经 [`AuthoringTransaction@1`](../contracts/c1l/authoring-transaction.schema.json) 写入单一 target source；EventAsset、文本投影、ExecutionPlan 与生成代码都只能作为只读派生物。迁移改变 owner 时必须原子切换；revision/fingerprint 冲突返回无部分写入的 receipt。Godot EventAsset store 已为写入、Undo/Redo 与投影写回增加可选 compare-and-swap，发现磁盘资产在预览后变化会拒绝覆盖；该机制目前比较完整的 EventAsset snapshot，不等同于 owner revision/source fingerprint 协议。编辑器生成的文本预览使用 `# @node_id=...` 保留稳定 node identity，未锚定新节点分配新 ID；当前投影器无法表达的资产会被拒绝打开文本事务。对应正反例见 [`authoring-ownership-pack.json`](../coda/fixtures/c1l/authoring-ownership-pack.json)。Node reference 的 text-owned transaction 已经按 owner/source/node/candidate fingerprint 校验并原子产生新 source/ownership；Godot 的 multi-file journal 覆盖崩溃回滚、前滚及歧义状态 fail-closed。完整 GUI AST transaction 接线和不同历史资产的迁移证据仍未完成。
 
-Node 参考核心提供 `applyAuthoringTransaction` 与 `applyTextAuthoringTransaction`：前者对 graph-owned JSON、后者对规范锚点 GSE 执行 owner revision/source fingerprint CAS、稳定 node ID 和 per-node fingerprint 校验；候选 source 与 node-identity digest 必须完全匹配后才产生递增 owner revision 的新状态。它们是无文件写权的纯函数。graph-to-text owner migration 由 Godot Event Dock 的显式事务完成；核心 API 不自动迁移资产。
+Node 参考核心提供 `applyAuthoringTransaction` 与 `applyTextAuthoringTransaction`：前者对 graph-owned JSON、后者对规范锚点 CODA 执行 owner revision/source fingerprint CAS、稳定 node ID 和 per-node fingerprint 校验；候选 source 与 node-identity digest 必须完全匹配后才产生递增 owner revision 的新状态。它们是无文件写权的纯函数。graph-to-text owner migration 由 Godot Event Dock 的显式事务完成；核心 API 不自动迁移资产。
 
 ### 物理 refinement、时域与并行 claim
 
@@ -134,7 +134,7 @@ event robot.acknowledge.user:
   intent robot.acknowledge_user@1(target: "pose.orient_to_source", resources: "robot.head@1+robot.torso@1", priority: 80, safety_profile: "aibi.gdbot.safety@1", on_no_solution: "safe_stop")
 ```
 
-对应的可复跑源码、EventAsset、计划 fixture 和测试分别位于 [`examples/robot-acknowledge.coda`](../examples/robot-acknowledge.coda)、[`coda/events/robot.acknowledge_user.gse.json`](../coda/events/robot.acknowledge_user.gse.json)、[`demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json`](../demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json) 与 `packages/local-core/test/coda.test.js`。多行 `resources/constraints/preempt/receipt` 语法仍是后续 C1-L.1 的扩展，不应被误解为本轮已经全部实现。
+对应的可复跑源码、EventAsset、计划 fixture 和测试分别位于 [`examples/robot-acknowledge.coda`](../examples/robot-acknowledge.coda)、[`coda/events/robot.acknowledge_user.coda.json`](../coda/events/robot.acknowledge_user.coda.json)、[`demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json`](../demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json) 与 `packages/local-core/test/coda.test.js`。多行 `resources/constraints/preempt/receipt` 语法仍是后续 C1-L.1 的扩展，不应被误解为本轮已经全部实现。
 
 ## 从“挥挥手”到两条执行路径
 
@@ -147,7 +147,7 @@ event companion.greet:
   intent social.wave@1(target: "person.nearby", expression: "friendly_smile", resources: "character.right_arm@1+character.face@1", priority: 60, safety_profile: "game.character.safe@1", on_no_solution: "fallback")
 ```
 
-这个示例的可复跑入口是 [`examples/social-wave.coda`](../examples/social-wave.coda)，对应 EventAsset 是 [`coda/events/social.wave.gse.json`](../coda/events/social.wave.gse.json)。它表达的是“对附近的人友好地挥右手并带微笑”，不是“把右臂关节写成某组角度”。
+这个示例的可复跑入口是 [`examples/social-wave.coda`](../examples/social-wave.coda)，对应 EventAsset 是 [`coda/events/social.wave.coda.json`](../coda/events/social.wave.coda.json)。它表达的是“对附近的人友好地挥右手并带微笑”，不是“把右臂关节写成某组角度”。
 
 共享流水线固定为：
 

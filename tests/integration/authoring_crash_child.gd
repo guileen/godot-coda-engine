@@ -16,7 +16,7 @@ func _run() -> void:
 	var mode := args[0]
 	var case_name := args[1]
 	var source_path := "res://.coda/" + case_name + ".coda"
-	var asset_path := "res://.coda/" + case_name + ".gse.json"
+	var asset_path := "res://.coda/" + case_name + ".coda.json"
 	if mode == "seed":
 		var source := "event ui.crash.owned [id: ui.crash.owned]:\n  let score = 1 # @node_id=stable.score\n"
 		_write(source_path, source)
@@ -58,9 +58,9 @@ func _parse(path: String) -> Dictionary:
 	var output: Array[String] = []
 	var cli := ProjectSettings.globalize_path("res://packages/local-core/src/coda-cli.js")
 	var exit_code := OS.execute("node", [cli, "parse", ProjectSettings.globalize_path(path)], output, true)
-	if exit_code != 0: _fail("GSE parse failed for " + path)
+	if exit_code != 0: _fail("CODA parse failed for " + path)
 	var parsed = JSON.parse_string("\n".join(output))
-	if not parsed is Dictionary or not parsed.get("receipt", {}).get("ok", false): _fail("GSE parser returned invalid fixture")
+	if not parsed is Dictionary or not parsed.get("receipt", {}).get("ok", false): _fail("CODA parser returned invalid fixture")
 	return parsed.asset
 
 func _write(path: String, content: String) -> void:
@@ -71,7 +71,7 @@ func _write(path: String, content: String) -> void:
 
 func _cleanup(case_name: String) -> void:
 	var stem := "res://.coda/" + case_name
-	for suffix in [".coda", ".coda.candidate", ".gse.json", ".gse.json.ownership.json", ".coda.tmp", ".gse.json.tmp", ".gse.json.ownership.json.tmp", ".coda.bak", ".gse.json.bak", ".gse.json.ownership.json.bak", ".gse.json.transaction.json", ".gse.json.transaction.json.tmp", ".gse.json.transaction.commit.json", ".gse.json.transaction.commit.json.tmp"]:
+	for suffix in [".coda", ".coda.candidate", ".coda.json", ".coda.json.ownership.json", ".coda.tmp", ".coda.json.tmp", ".coda.json.ownership.json.tmp", ".coda.bak", ".coda.json.bak", ".coda.json.ownership.json.bak", ".coda.json.transaction.json", ".coda.json.transaction.json.tmp", ".coda.json.transaction.commit.json", ".coda.json.transaction.commit.json.tmp"]:
 		var path := ProjectSettings.globalize_path(stem + suffix)
 		if FileAccess.file_exists(path): DirAccess.remove_absolute(path)
 

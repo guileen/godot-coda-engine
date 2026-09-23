@@ -9,8 +9,8 @@ CODA 是面向 Godot 的结构化事件创作与生成层。贡献应维护结�
 ```sh
 npm test
 npm run check
-npm run coda -- validate coda/events/ui.reward.apply.gse.json
-npm run coda -- generate coda/events/ui.reward.apply.gse.json
+npm run coda -- validate coda/events/ui.reward.apply.coda.json
+npm run coda -- generate coda/events/ui.reward.apply.coda.json
 godot --headless --path . --editor --quit
 ```
 

@@ -36,7 +36,7 @@ npm run coda -- text-generate <flow.coda>
 
 4. Inspect the generated GDScript and source map. Generated output is derived and must not be edited by hand; change the `.coda` source and regenerate.
 
-If `text-check` reports a syntax, binding, or capability error, use its file and source location to correct the source or declare the missing capability in the consuming project through its normal review process. Do not invent a capability or bypass the error by editing generated code. If generation fails, preserve the source, rerun `text-check`, and report the diagnostic; fall back to ordinary GDScript only when the user prefers it or the behavior exceeds CODA's supported surface. The project also has a stable event-tree and `.gse.json` workflow in the Godot editor.
+If `text-check` reports a syntax, binding, or capability error, use its file and source location to correct the source or declare the missing capability in the consuming project through its normal review process. Do not invent a capability or bypass the error by editing generated code. If generation fails, preserve the source, rerun `text-check`, and report the diagnostic; fall back to ordinary GDScript only when the user prefers it or the behavior exceeds CODA's supported surface. The project also has a stable event-tree and `.coda.json` workflow in the Godot editor.
 
 This skill covers the current event-flow surface: inputs, local values, conditions, declared synchronous/asynchronous capabilities, and event publishing. It does not define arbitrary Godot APIs, general algorithms, robot control, or the proposed embodied-language features as implemented behavior.
 

@@ -47,6 +47,6 @@ Run `text-check` before connecting the result to your Godot scene.
 
 ## CODA and the current Godot workflow
 
-The editor plugin still uses an event tree and `.gse.json` assets as the stable in-project workflow. CODA text is available for quickly expressing, checking, and generating a flow. You can therefore collaborate with an AI in a readable flow language while retaining structured assets, generated code, and traceability to GDScript.
+The editor plugin still uses an event tree and `.coda.json` assets as the stable in-project workflow. CODA text is available for quickly expressing, checking, and generating a flow. You can therefore collaborate with an AI in a readable flow language while retaining structured assets, generated code, and traceability to GDScript.
 
 To open the existing project in Godot and inspect its event tree, continue to [Quick start](quick-start.md). For the capabilities available now and the complex logic that should remain in GDScript, read [Core concepts](concepts.md).

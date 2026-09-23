@@ -1,6 +1,6 @@
 import { assetFingerprint, validateEventAsset } from "./asset.js";
 import { codaDiagnostic } from "./diagnostics.js";
-import { formatGse, parseGse } from "./frontend.js";
+import { formatCodaText, parseCodaText } from "./frontend.js";
 
 const refPattern = /^[-\w.]+@\d+$/u;
 const blockedPathSegments = new Set(["__proto__", "prototype", "constructor"]);
@@ -179,7 +179,7 @@ export function applyAuthoringTransaction(ownership, sourceDocument, transaction
   };
 }
 
-/** Apply an atomic AST edit to canonical, explicitly anchored text-owned GSE source. */
+/** Apply an atomic AST edit to canonical, explicitly anchored text-owned CODA source. */
 export function applyTextAuthoringTransaction(ownership, sourceText, transaction) {
   const reject = (code, status = "rejected") => ({ source: null, ownership, receipt: makeReceipt(transaction, ownership, status, [code]) });
   if (!ownership || ownership.contract_type !== "AuthoringOwnership" || ownership.schema_version !== 1 || ownership.authoring_mode !== "text_owned" || ownership.source?.source_type !== "coda_source") return reject("INVALID_TEXT_AUTHORING_OWNERSHIP");
@@ -190,7 +190,7 @@ export function applyTextAuthoringTransaction(ownership, sourceText, transaction
   if (transaction.expected_owner_revision !== ownership.owner_revision || transaction.expected_source_fingerprint !== ownership.source.fingerprint || assetFingerprint(sourceText) !== ownership.source.fingerprint) return reject("AUTHORING_SOURCE_CHANGED", "conflict");
   if (transaction.operation !== "edit" || transaction.target_mode !== "text_owned" || transaction.target_source?.source_type !== "coda_source" || transaction.target_source?.source_ref !== ownership.source.source_ref || typeof transaction.target_source.candidate_fingerprint !== "string" || typeof transaction.target_source.node_identity_digest !== "string") return reject("AUTHORING_TEXT_SOURCE_ADAPTER_REQUIRED");
 
-  const parsed = parseGse(sourceText);
+  const parsed = parseCodaText(sourceText);
   if (!parsed.receipt.ok || !parsed.asset || transaction.asset_id !== `${parsed.asset.event_id}@1`) return reject("TEXT_AUTHORING_SOURCE_INVALID");
   const nodeKinds = new Set(["if", "let", "do", "await", "motion_intent", "publish"]);
   const supportsTextNodes = (asset) => {
@@ -205,7 +205,7 @@ export function applyTextAuthoringTransaction(ownership, sourceText, transaction
   };
   if (!supportsTextNodes(parsed.asset)) return reject("TEXT_AUTHORING_UNSUPPORTED_NODE");
   const mode = sourceText.trimStart().startsWith("事件 ") ? "zh" : "en";
-  if (formatGse(parsed.asset, mode) !== sourceText) return reject("TEXT_AUTHORING_SOURCE_NOT_CANONICAL");
+  if (formatCodaText(parsed.asset, mode) !== sourceText) return reject("TEXT_AUTHORING_SOURCE_NOT_CANONICAL");
   const originalIdentity = authoringNodeIdentityDigest(parsed.asset);
   if (ownership.node_identity?.policy !== "stable_node_id@1" || ownership.node_identity.mapping_digest !== originalIdentity) return reject("AUTHORING_NODE_IDENTITY_MISMATCH", "conflict");
 
@@ -253,8 +253,8 @@ export function applyTextAuthoringTransaction(ownership, sourceText, transaction
   if (!supportsTextNodes(candidate)) return reject("TEXT_AUTHORING_UNSUPPORTED_NODE");
   const candidateIdentity = authoringNodeIdentityDigest(candidate);
   if (candidateIdentity !== transaction.target_source.node_identity_digest) return reject("AUTHORING_CANDIDATE_FINGERPRINT_MISMATCH");
-  const candidateText = formatGse(candidate, mode);
-  const reparsed = parseGse(candidateText);
+  const candidateText = formatCodaText(candidate, mode);
+  const reparsed = parseCodaText(candidateText);
   if (!reparsed.receipt.ok || !reparsed.asset || !validateEventAsset(reparsed.asset).ok || authoringNodeIdentityDigest(reparsed.asset) !== candidateIdentity) return reject("TEXT_AUTHORING_CANDIDATE_INVALID");
   const candidateFingerprint = assetFingerprint(candidateText);
   if (candidateFingerprint !== transaction.target_source.candidate_fingerprint) return reject("AUTHORING_CANDIDATE_FINGERPRINT_MISMATCH");

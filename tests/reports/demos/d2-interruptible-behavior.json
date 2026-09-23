@@ -30,7 +30,7 @@
     "visual_distinction": "不同 generation、终态记录和 RuntimeObservation；不是只替换标题",
     "replay": {
       "file": "replays/d2-interruptible-behavior.replay.json",
-      "sha256": "f745f1a33caaede7f43ff60aab6dbd5a6852f434ff24350be3a9f999be535e92"
+      "sha256": "a1599d1ea31327f62e5cbbfb2faf8a1a30264f9d75d9bd3f26f914f6f6c4bc90"
     }
   },
   "boundary": "Does not prove cloud LLM behavior, microphone input, or hardware control."

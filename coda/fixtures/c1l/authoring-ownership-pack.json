@@ -19,7 +19,7 @@
     "asset_id": "ui.reward.apply@1",
     "authoring_mode": "graph_owned",
     "owner_revision": 7,
-    "source": { "source_type": "event_asset", "source_ref": "coda/events/ui.reward.apply.gse.json", "fingerprint": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+    "source": { "source_type": "event_asset", "source_ref": "coda/events/ui.reward.apply.coda.json", "fingerprint": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
     "node_identity": { "policy": "stable_node_id@1", "mapping_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
     "derived_projections": [
       { "artifact_type": "coda_projection", "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "authority": "derived", "writable": false },

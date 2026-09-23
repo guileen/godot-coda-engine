@@ -8,7 +8,7 @@
   },
   "fixtures": {
     "event_asset": {
-      "path": "coda/events/ui.reward.apply.gse.json",
+      "path": "coda/events/ui.reward.apply.coda.json",
       "asset_fingerprint": "sha256:6a2ea47e7e1cad12b70342779ea6aeecd0b51eb4e50790e4f2238cf2eb29f6f9"
     },
     "alias_registry": {

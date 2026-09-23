@@ -245,11 +245,11 @@ func _reload() -> void:
 	dir.list_dir_begin()
 	var filename := dir.get_next()
 	while not filename.is_empty():
-		if not dir.current_is_dir() and filename.ends_with(".gse.json"):
+		if not dir.current_is_dir() and filename.ends_with(".coda.json"):
 			var asset_path := "res://coda/events/" + filename
 			_asset_paths.append(asset_path)
 			var loaded := _store.load_asset(asset_path)
-			var title := String(loaded.asset.get("display_name", filename.trim_suffix(".gse.json"))) if loaded.receipt.ok else filename.trim_suffix(".gse.json")
+			var title := String(loaded.asset.get("display_name", filename.trim_suffix(".coda.json"))) if loaded.receipt.ok else filename.trim_suffix(".coda.json")
 			_event_list.add_item(title)
 		filename = dir.get_next()
 	dir.list_dir_end()
@@ -1233,7 +1233,7 @@ func _set_json_pointer(root: Dictionary, pointer: String, value) -> bool:
 
 func _preview_generated_diff(asset: Dictionary) -> Dictionary:
 	var stamp := "%s" % Time.get_ticks_usec()
-	var temp_asset := "/tmp/coda-projection-preview-%s.gse.json" % stamp
+	var temp_asset := "/tmp/coda-projection-preview-%s.coda.json" % stamp
 	var temp_generated := "/tmp/coda-projection-preview-%s.gd" % stamp
 	var file := FileAccess.open(temp_asset, FileAccess.WRITE)
 	if file == null:
@@ -1458,10 +1458,10 @@ func _insert_relative(nodes: Array, anchor_id: String, node: Dictionary, before:
 
 func _new_event() -> void:
 	var index := 1
-	var path := "res://coda/events/new-event.gse.json"
+	var path := "res://coda/events/new-event.coda.json"
 	while FileAccess.file_exists(path):
 		index += 1
-		path = "res://coda/events/new-event-%d.gse.json" % index
+		path = "res://coda/events/new-event-%d.coda.json" % index
 	var asset := {"asset_type": "EventAsset", "schema_version": 1, "event_id": "ui.new.event.%d" % index, "display_name": "新事件", "args": [], "reentry": "reject", "recovery": "E0", "root": []}
 	if not _write_asset_transaction(path, {}, asset, "创建 CODA 事件"):
 		return
@@ -1469,15 +1469,15 @@ func _new_event() -> void:
 
 func _new_embodied_event() -> void:
 	var index := 1
-	var asset_path := "res://coda/events/embodied-event.gse.json"
+	var asset_path := "res://coda/events/embodied-event.coda.json"
 	var source_path := "res://coda/events/embodied-event.coda"
 	while FileAccess.file_exists(asset_path) or FileAccess.file_exists(source_path) or FileAccess.file_exists(asset_path + ".ownership.json"):
 		index += 1
-		asset_path = "res://coda/events/embodied-event-%d.gse.json" % index
+		asset_path = "res://coda/events/embodied-event-%d.coda.json" % index
 		source_path = "res://coda/events/embodied-event-%d.coda" % index
 	var event_id := "embodied.event.%d" % index
 	var asset := {"asset_type": "EventAsset", "schema_version": 1, "event_id": event_id, "display_name": "具身事件", "args": [], "recovery": "E0", "root": []}
-	var source_text := _asset_to_gse_text(asset)
+	var source_text := _asset_to_coda_text(asset)
 	var saved := _store.save_text_owned_asset(asset_path, source_path, source_text, asset, -1, "")
 	if not saved.saved:
 		_status.text = _format_diagnostics(saved.receipt.get("diagnostics", []))
@@ -1879,7 +1879,7 @@ func _build_text_import_panel() -> void:
 	_text_import_panel.visible = false
 	var box := VBoxContainer.new()
 	var title := Label.new()
-	title.text = "GSE 文本导入（非持久预览；提交才写入 EventAsset）"
+	title.text = "CODA 文本导入（非持久预览；提交才写入 EventAsset）"
 	box.add_child(title)
 	_text_import_edit.custom_minimum_size.y = 130
 	box.add_child(_text_import_edit)
@@ -1900,7 +1900,7 @@ func _open_text_import() -> void:
 	if _selected_asset.is_empty():
 		_status.text = "请先选择 EventAsset。"
 		return
-	if not _can_format_asset_to_gse(_selected_asset.get("root", [])):
+	if not _can_format_asset_to_coda(_selected_asset.get("root", [])):
 		_status.text = "此资产包含当前文本投影器不支持的节点/分支；为避免丢失语义，不能打开文本事务。"
 		return
 	if _selected_ownership.get("authoring_mode", "graph_owned") == "text_owned":
@@ -1910,7 +1910,7 @@ func _open_text_import() -> void:
 			return
 		_text_import_edit.text = FileAccess.get_file_as_string(source_path)
 	else:
-		_text_import_edit.text = _asset_to_gse_text(_selected_asset)
+		_text_import_edit.text = _asset_to_coda_text(_selected_asset)
 	_text_import_status.text = "编辑文本后预览；失败只保留 draft 和诊断，不改资产。"
 	_text_import_diff.text = ""
 	_text_import_candidate = {}
@@ -1920,14 +1920,14 @@ func _migrate_selected_to_text_owned() -> void:
 	if _selected_asset.is_empty() or _selected_ownership.get("authoring_mode", "graph_owned") != "graph_owned":
 		_status.text = "仅 graph_owned 资产可执行显式迁移。"
 		return
-	if not _can_format_asset_to_gse(_selected_asset.get("root", [])):
+	if not _can_format_asset_to_coda(_selected_asset.get("root", [])):
 		_status.text = "当前资产含文本投影器不支持的节点/分支；迁移已拒绝。"
 		return
-	var source_path := _selected_path.trim_suffix(".gse.json") + ".coda"
+	var source_path := _selected_path.trim_suffix(".coda.json") + ".coda"
 	if FileAccess.file_exists(source_path):
 		_status.text = "迁移目标 CODA 源已存在；为避免覆盖，迁移已拒绝。"
 		return
-	var source_text := _asset_to_gse_text(_selected_asset)
+	var source_text := _asset_to_coda_text(_selected_asset)
 	var temp_path := "res://.coda/migration-%d.coda" % Time.get_ticks_msec()
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
@@ -1964,7 +1964,7 @@ func _cancel_text_import() -> void:
 func _preview_text_import() -> void:
 	if _selected_asset.is_empty():
 		return
-	var temp_path := "res://.coda/text-import-%d.gse" % Time.get_ticks_msec()
+	var temp_path := "res://.coda/text-import-%d.coda" % Time.get_ticks_msec()
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		_text_import_status.text = "无法创建文本 draft；资产未改变。"
@@ -2017,7 +2017,7 @@ func _commit_text_import() -> void:
 		_selected_ownership = saved.ownership
 		if saved.get("cleanup_pending", false): _text_import_status.text = "源、派生投影与 owner 已提交；旧备份待恢复清理。"
 	else:
-		if not _write_asset_transaction(_selected_path, _selected_asset, committed.asset, "提交 GSE 文本导入"):
+		if not _write_asset_transaction(_selected_path, _selected_asset, committed.asset, "提交 CODA 文本导入"):
 			return
 		_selected_asset = committed.asset
 	_text_import_candidate = {}
@@ -2051,7 +2051,7 @@ func _rebase_nodes(nodes: Array, used_ids: Dictionary, imported_index: int) -> i
 			imported_index = _rebase_nodes(children, used_ids, imported_index)
 	return imported_index
 
-func _asset_to_gse_text(asset: Dictionary) -> String:
+func _asset_to_coda_text(asset: Dictionary) -> String:
 	var argument_names: Array[String] = []
 	for argument in asset.get("args", []):
 		argument_names.append(String(argument.get("id", "")))
@@ -2066,7 +2066,7 @@ func _asset_to_gse_text(asset: Dictionary) -> String:
 	_append_asset_text(asset.get("root", []), 1, lines)
 	return "\n".join(lines) + "\n"
 
-func _can_format_asset_to_gse(nodes: Array) -> bool:
+func _can_format_asset_to_coda(nodes: Array) -> bool:
 	for node in nodes:
 		var command := String(node.get("command_id", ""))
 		if command not in ["if", "let", "do", "await", "motion_intent", "publish"]:
@@ -2075,7 +2075,7 @@ func _can_format_asset_to_gse(nodes: Array) -> bool:
 		if command == "if":
 			if children.keys().any(func(slot): return slot not in ["then", "else"]):
 				return false
-			if not _can_format_asset_to_gse(children.get("then", [])) or not _can_format_asset_to_gse(children.get("else", [])):
+			if not _can_format_asset_to_coda(children.get("then", [])) or not _can_format_asset_to_coda(children.get("else", [])):
 				return false
 		elif not children.is_empty():
 			return false

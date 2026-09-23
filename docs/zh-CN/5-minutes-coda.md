@@ -51,6 +51,6 @@ npm run coda -- text-generate examples/reward-claim.coda
 
 ## CODA 与当前 Godot 工作流
 
-目前的编辑器插件仍以事件树和 `.gse.json` 资产作为稳定的项目内工作流；CODA 文本可以用于快速表达、检查与生成。换句话说，你可以先用可读的流程语言和 AI 协作，再保留结构化资产、生成代码和 GDScript 的可追踪性。
+目前的编辑器插件仍以事件树和 `.coda.json` 资产作为稳定的项目内工作流；CODA 文本可以用于快速表达、检查与生成。换句话说，你可以先用可读的流程语言和 AI 协作，再保留结构化资产、生成代码和 GDScript 的可追踪性。
 
 想在 Godot 中打开现成项目并查看事件树，请继续读[快速开始](quick-start.md)。想知道哪些能力目前可用、哪些复杂逻辑仍应交给 GDScript，请读[核心概念](concepts.md)。

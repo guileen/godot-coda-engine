@@ -7,5 +7,5 @@
 Regenerate / 重新生成：
 
 ```sh
-npm run coda -- generate coda/events/ui.reward.apply.gse.json
+npm run coda -- generate coda/events/ui.reward.apply.coda.json
 ```

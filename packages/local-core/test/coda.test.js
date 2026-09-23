@@ -6,20 +6,20 @@ import { fileURLToPath } from "node:url";
 import { evaluateContinuationViability, evaluateTemporalCommandAdmission, validateAuthorityClaimMatrix, validateContinuationContract, validateEmbodimentProtocolMessage, validateEmbodimentUnitRegistry, validateReferenceFrameRegistry, validateSafetyAuthorityReceipt, validateTemporalCommandContract } from "../src/index.js";
 import { applyAuthoringTransaction, applyTextAuthoringTransaction, authoringNodeIdentityDigest, authoringSourceNodeFingerprint } from "../src/index.js";
 import { applyIntentProtocolRequest, createIntentProtocolState, MockEmbodimentAdapter, MockSafetyAuthorityPort, recordMockEmbodimentSession, replayMockEmbodimentSession, runEmbodimentAdapterConformance, settleIntentProtocolInstance, validateIntentProtocolReceipt, validateIntentProtocolRequest, verifyHookReplay } from "../src/index.js";
-import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createReplayEnvelope, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, expandResourceLeaves, formatGse, generateGdscript, lexGse, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseGse, replayEnvelopeFingerprint, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateResourceRegistry, validateRuntimeObservation, validateReplayEnvelope, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
+import { BehaviorRuntime, EventRegistry, ExpressionAdapterReference, RunContext, RunStatus, TransitionLeaseArbiter, TransitionRun, TrustedHookPipeline, WaitRegistration, admitFiniteFieldSwitch, applySemanticPatch, applyTaggedExternalJump, assetFingerprint, bindEventAsset, buildModelErrorReport, buildSafeParetoFrontier, buildSemanticProjectionMap, buildTransitionPlan, certifyReferenceCandidate, compareTransitionDecisionObservation, compileBehaviorRuntime, createReplayEnvelope, createSchemaRegistry, createSemanticPatch, decodeLinearPrior, detectFieldStagnation, enforceOneSidedJointLimit, evaluateLatentCandidate, evaluateTransitionCase, expandResourceLeaves, formatCodaText, generateGdscript, lexCodaText, lowerMotionIntentForProfile, lowerMotionIntentToBackend, lowerToExecutionPlan, lowerToTaskGraph, migrateEventAsset, parseCst, parseExpressionText, parseCodaText, replayEnvelopeFingerprint, replayTransitionCase, resolveAlias, resolveSourceRef, roundTripEventAsset, runAnytimeReference, runFieldWithFiniteFallback, runHybridReference, runReferenceCascade, runWithSingleFallback, selectFiniteEscapeWaypoint, selectStableParetoCandidate, stableStringify, summarizeUserObservationReport, transitionDecisionFingerprint, validateAliasRegistry, validateBehaviorRuntime, validateBehaviorRuntimeTrace, validateCapabilityManifest, validateControlContract, validateEventAsset, validateExpressionAdapterProfile, validateGuardExpression, validateHybridModeGraph, validateObservationContract, validateReactiveExecutionGraph, validateResourceRegistry, validateRuntimeObservation, validateReplayEnvelope, validateRuntimeTrace, validateSemanticCandidate, validateSemanticProjectionMap, validateTrackingEnvelope, validateTransitionSnapshot, validateUserObservationReport, validateTaskGraph, verifyManagedArtifact } from "../src/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const asset = JSON.parse(await readFile(resolve(root, "coda/events/ui.reward.apply.gse.json"), "utf8"));
+const asset = JSON.parse(await readFile(resolve(root, "coda/events/ui.reward.apply.coda.json"), "utf8"));
 const manifest = JSON.parse(await readFile(resolve(root, "contracts/coda/capabilities.json"), "utf8"));
 const aliasRegistry = JSON.parse(await readFile(resolve(root, "coda/fixtures/ui.reward.apply.alias-registry.json"), "utf8"));
 const semanticMapFixture = JSON.parse(await readFile(resolve(root, "coda/fixtures/ui.reward.apply.semantic-map.json"), "utf8"));
 const goldenSourceMap = JSON.parse(await readFile(resolve(root, "tests/golden/ui.reward.apply.source-map.json"), "utf8"));
-const behaviorAsset = JSON.parse(await readFile(resolve(root, "coda/events/aibi.behavior.runtime.gse.json"), "utf8"));
+const behaviorAsset = JSON.parse(await readFile(resolve(root, "coda/events/aibi.behavior.runtime.coda.json"), "utf8"));
 const behaviorManifest = JSON.parse(await readFile(resolve(root, "contracts/coda/aibi-behavior-capabilities.json"), "utf8"));
 const registry = createSchemaRegistry(manifest);
 const behaviorRegistry = createSchemaRegistry(behaviorManifest);
 const motionIntentSource = await readFile(resolve(root, "examples/robot-acknowledge.coda"), "utf8");
-const motionIntentAsset = JSON.parse(await readFile(resolve(root, "coda/events/robot.acknowledge_user.gse.json"), "utf8"));
+const motionIntentAsset = JSON.parse(await readFile(resolve(root, "coda/events/robot.acknowledge_user.coda.json"), "utf8"));
 const waveSource = await readFile(resolve(root, "examples/social-wave.coda"), "utf8");
 const motionIntentSchema = JSON.parse(await readFile(resolve(root, "contracts/coda/motion-intent.schema.json"), "utf8"));
 const transitionPlanFixture = JSON.parse(await readFile(resolve(root, "coda/fixtures/social.wave.transition-plan.json"), "utf8"));
@@ -93,47 +93,47 @@ test("双语 lexer/parser 归一为同一结构并保留可诊断 source span", 
   const english = `module ui.reward\nevent ui.reward.apply:\n  if (reward > 0):\n    let new_score = old_score + reward\n`;
   const chinese = `模块 ui.reward\n事件 ui.reward.apply：\n  若（奖励 大于 0）：\n    令 新分数 为 旧分数 加 奖励\n`;
   const namedChinese = `模块 ui.reward\n事件 领取奖励（积分，奖励） [标识：ui.reward.claim]：\n  等待 ui.animate_number@1(from: 积分, to: 奖励)\n`;
-  assert.equal(lexGse("\uFEFF" + chinese).receipt.ok, true);
-  const left = parseGse(english);
-  const right = parseGse(chinese);
+  assert.equal(lexCodaText("\uFEFF" + chinese).receipt.ok, true);
+  const left = parseCodaText(english);
+  const right = parseCodaText(chinese);
   assert.equal(left.receipt.ok, true);
   assert.equal(right.receipt.ok, true);
-  assert.equal(parseGse(namedChinese).receipt.ok, true);
-  assert.equal(parseGse(namedChinese).asset.event_id, "ui.reward.claim");
-  assert.deepEqual(parseGse(namedChinese).asset.args.map((item) => item.id), ["积分", "奖励"]);
-  assert.equal(parseGse(namedChinese).asset.root[0].params.capability, "ui.animate_number@1");
-  const eventPolicy = parseGse("event body.wave [id: embodied.wave, reentry: reject, recovery: checkpoint]:\n");
+  assert.equal(parseCodaText(namedChinese).receipt.ok, true);
+  assert.equal(parseCodaText(namedChinese).asset.event_id, "ui.reward.claim");
+  assert.deepEqual(parseCodaText(namedChinese).asset.args.map((item) => item.id), ["积分", "奖励"]);
+  assert.equal(parseCodaText(namedChinese).asset.root[0].params.capability, "ui.animate_number@1");
+  const eventPolicy = parseCodaText("event body.wave [id: embodied.wave, reentry: reject, recovery: checkpoint]:\n");
   assert.equal(eventPolicy.asset.event_id, "embodied.wave");
   assert.equal(eventPolicy.asset.reentry, "reject");
   assert.equal(eventPolicy.asset.recovery, "checkpoint");
   assert.equal(left.asset.root[0].command_id, right.asset.root[0].command_id);
   assert.equal(left.asset.root[0].params.condition.op, right.asset.root[0].params.condition.op);
-  assert.equal(parseGse("event bad:\n\tawait x()").receipt.ok, false);
+  assert.equal(parseCodaText("event bad:\n\tawait x()").receipt.ok, false);
   assert.equal(parseExpressionText("a + b * c").expression.op, "+");
   assert.equal(parseExpressionText("a + b * c").expression.right.op, "*");
   assert.equal(parseCst("# comment\n\nif (a):\n  let b = 1").children[0].kind, "comment");
-  const anchored = parseGse("event demo:\n  let first = 1 # @node_id=stable.first\n  let second = 2 # @node_id=stable.second");
-  const anchoredAfterInsert = parseGse("event demo:\n  let inserted = 0\n  let first = 1 # @node_id=stable.first\n  let second = 2 # @node_id=stable.second");
+  const anchored = parseCodaText("event demo:\n  let first = 1 # @node_id=stable.first\n  let second = 2 # @node_id=stable.second");
+  const anchoredAfterInsert = parseCodaText("event demo:\n  let inserted = 0\n  let first = 1 # @node_id=stable.first\n  let second = 2 # @node_id=stable.second");
   assert.deepEqual(anchored.asset.root.map((node) => node.node_id), ["stable.first", "stable.second"]);
   assert.equal(anchoredAfterInsert.asset.root[1].node_id, "stable.first");
   assert.equal(anchoredAfterInsert.asset.root[2].node_id, "stable.second");
-  const anchoredFormatted = formatGse(anchoredAfterInsert.asset, "en");
-  const anchoredRoundTrip = parseGse(anchoredFormatted);
+  const anchoredFormatted = formatCodaText(anchoredAfterInsert.asset, "en");
+  const anchoredRoundTrip = parseCodaText(anchoredFormatted);
   assert.deepEqual(anchoredRoundTrip.asset.root.map((node) => node.node_id), anchoredAfterInsert.asset.root.map((node) => node.node_id));
-  const branching = parseGse("event demo:\n  if (ready):\n    let result = 1\n  else:\n    let result = 0");
+  const branching = parseCodaText("event demo:\n  if (ready):\n    let result = 1\n  else:\n    let result = 0");
   assert.equal(branching.receipt.ok, true);
   assert.equal(branching.asset.root[0].children.then[0].params.value, 1);
   assert.equal(branching.asset.root[0].children.else[0].params.value, 0);
-  const branchFormatted = formatGse(branching.asset, "zh");
+  const branchFormatted = formatCodaText(branching.asset, "zh");
   assert.match(branchFormatted, /# @node_id=imported-2/u);
   assert.match(branchFormatted, /否则：/u);
-  const branchRoundTrip = parseGse(branchFormatted);
+  const branchRoundTrip = parseCodaText(branchFormatted);
   assert.deepEqual(branchRoundTrip.asset.root[0].children.else[0].params, branching.asset.root[0].children.else[0].params);
   assert.deepEqual(branchRoundTrip.asset.root[0].children.then.map((node) => node.node_id), branching.asset.root[0].children.then.map((node) => node.node_id));
-  assert.ok(parseGse("event demo:\n  if (ready):\n    let result = 1\n  else:\n  else:").receipt.diagnostics.some((item) => item.code === "DUPLICATE_ELSE"));
-  assert.equal(formatGse(right.asset, "zh").startsWith("事件"), true);
-  const englishFormatted = formatGse(left.asset, "en");
-  assert.equal(formatGse(englishFormatted, "en"), englishFormatted);
+  assert.ok(parseCodaText("event demo:\n  if (ready):\n    let result = 1\n  else:\n  else:").receipt.diagnostics.some((item) => item.code === "DUPLICATE_ELSE"));
+  assert.equal(formatCodaText(right.asset, "zh").startsWith("事件"), true);
+  const englishFormatted = formatCodaText(left.asset, "en");
+  assert.equal(formatCodaText(englishFormatted, "en"), englishFormatted);
 });
 
 test("迁移失败保留原始数据，往返和来源 span 不丢失", () => {
@@ -142,11 +142,11 @@ test("迁移失败保留原始数据，往返和来源 span 不丢失", () => {
   assert.equal(migrated.asset, null);
   assert.equal(migrated.json, unsupported);
   assert.equal(migrateEventAsset({ schema_version: 0, event_id: "demo", root: [] }).receipt.ok, true);
-  assert.ok(parseGse("event demo:\n  let value = 1").asset.root[0].source_span.start.line === 2);
+  assert.ok(parseCodaText("event demo:\n  let value = 1").asset.root[0].source_span.start.line === 2);
 });
 
 test("C1-L 机器人运动意图从源码进入计划并保留安全契约", () => {
-  const parsed = parseGse(motionIntentSource);
+  const parsed = parseCodaText(motionIntentSource);
   assert.equal(parsed.receipt.ok, true);
   assert.equal(parsed.asset.root[0].command_id, "motion_intent");
   assert.equal(parsed.asset.root[0].params.intent, "robot.acknowledge_user@1");
@@ -154,7 +154,7 @@ test("C1-L 机器人运动意图从源码进入计划并保留安全契约", () 
   assert.equal(lowered.receipt.ok, true);
   assert.equal(lowered.plan.instructions[0].opcode, "MotionIntent");
   assert.equal(lowered.plan.instructions[0].args.priority.value, 80);
-  const formatted = formatGse(parsed.asset, "en");
+  const formatted = formatCodaText(parsed.asset, "en");
   assert.match(formatted, /intent robot\.acknowledge_user@1\(target:/);
   assert.equal(lowerToExecutionPlan(motionIntentAsset, registry).receipt.ok, true);
   const missingSafety = structuredClone(parsed.asset);
@@ -163,7 +163,7 @@ test("C1-L 机器人运动意图从源码进入计划并保留安全契约", () 
 });
 
 test("同一个高层挥手意图分流到 Godot 与机器人适配器", () => {
-  const parsed = parseGse(waveSource);
+  const parsed = parseCodaText(waveSource);
   assert.equal(parsed.receipt.ok, true);
   const lowered = lowerToExecutionPlan(parsed.asset, registry);
   assert.equal(lowered.receipt.ok, true);
@@ -185,7 +185,7 @@ test("同一个高层挥手意图分流到 Godot 与机器人适配器", () => {
 
 test("C1-L.3 按目标 Profile 能力条件 lowering，缺失能力只接受显式 fallback", () => {
   assert.equal(intentBackendProfileSchema.$id, "coda://contracts/coda/intent-backend-profile@1");
-  const instruction = lowerToExecutionPlan(parseGse(waveSource).asset, registry).plan.instructions[0];
+  const instruction = lowerToExecutionPlan(parseCodaText(waveSource).asset, registry).plan.instructions[0];
   const [gameProfile, robotProfile] = intentBackendProfiles.profiles;
   const game = lowerMotionIntentForProfile(instruction, gameProfile);
   const robot = lowerMotionIntentForProfile(instruction, robotProfile);
@@ -622,7 +622,7 @@ test("C1-L.0.1 reference authoring transaction applies atomically with owner rev
     asset_id: "test.authoring@1",
     authoring_mode: "graph_owned",
     owner_revision: 4,
-    source: { source_type: "event_asset", source_ref: "coda/events/test.authoring.gse.json", fingerprint: assetFingerprint(source) },
+    source: { source_type: "event_asset", source_ref: "coda/events/test.authoring.coda.json", fingerprint: assetFingerprint(source) },
     node_identity: { policy: "stable_node_id@1", mapping_digest: identityDigest },
     derived_projections: [{ artifact_type: "execution_plan", fingerprint: "sha256:" + "a".repeat(64), authority: "derived", writable: false }],
   };
@@ -664,9 +664,9 @@ test("C1-L.0.1 reference authoring transaction applies atomically with owner rev
   assert.equal(applyAuthoringTransaction(ownership, source, duplicateSubtreeIds).receipt.diagnostics[0].code, "INVALID_AUTHORING_NODE_ADDITION");
 });
 
-test("C1-L.0.1 text-owned authoring edits canonical anchored GSE atomically", () => {
+test("C1-L.0.1 text-owned authoring edits canonical anchored CODA atomically", () => {
   const source = "event test.textowned:\n  let value = 1 # @node_id=stable.value\n";
-  const parsed = parseGse(source);
+  const parsed = parseCodaText(source);
   const identityDigest = authoringNodeIdentityDigest(parsed.asset);
   const ownership = {
     contract_type: "AuthoringOwnership", schema_version: 1, asset_id: "test.textowned@1", authoring_mode: "text_owned", owner_revision: 2,
@@ -676,7 +676,7 @@ test("C1-L.0.1 text-owned authoring edits canonical anchored GSE atomically", ()
   };
   const candidate = structuredClone(parsed.asset);
   candidate.root[0].params.value = 7;
-  const candidateText = formatGse(candidate, "en");
+  const candidateText = formatCodaText(candidate, "en");
   const transaction = {
     transaction_type: "AuthoringTransaction", schema_version: 1, transaction_id: "text.edit.001", asset_id: ownership.asset_id,
     expected_mode: "text_owned", expected_owner_revision: ownership.owner_revision, expected_source_fingerprint: ownership.source.fingerprint,

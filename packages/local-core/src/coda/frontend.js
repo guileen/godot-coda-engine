@@ -12,15 +12,15 @@ function token(kind, value, start, end, line, column) { return { kind, value, st
 function stripQuotes(value) { return value?.startsWith("「") ? value.slice(1, -1) : value?.startsWith('"') ? JSON.parse(value) : value; }
 function indentOf(line) { return (line.match(/^ */)?.[0].length ?? 0); }
 
-export function lexGse(text) {
+export function lexCodaText(text) {
   const source = String(text).normalize("NFC").replace(/^\uFEFF/, ""); const diagnostics = []; const tokens = [];
   let index = 0; let line = 1; let column = 1;
   const advance = (value) => { for (const character of value) { if (character === "\n") { line += 1; column = 1; } else column += 1; } };
   while (index < source.length) {
     const character = source[index];
     if (character === "\n") { tokens.push(token("NEWLINE", "\n", index, index + 1, line, column)); advance("\n"); index += 1; continue; }
-    if (character === "\r") { diagnostics.push(codaDiagnostic("CRLF_NOT_ALLOWED", "GSE 文本必须使用 LF 换行。", { start: index, end: index + 1, line, column })); advance(character); index += 1; continue; }
-    if (character === "\t") { diagnostics.push(codaDiagnostic("TAB_INDENTATION", "GSE 文本不允许 Tab 缩进。", { start: index, end: index + 1, line, column })); advance(character); index += 1; continue; }
+    if (character === "\r") { diagnostics.push(codaDiagnostic("CRLF_NOT_ALLOWED", "CODA 文本必须使用 LF 换行。", { start: index, end: index + 1, line, column })); advance(character); index += 1; continue; }
+    if (character === "\t") { diagnostics.push(codaDiagnostic("TAB_INDENTATION", "CODA 文本不允许 Tab 缩进。", { start: index, end: index + 1, line, column })); advance(character); index += 1; continue; }
     if (/\s/u.test(character)) { advance(character); index += 1; continue; }
     if (character === "#") { const end = source.indexOf("\n", index); const value = source.slice(index, end < 0 ? source.length : end); tokens.push(token("COMMENT", value, index, index + value.length, line, column)); advance(value); index += value.length; continue; }
     const punctuation = source.slice(index).match(/^（|^）|^［|^］|^【|^】|^，|^：|^；|^→/u)?.[0];
@@ -38,7 +38,7 @@ export function lexGse(text) {
 }
 
 export function parseExpressionText(text) {
-  const lexed = lexGse(text); const tokens = lexed.tokens.filter((item) => !["EOF", "NEWLINE", "COMMENT"].includes(item.kind)); let index = 0; const diagnostics = [...lexed.receipt.diagnostics];
+  const lexed = lexCodaText(text); const tokens = lexed.tokens.filter((item) => !["EOF", "NEWLINE", "COMMENT"].includes(item.kind)); let index = 0; const diagnostics = [...lexed.receipt.diagnostics];
   const primary = () => {
     const current = tokens[index++];
     if (!current) { diagnostics.push(codaDiagnostic("EXPECTED_EXPRESSION", "表达式不完整。", { start: String(text).length, end: String(text).length })); return null; }
@@ -57,7 +57,7 @@ export function parseExpressionText(text) {
 }
 
 export function parseCst(text) {
-  const lexed = lexGse(text); const lines = lexed.source.split("\n"); const children = lines.map((raw, index) => ({ kind: raw.trim() ? raw.trimStart().startsWith("#") ? "comment" : "statement" : "blank", raw, indent: indentOf(raw), line: index + 1, tokens: lexed.tokens.filter((item) => item.line === index + 1) })); return { kind: "File", source: lexed.source, children, tokens: lexed.tokens, receipt: lexed.receipt };
+  const lexed = lexCodaText(text); const lines = lexed.source.split("\n"); const children = lines.map((raw, index) => ({ kind: raw.trim() ? raw.trimStart().startsWith("#") ? "comment" : "statement" : "blank", raw, indent: indentOf(raw), line: index + 1, tokens: lexed.tokens.filter((item) => item.line === index + 1) })); return { kind: "File", source: lexed.source, children, tokens: lexed.tokens, receipt: lexed.receipt };
 }
 
 function expressionFromText(text) { return parseExpressionText(text).expression ?? { ref: String(text).trim() }; }
@@ -67,8 +67,8 @@ function parseEventArguments(text) {
   return text.split(/[,，]/u).map((item) => item.trim()).filter(Boolean).map((id) => ({ id, name: id, type: "Any" }));
 }
 
-export function parseGse(text) {
-  const lexed = lexGse(text); const diagnostics = [...lexed.receipt.diagnostics]; const lines = lexed.source.split("\n"); let moduleId = null; let event = null; const root = []; const stack = [{ indent: -1, nodes: root }]; const elseSeen = new Set();
+export function parseCodaText(text) {
+  const lexed = lexCodaText(text); const diagnostics = [...lexed.receipt.diagnostics]; const lines = lexed.source.split("\n"); let moduleId = null; let event = null; const root = []; const stack = [{ indent: -1, nodes: root }]; const elseSeen = new Set();
   for (let index = 0; index < lines.length; index += 1) {
     const raw = lines[index]; let trimmed = raw.trim(); if (!trimmed || trimmed.startsWith("#")) continue; const indent = indentOf(raw);
     const moduleMatch = trimmed.match(/^(?:module|模块)\s+([\w.]+)/u); if (moduleMatch) { moduleId = moduleMatch[1]; continue; }
@@ -111,14 +111,14 @@ export function bindEventAsset(asset, registry) {
   walk(asset.root); return { asset, receipt: codaReceipt(diagnostics) };
 }
 
-function formatGseLegacy(textOrAsset, mode = "preserve") {
-  if (typeof textOrAsset === "string") { const normalized = textOrAsset.normalize("NFC").replace(/\r\n?/g, "\n").replace(/\t/g, "  ").trimEnd(); if (mode === "preserve") return `${normalized}\n`; const parsed = parseGse(normalized); return parsed.receipt.ok ? formatGse(parsed.asset, mode) : `${normalized}\n`; }
+function formatCodaTextLegacy(textOrAsset, mode = "preserve") {
+  if (typeof textOrAsset === "string") { const normalized = textOrAsset.normalize("NFC").replace(/\r\n?/g, "\n").replace(/\t/g, "  ").trimEnd(); if (mode === "preserve") return `${normalized}\n`; const parsed = parseCodaText(normalized); return parsed.receipt.ok ? formatCodaText(parsed.asset, mode) : `${normalized}\n`; }
   const asset = textOrAsset; const chinese = mode === "zh"; const keyword = chinese ? { if: "若", else: "否则", let: "令", do: "执行", await: "等待", intent: "意图", publish: "发出" } : { if: "if", else: "else", let: "let", do: "do", await: "await", intent: "intent", publish: "publish" }; const lines = [chinese ? `事件 ${asset.event_id}：` : `event ${asset.event_id}:`];
   const walk = (nodes, indent) => { for (const node of nodes ?? []) { const pad = "  ".repeat(indent); if (node.command_id === "if") { lines.push(`${pad}${keyword.if}${chinese ? "（" : " ("}${formatExpression(node.params.condition)}${chinese ? "）：" : "):"}`); walk(node.children?.then, indent + 1); if ((node.children?.else ?? []).length > 0) { lines.push(`${pad}${keyword.else}${chinese ? "：" : ":"}`); walk(node.children.else, indent + 1); } } else if (node.command_id === "let") lines.push(`${pad}${keyword.let} ${node.params.name} ${chinese ? "为" : "="} ${formatExpression(node.params.value)}`); else if (["do", "await"].includes(node.command_id)) lines.push(`${pad}${keyword[node.command_id]} ${node.params.capability}(${formatArguments(node.params.args)})`); else if (node.command_id === "motion_intent") lines.push(`${pad}${keyword.intent} ${node.params.intent}(${formatArguments(node.params.args)})`); else if (node.command_id === "publish") lines.push(`${pad}${keyword.publish} ${node.params.topic}(${formatExpression(node.params.payload)})`); } }; walk(asset.root, 1); return `${lines.join("\n")}\n`;
 }
 
-export function formatGse(textOrAsset, mode = "preserve") {
-  const formatted = formatGseLegacy(textOrAsset, mode);
+export function formatCodaText(textOrAsset, mode = "preserve") {
+  const formatted = formatCodaTextLegacy(textOrAsset, mode);
   if (typeof textOrAsset === "string" || !textOrAsset || typeof textOrAsset !== "object") return formatted;
   const nodeIds = [];
   const collect = (nodes) => {

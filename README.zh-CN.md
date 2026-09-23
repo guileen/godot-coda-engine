@@ -81,7 +81,7 @@ godot --editor --path .
 
 同样支持英文关键字：`module`、`event`、`id`、`let`、`if`、`do`、`await`、`publish`。仓库内的 [`examples/reward-claim.coda`](examples/reward-claim.coda) 就是同一个奖励流程的中文写法。
 
-CODA 现在刻意保持小巧：事件、输入、局部值、条件、同步动作、等待动作和事件发布。复杂算法、任意 Godot 反射或项目未声明的 API，请使用 GDScript。稳定的项目内编辑器工作流也支持结构化 `.gse.json` 事件资产。
+CODA 现在刻意保持小巧：事件、输入、局部值、条件、同步动作、等待动作和事件发布。复杂算法、任意 Godot 反射或项目未声明的 API，请使用 GDScript。稳定的项目内编辑器工作流也支持结构化 `.coda.json` 事件资产。
 
 ## 需要深入时
 

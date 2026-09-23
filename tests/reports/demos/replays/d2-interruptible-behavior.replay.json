@@ -3,7 +3,7 @@
   "schema_version": 1,
   "demo_id": "D2",
   "status": "REPLAY_FIXTURE_PASS",
-  "plan_source": "coda/events/aibi.behavior.runtime.gse.json",
+  "plan_source": "coda/events/aibi.behavior.runtime.coda.json",
   "events": [
     { "event_id": "wake_word", "sequence": 1 },
     { "event_id": "speech_end", "sequence": 2 },

@@ -19,7 +19,7 @@ const registry = createSchemaRegistry(manifest);
 const outDir = resolve(root, "demos/d3-skeleton-transition/fixtures/generated");
 await mkdir(outDir, { recursive: true });
 
-const eventFiles = ["robot.attack.recover.gse.json", "robot.high.guard.gse.json"];
+const eventFiles = ["robot.attack.recover.coda.json", "robot.high.guard.coda.json"];
 for (const filename of eventFiles) {
   const assetPath = `coda/events/${filename}`;
   const asset = await readJson(assetPath);

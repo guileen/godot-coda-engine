@@ -19,7 +19,7 @@ The fixture is a structured `EventAsset`, not a text script:
 
 ```sh
 npm test
-npm run coda -- validate coda/events/ui.reward.apply.gse.json
+npm run coda -- validate coda/events/ui.reward.apply.coda.json
 ```
 
 The validator should report `ok: true` with no diagnostics.
@@ -27,7 +27,7 @@ The validator should report `ok: true` with no diagnostics.
 ## 3. Generate the runner
 
 ```sh
-npm run coda -- generate coda/events/ui.reward.apply.gse.json
+npm run coda -- generate coda/events/ui.reward.apply.coda.json
 ```
 
 This produces a generated GDScript runner and a JSON source map under `.coda/generated/`. The generated header contains the plan fingerprint; the source map maps event nodes and fields to generated lines.

@@ -24,5 +24,5 @@ jobs:
       - run: npm run check
       - run: npm run check:public
       - run: npm run coda -- manifest
-      - run: npm run coda -- validate coda/events/ui.reward.apply.gse.json
-      - run: npm run coda -- generate coda/events/ui.reward.apply.gse.json
+      - run: npm run coda -- validate coda/events/ui.reward.apply.coda.json
+      - run: npm run coda -- generate coda/events/ui.reward.apply.coda.json

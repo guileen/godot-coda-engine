@@ -63,7 +63,7 @@ To work with an AI, give it the [CODA AI skill](skills/coda-gameplay-flow/SKILL.
 
 Chinese keywords are also supported: `模块`、`事件`、`标识`、`令`、`若`、`执行`、`等待`、`发出`. The checked-in [`examples/reward-claim.coda`](examples/reward-claim.coda) is a Chinese version of the same reward flow.
 
-CODA is intentionally small today: events, inputs, local values, conditions, synchronous actions, awaited actions, and event publishing. For complex algorithms, arbitrary Godot reflection, or APIs that are not declared for your project, use GDScript. The stable in-project editor workflow also supports structured `.gse.json` event assets.
+CODA is intentionally small today: events, inputs, local values, conditions, synchronous actions, awaited actions, and event publishing. For complex algorithms, arbitrary Godot reflection, or APIs that are not declared for your project, use GDScript. The stable in-project editor workflow also supports structured `.coda.json` event assets.
 
 ## When you need more
 

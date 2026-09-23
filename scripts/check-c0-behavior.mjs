@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { BehaviorRuntime, compileBehaviorRuntime, createSchemaRegistry, stableStringify, validateBehaviorRuntime, validateBehaviorRuntimeTrace } from "../packages/local-core/src/coda/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const asset = JSON.parse(await readFile(resolve(root, "coda/events/aibi.behavior.runtime.gse.json"), "utf8"));
+const asset = JSON.parse(await readFile(resolve(root, "coda/events/aibi.behavior.runtime.coda.json"), "utf8"));
 const manifest = JSON.parse(await readFile(resolve(root, "contracts/coda/aibi-behavior-capabilities.json"), "utf8"));
 const registry = createSchemaRegistry(manifest);
 

@@ -35,7 +35,7 @@ const required = [
 ];
 const forbiddenEntries = entries.filter((entry) => !allowed(entry));
 const missing = required.filter((entry) => !entries.includes(entry));
-const forbiddenSymbols = ["EditorPlugin", "EventAsset", "lexGse", "parseGse", "chinese_dictionary", "dictionary_registry"];
+const forbiddenSymbols = ["EditorPlugin", "EventAsset", "lexCodaText", "parseCodaText", "chinese_dictionary", "dictionary_registry"];
 const result = {
   ok: forbiddenEntries.length === 0 && missing.length === 0,
   zip: zipPath,

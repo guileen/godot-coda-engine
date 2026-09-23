@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const failures = [];
-const fixture = "coda/events/ui.reward.apply.gse.json";
+const fixture = "coda/events/ui.reward.apply.coda.json";
 
 function run(command, args) {
   try {

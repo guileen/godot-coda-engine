@@ -7,7 +7,7 @@ import {
   createSchemaRegistry,
   generateGdscript,
   lowerToExecutionPlan,
-  parseGse,
+  parseCodaText,
   planFingerprint,
   stableStringify,
   validateBehaviorRuntimeTrace,
@@ -43,12 +43,12 @@ async function replayEvidence(file) {
 }
 
 const motionSource = await readFile(resolve(root, "examples/robot-acknowledge.coda"), "utf8");
-const motionParsed = parseGse(motionSource);
+const motionParsed = parseCodaText(motionSource);
 const motionLowered = motionParsed.receipt.ok ? lowerToExecutionPlan(motionParsed.asset, registry) : { plan: null, receipt: motionParsed.receipt };
 if (!motionLowered.plan) throw new Error(`C1-L source-to-plan failed: ${JSON.stringify(motionLowered.receipt.diagnostics)}`);
 await writeFile(resolve(root, "demos/d3-skeleton-transition/fixtures/robot-acknowledge.plan.json"), `${JSON.stringify(motionLowered.plan, null, 2)}\n`);
 
-const reward = await loadJson("coda/events/ui.reward.apply.gse.json");
+const reward = await loadJson("coda/events/ui.reward.apply.coda.json");
 const rewardPlan = lowerToExecutionPlan(reward, registry);
 const rewardGenerated = generateGdscript(rewardPlan.plan);
 const d1Replay = await replayEvidence("d1-semantic-authoring.replay.json");
@@ -63,7 +63,7 @@ await writeReport("d1-semantic-authoring.json", report("D1", "Semantic authoring
   replay: d1Replay,
 }, "Does not authorize arbitrary GDScript editing or bypass source ownership."));
 
-const behaviorAsset = await loadJson("coda/events/aibi.behavior.runtime.gse.json");
+const behaviorAsset = await loadJson("coda/events/aibi.behavior.runtime.coda.json");
 const behaviorManifest = await loadJson("contracts/coda/aibi-behavior-capabilities.json");
 const behavior = compileBehaviorRuntime(behaviorAsset, createSchemaRegistry(behaviorManifest));
 const interrupted = new BehaviorRuntime(behavior.plan);
